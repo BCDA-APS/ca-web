@@ -914,6 +914,248 @@ function CaPolyLineWidget({ widget }: { widget: ParsedWidget }) {
   );
 }
 
+// ── caCartesianPlot — XY line/dot chart for waveform PVs ─────────────────────
+// channels_N = "xPv;yPv" — x may be empty (use sample index as X).
+// Supports up to 4 curves. Draws onto an HTML canvas; auto-scales both axes.
+
+const CART_MAX = 4;
+
+function CaCartesianPlotWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
+  // Parse up to CART_MAX channel pairs (fixed at parse time — hooks called unconditionally).
+  const chPairs = Array.from({ length: CART_MAX }, (_, i) => {
+    const s = widget.props[`channels_${i + 1}`] ?? "";
+    const semi = s.indexOf(";");
+    return semi >= 0
+      ? { x: s.slice(0, semi).trim(), y: s.slice(semi + 1).trim() }
+      : { x: "", y: s.trim() };
+  });
+
+  // useConnection calls — must be unconditional and fixed in count.
+  const [,,, rawY0] = useConnection(`${ns}-${widget.name}-y0`, chPairs[0].y ? `ca://${chPairs[0].y}` : "ca://");
+  const [,,, rawX0] = useConnection(`${ns}-${widget.name}-x0`, chPairs[0].x ? `ca://${chPairs[0].x}` : "ca://");
+  const [,,, rawY1] = useConnection(`${ns}-${widget.name}-y1`, chPairs[1].y ? `ca://${chPairs[1].y}` : "ca://");
+  const [,,, rawX1] = useConnection(`${ns}-${widget.name}-x1`, chPairs[1].x ? `ca://${chPairs[1].x}` : "ca://");
+  const [,,, rawY2] = useConnection(`${ns}-${widget.name}-y2`, chPairs[2].y ? `ca://${chPairs[2].y}` : "ca://");
+  const [,,, rawX2] = useConnection(`${ns}-${widget.name}-x2`, chPairs[2].x ? `ca://${chPairs[2].x}` : "ca://");
+  const [,,, rawY3] = useConnection(`${ns}-${widget.name}-y3`, chPairs[3].y ? `ca://${chPairs[3].y}` : "ca://");
+  const [,,, rawX3] = useConnection(`${ns}-${widget.name}-x3`, chPairs[3].x ? `ca://${chPairs[3].x}` : "ca://");
+
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const title  = widget.props["Title"]  ?? "";
+  const titleX = widget.props["TitleX"] ?? "";
+  const titleY = widget.props["TitleY"] ?? "";
+  const bg     = widget.props["background"] ?? "rgb(115,223,255)";
+
+  type NumArr = { [i: number]: number; length: number };
+  function toArr(raw: unknown): number[] | null {
+    const arr = (raw as { value?: { arrayValue?: NumArr } })?.value?.arrayValue;
+    if (!arr || arr.length === 0) return null;
+    return Array.from({ length: arr.length }, (_, i) => arr[i]);
+  }
+
+  const rawYs = [rawY0, rawY1, rawY2, rawY3];
+  const rawXs = [rawX0, rawX1, rawX2, rawX3];
+  const DEFAULT_COLORS = ["rgb(0,0,0)", "rgb(220,0,0)", "rgb(0,0,200)", "rgb(0,140,0)"];
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const curves = rawYs.map((rawY, i) => ({
+      ys: toArr(rawY),
+      xs: toArr(rawXs[i]),
+      color: widget.props[`color_${i + 1}`] ?? DEFAULT_COLORS[i],
+      dots: (widget.props[`Style_${i + 1}`] ?? "").includes("Dots"),
+    })).filter(c => c.ys && c.ys.length > 0);
+
+    const W = canvas.width;
+    const H = canvas.height;
+    const ml = titleY ? 52 : 44, mr = 8;
+    const mt = title ? 22 : 8;
+    const mb = titleX ? 38 : 26;
+    const pw = W - ml - mr;
+    const ph = H - mt - mb;
+
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = "rgb(187,187,187)";
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = bg;
+    ctx.fillRect(ml, mt, pw, ph);
+
+    if (curves.length === 0) return;
+
+    // Auto-scale
+    let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
+    for (const c of curves) {
+      const n = c.ys!.length;
+      for (let i = 0; i < n; i++) {
+        const x = c.xs ? c.xs[i] : i;
+        const y = c.ys![i];
+        if (isFinite(x)) { xMin = Math.min(xMin, x); xMax = Math.max(xMax, x); }
+        if (isFinite(y)) { yMin = Math.min(yMin, y); yMax = Math.max(yMax, y); }
+      }
+    }
+    if (!isFinite(xMin)) { xMin = 0; xMax = 1; }
+    if (!isFinite(yMin)) { yMin = 0; yMax = 1; }
+    if (xMin === xMax) { xMin -= 0.5; xMax += 0.5; }
+    if (yMin === yMax) { yMin -= 0.5; yMax += 0.5; }
+
+    const toCanvasX = (x: number) => ml + (x - xMin) / (xMax - xMin) * pw;
+    const toCanvasY = (y: number) => mt + ph - (y - yMin) / (yMax - yMin) * ph;
+
+    const fmtTick = (v: number) => {
+      if (Math.abs(v) >= 10000 || (Math.abs(v) < 0.01 && v !== 0)) return v.toExponential(1);
+      const s = v.toPrecision(3);
+      return s.includes(".") ? s.replace(/\.?0+$/, "") : s;
+    };
+
+    // Grid (dashed red lines, like caQtDM)
+    const NTICKS = 4;
+    ctx.strokeStyle = "rgba(200,0,0,0.45)";
+    ctx.lineWidth = 0.5;
+    ctx.setLineDash([3, 5]);
+    for (let g = 1; g < NTICKS; g++) {
+      const gx = ml + g * pw / NTICKS;
+      const gy = mt + g * ph / NTICKS;
+      ctx.beginPath(); ctx.moveTo(gx, mt); ctx.lineTo(gx, mt + ph); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(ml, gy); ctx.lineTo(ml + pw, gy); ctx.stroke();
+    }
+    ctx.setLineDash([]);
+
+    // Axes border
+    ctx.strokeStyle = "black";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(ml, mt, pw, ph);
+
+    // Tick labels
+    ctx.fillStyle = "black";
+    ctx.font = "9px sans-serif";
+    ctx.textAlign = "center";
+    for (let g = 0; g <= NTICKS; g++) {
+      ctx.fillText(fmtTick(xMin + g * (xMax - xMin) / NTICKS), ml + g * pw / NTICKS, mt + ph + 11);
+    }
+    ctx.textAlign = "right";
+    for (let g = 0; g <= NTICKS; g++) {
+      ctx.fillText(fmtTick(yMax - g * (yMax - yMin) / NTICKS), ml - 3, mt + g * ph / NTICKS + 3);
+    }
+
+    // Title
+    if (title) {
+      ctx.fillStyle = "black"; ctx.font = "bold 11px sans-serif"; ctx.textAlign = "center";
+      ctx.fillText(title, W / 2, 14);
+    }
+    // X label
+    if (titleX) {
+      ctx.fillStyle = "black"; ctx.font = "10px sans-serif"; ctx.textAlign = "center";
+      ctx.fillText(titleX, ml + pw / 2, H - 5);
+    }
+    // Y label (rotated)
+    if (titleY) {
+      ctx.save();
+      ctx.translate(10, mt + ph / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillStyle = "black"; ctx.font = "10px sans-serif"; ctx.textAlign = "center";
+      ctx.fillText(titleY, 0, 0);
+      ctx.restore();
+    }
+
+    // Draw curves (clipped to plot area)
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(ml, mt, pw, ph);
+    ctx.clip();
+
+    for (const c of curves) {
+      const n = c.ys!.length;
+      ctx.strokeStyle = c.color;
+      ctx.fillStyle = c.color;
+      ctx.lineWidth = 1;
+      if (c.dots) {
+        for (let i = 0; i < n; i++) {
+          const y = c.ys![i];
+          if (!isFinite(y)) continue;
+          ctx.beginPath();
+          ctx.arc(toCanvasX(c.xs ? c.xs[i] : i), toCanvasY(y), 1.2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else {
+        ctx.beginPath();
+        let started = false;
+        for (let i = 0; i < n; i++) {
+          const y = c.ys![i];
+          if (!isFinite(y)) { started = false; continue; }
+          const px = toCanvasX(c.xs ? c.xs[i] : i);
+          const py = toCanvasY(y);
+          if (!started) { ctx.moveTo(px, py); started = true; }
+          else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  });
+
+  const { x, y, width, height } = widget.geometry;
+  return (
+    <canvas
+      ref={canvasRef}
+      width={width}
+      height={height}
+      style={{ position: "absolute", left: x, top: y, width, height, zIndex: widget.zIndex }}
+    />
+  );
+}
+
+// ── Overlay panel — draggable floating window (portal) ───────────────────────
+// Self-contained: manages its own position so multiple can be open at once.
+
+interface OpenOverlay { id: number; state: OverlayState; initPos: { x: number; y: number } }
+
+function OverlayPanel({ ov, onClose }: { ov: OpenOverlay; onClose: () => void }) {
+  const [pos, setPos] = useState(ov.initPos);
+  const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
+
+  function onMouseDown(e: React.MouseEvent) {
+    e.preventDefault();
+    dragRef.current = { startX: e.clientX, startY: e.clientY, origX: pos.x, origY: pos.y };
+    function onMove(ev: MouseEvent) {
+      if (!dragRef.current) return;
+      setPos({ x: dragRef.current.origX + ev.clientX - dragRef.current.startX,
+               y: dragRef.current.origY + ev.clientY - dragRef.current.startY });
+    }
+    function onUp() {
+      dragRef.current = null;
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    }
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }
+
+  return createPortal(
+    <div style={{
+      position: "fixed", top: pos.y, left: pos.x, zIndex: 9999,
+      background: "#1a1a2e", borderRadius: 4,
+      boxShadow: "0 4px 20px rgba(0,0,0,0.6)", border: "1px solid #444",
+    }}>
+      <div onMouseDown={onMouseDown} style={{
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+        padding: "4px 8px", background: "#0f2035", borderRadius: "4px 4px 0 0", cursor: "grab",
+      }}>
+        <span style={{ color: "#90caf9", fontSize: 11, fontFamily: "monospace" }}>{ov.state.label}</span>
+        <button onClick={onClose} style={{
+          background: "none", border: "none", color: "#90caf9", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: "0 2px",
+        }}>×</button>
+      </div>
+      <UiRenderer file={ov.state.file} macros={ov.state.macros} />
+    </div>,
+    document.body
+  );
+}
+
 // ── PV info panel (portal) ────────────────────────────────────────────────────
 
 interface PvInfoPanelProps {
@@ -1088,6 +1330,7 @@ function WidgetRouter({ widget, ns }: { widget: ParsedWidget; ns: string }) {
     case "caRelatedDisplay": return <CaRelatedDisplayWidget widget={widget} ns={ns} />;
     case "caMenu":           return <CaMenuWidget widget={widget} ns={ns} />;
     case "caPolyLine":       return <CaPolyLineWidget widget={widget} />;
+    case "caCartesianPlot":  return <CaCartesianPlotWidget widget={widget} ns={ns} />;
     case "caByte":           return <CaByteWidget widget={widget} ns={ns} />;
     case "caCamera":         return <CaCameraWidget widget={widget} ns={ns} />;
     case "caInclude":        return <CaIncludeWidget widget={widget} ns={ns} />;
@@ -1140,8 +1383,8 @@ export function UiRenderer({ file, macros = {}, scale }: UiRendererProps) {
   const ns = file.replace(/\W/g, "_");  // unique namespace for useConnection IDs
   const baseDir = file.substring(0, file.lastIndexOf("/")) || "/ui";
 
-  const [overlay, setOverlay] = useState<OverlayState | null>(null);
-  const [overlayPos, setOverlayPos] = useState({ x: 120, y: 80 });
+  const [overlays, setOverlays] = useState<OpenOverlay[]>([]);
+  const overlayCounter = useRef(0);
 
   // Right-click context menu + PV info panel
   type CtxMenuState = { x: number; y: number; channel: string; widgetName: string; widgetClass: string };
@@ -1164,28 +1407,9 @@ export function UiRenderer({ file, macros = {}, scale }: UiRendererProps) {
   }
 
   function openOverlay(s: OverlayState) {
-    setOverlayPos({ x: 120, y: 80 });
-    setOverlay(s);
-  }
-  const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
-
-  function onOverlayMouseDown(e: React.MouseEvent) {
-    e.preventDefault();
-    dragRef.current = { startX: e.clientX, startY: e.clientY, origX: overlayPos.x, origY: overlayPos.y };
-    function onMove(ev: MouseEvent) {
-      if (!dragRef.current) return;
-      setOverlayPos({
-        x: dragRef.current.origX + ev.clientX - dragRef.current.startX,
-        y: dragRef.current.origY + ev.clientY - dragRef.current.startY,
-      });
-    }
-    function onUp() {
-      dragRef.current = null;
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    }
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
+    const id = ++overlayCounter.current;
+    const offset = ((id - 1) % 6) * 24;
+    setOverlays(prev => [...prev, { id, state: s, initPos: { x: 120 + offset, y: 80 + offset } }]);
   }
 
   if (error) return <div style={{ color: "red", padding: 8 }}>Failed to load {file}: {error}</div>;
@@ -1267,33 +1491,14 @@ export function UiRenderer({ file, macros = {}, scale }: UiRendererProps) {
         />
       )}
 
-      {/* Related display overlay — fixed panel, closes on backdrop click */}
-      {overlay && (
-        <>
-          <div
-            style={{
-              position: "fixed", top: overlayPos.y, left: overlayPos.x, zIndex: 9999,
-              background: "#1a1a2e", borderRadius: 4,
-              boxShadow: "0 4px 20px rgba(0,0,0,0.6)",
-              border: "1px solid #444",
-            }}
-          >
-            <div
-              onMouseDown={onOverlayMouseDown}
-              style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 8px", background: "#0f2035", borderRadius: "4px 4px 0 0", cursor: "grab" }}
-            >
-              <span style={{ color: "#90caf9", fontSize: 11, fontFamily: "monospace" }}>{overlay.label}</span>
-              <button
-                onClick={() => setOverlay(null)}
-                style={{ background: "none", border: "none", color: "#90caf9", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: "0 2px" }}
-              >
-                ×
-              </button>
-            </div>
-            <UiRenderer file={overlay.file} macros={overlay.macros} />
-          </div>
-        </>
-      )}
+      {/* Related display overlays — one OverlayPanel per open window */}
+      {overlays.map(ov => (
+        <OverlayPanel
+          key={ov.id}
+          ov={ov}
+          onClose={() => setOverlays(prev => prev.filter(o => o.id !== ov.id))}
+        />
+      ))}
     </div>
   );
 }

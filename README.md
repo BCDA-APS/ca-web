@@ -27,11 +27,13 @@ podman stop pvws && podman rm pvws
 podman run --network=host -d --name pvws \
   -e PV_WRITE_SUPPORT=true \
   -e EPICS_CA_MAX_ARRAY_BYTES=8000000 \
+  -e PV_ARRAY_THROTTLE_MS=1000 \
   pvws:latest
 ```
 
 - **`PV_WRITE_SUPPORT=true`** — enables PV write support (required for caTextEntry, caMessageButton, etc.)
 - **`EPICS_CA_MAX_ARRAY_BYTES=8000000`** — required for area detector waveform PVs (e.g. `ArrayData`). The container does **not** inherit the host shell's environment. Without this, the default is 16 KB and image PVs will connect but return 0 elements.
+- **`PV_ARRAY_THROTTLE_MS=1000`** — maximum update rate for waveform/array PVs (default is 10000 ms = 10 s, which makes strip charts and line profiles sluggish). Set to 1000 ms for ~1 Hz updates; lower values (e.g. 200) give faster updates at the cost of more bandwidth.
 
 ### pvws write protocol
 
@@ -73,6 +75,18 @@ Custom screens (e.g. `29id_cam.ui`) live directly in `public/ui/`.
 | `caByte` | Bit field display (colored squares, startBit..endBit) |
 | `caCamera` | Live area detector image display (see below) |
 | `caInclude` | Embeds another `.ui` file inline; inherits parent macros |
+| `caCartesianPlot` | XY line/dot chart for waveform PVs; auto-scales axes; up to 4 curves |
+
+### caCartesianPlot
+
+Connects to up to 4 curve pairs via `channels_1`…`channels_4` (format: `"xPv;yPv"` — X channel may be empty, in which case sample index is used as X). Features:
+- Auto-scaling axes
+- Dashed red grid (matches caQtDM style)
+- Title and X/Y axis labels (`Title`, `TitleX`, `TitleY` props)
+- Per-curve color (`color_1`…) and style (`Style_N`: Lines or Dots)
+- Multiple overlays can be open simultaneously
+
+Update rate is controlled by `PV_ARRAY_THROTTLE_MS` in pvws (see above).
 
 ### caCamera
 
