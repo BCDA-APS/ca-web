@@ -2,12 +2,16 @@ import { useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useConnection } from "@diamondlightsource/cs-web-lib";
 import { pvwsWriter } from "./pvwsWriter";
-import { UiRenderer } from "./UiRenderer";
+
+interface DisplayItem {
+  label: string;
+  file: string;
+}
 
 interface MotorRowProps {
   label: string;
   pv: string; // e.g. "fr:m1"
-  uiFile?: string;
+  displays?: DisplayItem[];
   macros?: Record<string, string>;
 }
 
@@ -27,7 +31,7 @@ function toStr(d: unknown): string | null {
   return null;
 }
 
-export function MotorRow({ label, pv, uiFile, macros }: MotorRowProps) {
+export function MotorRow({ label, pv, displays, macros }: MotorRowProps) {
   const id = `motor-${pv}`;
   const [, connected, , rbvValue]  = useConnection(`${id}-rbv`,  `ca://${pv}.RBV`);
   const [, , ,          dmovValue] = useConnection(`${id}-dmov`, `ca://${pv}.DMOV`);
@@ -39,28 +43,8 @@ export function MotorRow({ label, pv, uiFile, macros }: MotorRowProps) {
   const [editingTweak, setEditingTweak]   = useState(false);
   const [tweakInput, setTweakInput]       = useState("");
 
-  const [overlayOpen, setOverlayOpen] = useState(false);
-  const [overlayPos, setOverlayPos]   = useState({ x: 120, y: 80 });
-  const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
-
-  function onOverlayMouseDown(e: React.MouseEvent) {
-    e.preventDefault();
-    dragRef.current = { startX: e.clientX, startY: e.clientY, origX: overlayPos.x, origY: overlayPos.y };
-    function onMove(ev: MouseEvent) {
-      if (!dragRef.current) return;
-      setOverlayPos({
-        x: dragRef.current.origX + ev.clientX - dragRef.current.startX,
-        y: dragRef.current.origY + ev.clientY - dragRef.current.startY,
-      });
-    }
-    function onUp() {
-      dragRef.current = null;
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    }
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-  }
+  const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
 
   const position = toDouble(rbvValue);
   const dmov     = (toDouble(dmovValue) ?? 0) !== 0;
@@ -150,21 +134,46 @@ export function MotorRow({ label, pv, uiFile, macros }: MotorRowProps) {
           STOP
         </button>
       </td>
-      {uiFile && (
+      {displays && displays.length > 0 && (
         <td style={styles.detailCell}>
-          <button style={styles.detailBtn} onClick={() => { setOverlayPos({ x: 120, y: 80 }); setOverlayOpen(true); }}>
+          <button
+            ref={btnRef}
+            style={styles.detailBtn}
+            onClick={e => {
+              e.stopPropagation();
+              const r = btnRef.current!.getBoundingClientRect();
+              setMenuPos(menuPos ? null : { x: r.left, y: r.bottom + 2 });
+            }}
+          >
             ⋯
           </button>
         </td>
       )}
-      {overlayOpen && uiFile && createPortal(
-        <div style={{ position: "fixed", top: overlayPos.y, left: overlayPos.x, zIndex: 9999, background: "#1a1a2e", borderRadius: 4, boxShadow: "0 4px 20px rgba(0,0,0,0.6)", border: "1px solid #444" }}>
-          <div onMouseDown={onOverlayMouseDown} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 8px", background: "#0f2035", borderRadius: "4px 4px 0 0", cursor: "grab" }}>
-            <span style={{ color: "#90caf9", fontSize: 11, fontFamily: "monospace" }}>{desc}</span>
-            <button onClick={() => setOverlayOpen(false)} style={{ background: "none", border: "none", color: "#90caf9", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: "0 2px" }}>×</button>
+      {menuPos && displays && createPortal(
+        <>
+          <div style={{ position: "fixed", inset: 0, zIndex: 9998 }} onClick={() => setMenuPos(null)} />
+          <div style={{
+            position: "fixed", left: menuPos.x, top: menuPos.y, zIndex: 9999,
+            background: "#f0f0f0", border: "1px solid #999", borderRadius: 2,
+            boxShadow: "2px 2px 6px rgba(0,0,0,0.3)", minWidth: 160,
+          }}>
+            {displays.map(d => (
+              <div
+                key={d.file}
+                style={{ padding: "6px 14px", cursor: "pointer", fontFamily: "sans-serif", fontSize: 12, color: "#000", whiteSpace: "nowrap" }}
+                onMouseEnter={e => (e.currentTarget.style.background = "#0078d7", e.currentTarget.style.color = "#fff")}
+                onMouseLeave={e => (e.currentTarget.style.background = "", e.currentTarget.style.color = "")}
+                onClick={() => {
+                  setMenuPos(null);
+                  // open via UiRenderer overlay — dispatch a custom event picked up by App
+                  window.dispatchEvent(new CustomEvent("open-ui", { detail: { file: d.file, macros: macros ?? {}, label: `${desc} — ${d.label}` } }));
+                }}
+              >
+                {d.label}
+              </div>
+            ))}
           </div>
-          <UiRenderer file={uiFile} macros={macros ?? {}} />
-        </div>,
+        </>,
         document.body
       )}
     </tr>
