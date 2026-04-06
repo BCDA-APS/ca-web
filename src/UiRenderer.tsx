@@ -767,8 +767,19 @@ function CaCameraWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
 
   const showCanvas = connData && effectiveW > 0 && effectiveH > 0;
 
+  // caCamera often has sizePolicy=MinimumExpanding — stretch to fill container width.
+  const cameraStyle: React.CSSProperties = {
+    position: "absolute",
+    left: widget.geometry.x,
+    top: widget.geometry.y,
+    right: 0,
+    height: widget.geometry.height,
+    zIndex: widget.zIndex,
+    display: "flex", flexDirection: "column", overflow: "hidden", background: "#000",
+  };
+
   return (
-    <div style={{ ...geoStyle(widget.geometry, widget.zIndex), display: "flex", flexDirection: "column", overflow: "hidden", background: "#000" }}>
+    <div style={cameraStyle}>
 
       {/* ── top bar ── */}
       <div style={{ ...barStyle, height: TOPBAR_H }}>
