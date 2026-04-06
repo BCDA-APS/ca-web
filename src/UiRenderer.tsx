@@ -713,10 +713,15 @@ function CaCameraWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
     if (!ctx) return;
 
     const n = Math.min(arrLen, effectiveW * effectiveH);
+
+    // pvws transmits DBF_CHAR (signed int8) as negative values, but area detector
+    // raw pixel data is logically unsigned (uint8). Convert: v < 0 → v + 256.
+    const pixel = (i: number) => { const v = arr[i]; return v < 0 ? v + 256 : v; };
+
     let lo: number, hi: number;
     if (autoLevels) {
       lo = Infinity; hi = -Infinity;
-      for (let i = 0; i < n; i++) { const v = arr[i]; if (v < lo) lo = v; if (v > hi) hi = v; }
+      for (let i = 0; i < n; i++) { const v = pixel(i); if (v < lo) lo = v; if (v > hi) hi = v; }
       setFrameMinMax([lo, hi]);
     } else {
       lo = manMin; hi = manMax;
@@ -726,7 +731,7 @@ function CaCameraWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
     const imgData = ctx.createImageData(effectiveW, effectiveH);
     const d = imgData.data;
     for (let i = 0; i < n; i++) {
-      const gray = Math.max(0, Math.min(255, (((arr[i] - lo) / range) * 255) | 0));
+      const gray = Math.max(0, Math.min(255, (((pixel(i) - lo) / range) * 255) | 0));
       const j = i * 4;
       d[j] = d[j + 1] = d[j + 2] = gray;
       d[j + 3] = 255;
