@@ -5,6 +5,111 @@ import { ReadbackRow } from "./ReadbackRow";
 import { StripChartWidget } from "./StripChartWidget";
 import { UiRenderer } from "./UiRenderer";
 
+// ── Draggable panel ───────────────────────────────────────────────────────────
+
+const PANEL_DEFAULTS: Record<string, { x: number; y: number }> = {
+  motors:          { x: 24, y: 56 },
+  lorentzian:      { x: 24, y: 460 },
+  "area-detector": { x: 24, y: 670 },
+};
+
+// Global z-index counter so clicking a panel brings it to the front.
+let gZ = 100;
+
+interface PanelState { x: number; y: number; locked: boolean }
+
+function DraggablePanel({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
+  const def = PANEL_DEFAULTS[id] ?? { x: 60, y: 60 };
+  const [ps, setPs] = useState<PanelState>(() => {
+    try {
+      const s = localStorage.getItem(`panel:${id}`);
+      if (s) return JSON.parse(s);
+    } catch { /* ignore */ }
+    return { ...def, locked: false };
+  });
+  const [zIdx, setZIdx] = useState(gZ);
+  const dragRef = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null);
+
+  // Persist position + locked state
+  useEffect(() => {
+    localStorage.setItem(`panel:${id}`, JSON.stringify(ps));
+  }, [id, ps]);
+
+  function bringToFront() {
+    const z = ++gZ;
+    setZIdx(z);
+  }
+
+  function onHandleMouseDown(e: React.MouseEvent) {
+    if (ps.locked) return;
+    e.preventDefault();
+    bringToFront();
+    dragRef.current = { sx: e.clientX, sy: e.clientY, ox: ps.x, oy: ps.y };
+    function onMove(ev: MouseEvent) {
+      if (!dragRef.current) return;
+      setPs(p => ({
+        ...p,
+        x: dragRef.current!.ox + ev.clientX - dragRef.current!.sx,
+        y: dragRef.current!.oy + ev.clientY - dragRef.current!.sy,
+      }));
+    }
+    function onUp() {
+      dragRef.current = null;
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    }
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }
+
+  return (
+    <div
+      onMouseDown={bringToFront}
+      style={{
+        position: "fixed", left: ps.x, top: ps.y, zIndex: zIdx,
+        background: "#0f2035", borderRadius: 6,
+        boxShadow: "0 4px 16px rgba(0,0,0,0.6)", border: "1px solid #1e3a5f",
+        fontFamily: "Liberation Sans, Arial, sans-serif",
+      }}
+    >
+      {/* Drag handle */}
+      <div
+        onMouseDown={onHandleMouseDown}
+        style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "5px 8px", background: "#1a3a5c", borderRadius: "6px 6px 0 0",
+          cursor: ps.locked ? "default" : "grab", userSelect: "none",
+        }}
+      >
+        <span style={{ color: "#bbdefb", fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>
+          {title}
+        </span>
+        <button
+          onMouseDown={e => e.stopPropagation()}
+          onClick={() => setPs(p => ({ ...p, locked: !p.locked }))}
+          title={ps.locked ? "Unlock panel" : "Lock panel"}
+          style={{
+            cursor: "pointer", fontSize: 11, fontWeight: 700, letterSpacing: 0.5,
+            padding: "2px 7px", borderRadius: 3, lineHeight: "18px",
+            border: ps.locked ? "1px solid #546e8a" : "1px solid #4caf50",
+            background: ps.locked ? "transparent" : "rgba(76,175,80,0.15)",
+            color: ps.locked ? "#7a9ab8" : "#81c784",
+          }}
+        >
+          {ps.locked ? "LOCKED" : "LOCK"}
+        </button>
+      </div>
+
+      {/* Content */}
+      <div style={{ padding: "12px 16px", color: "#e0e0e0" }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// ── Motor panel ───────────────────────────────────────────────────────────────
+
 const MOTOR_DISPLAYS = [
   { label: "Tiny",  file: "/ui/motors/motorx_tiny.ui" },
   { label: "Small", file: "/ui/motors/motorx.ui" },
@@ -24,17 +129,17 @@ const MOTORS = [
   { label: "Motor 8", pv: "fr:m8", macros: { P: "fr:", M: "m8" } },
 ];
 
-const LORENTZIAN = [
-  { label: "Noisy", pv: "fr:userCalc1.VAL" },
-];
+const LORENTZIAN = [{ label: "Noisy", pv: "fr:userCalc1.VAL" }];
 
 const AREA_DETECTOR = [
-  { label: "Acquire",     pv: "myad:cam1:Acquire_RBV" },
-  { label: "Frame count", pv: "myad:cam1:ArrayCounter_RBV" },
-  { label: "Exposure (s)",pv: "myad:cam1:AcquireTime_RBV" },
-  { label: "Image size X",pv: "myad:cam1:SizeX_RBV" },
-  { label: "Image size Y",pv: "myad:cam1:SizeY_RBV" },
+  { label: "Acquire",      pv: "myad:cam1:Acquire_RBV" },
+  { label: "Frame count",  pv: "myad:cam1:ArrayCounter_RBV" },
+  { label: "Exposure (s)", pv: "myad:cam1:AcquireTime_RBV" },
+  { label: "Image size X", pv: "myad:cam1:SizeX_RBV" },
+  { label: "Image size Y", pv: "myad:cam1:SizeY_RBV" },
 ];
+
+// ── Open-ui overlay (from motor ⋯ menu) ──────────────────────────────────────
 
 interface AppOverlay { id: number; file: string; macros: Record<string, string>; label: string; pos: { x: number; y: number } }
 
@@ -67,38 +172,7 @@ function AppOverlayPanel({ ov, onClose }: { ov: AppOverlay; onClose: () => void 
   );
 }
 
-function MotorGroup({ label, motors }: { label: string; motors: typeof MOTORS }) {
-  return (
-    <div style={styles.group}>
-      <h2 style={styles.groupTitle}>{label}</h2>
-      <table style={styles.table}>
-        <thead>
-          <tr>
-            <th style={styles.th}>Name</th>
-            <th style={{ ...styles.th, textAlign: "right" }}>Position</th>
-            <th style={styles.th}>Setpoint</th>
-            <th style={styles.th}>Tweak</th>
-            <th style={styles.th}>Status</th>
-            <th style={styles.th} />
-            <th style={styles.th} />
-          </tr>
-        </thead>
-        <tbody>
-          {motors.map(m => (
-            <MotorRow
-              key={m.pv}
-              label={m.label}
-              pv={m.pv}
-              displays={MOTOR_DISPLAYS}
-              macros={m.macros}
-            />
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
+// ── App ───────────────────────────────────────────────────────────────────────
 
 export default function App() {
   const [overlays, setOverlays] = useState<AppOverlay[]>([]);
@@ -116,100 +190,75 @@ export default function App() {
   }, []);
 
   return (
-    <div style={styles.page}>
+    <div style={{ background: "#0d1b2a", minHeight: "100vh", fontFamily: "Liberation Sans, Arial, sans-serif" }}>
+
+      {/* App-level overlays from motor ⋯ menu */}
       {overlays.map(ov => (
         <AppOverlayPanel key={ov.id} ov={ov} onClose={() => setOverlays(prev => prev.filter(o => o.id !== ov.id))} />
       ))}
+
+      {/* APS logo */}
       <div style={{ position: "fixed", bottom: 16, right: 16, zIndex: 1000, opacity: 0.85 }}>
         <img src="/aps-logo.png" alt="Argonne National Laboratory | APS" style={{ height: "40px", width: "auto", display: "block" }} />
       </div>
-      <h1 style={styles.title}>Simulated IOC</h1>
-      <MotorGroup label="Motors" motors={MOTORS} />
 
-      {/* Lorentzian: readback table on the left, strip chart to the right */}
-      <div style={styles.group}>
-        <h2 style={styles.groupTitle}>Detector — Simulated Lorentzian</h2>
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 32 }}>
-          <table style={styles.table}>
-            <thead>
-              <tr>
-                <th style={styles.th}>Name</th>
-                <th style={styles.th}>Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              {LORENTZIAN.map(r => (
-                <ReadbackRow key={r.pv} label={r.label} pv={r.pv} />
-              ))}
-            </tbody>
+      {/* Page title (fixed, acts as header) */}
+      <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, background: "#0a1520", borderBottom: "1px solid #1e3a5f", padding: "8px 24px" }}>
+        <span style={{ color: "#90caf9", fontSize: 16, fontWeight: 700, letterSpacing: 0.5 }}>Simulated IOC</span>
+      </div>
+
+      {/* ── Draggable panels ── */}
+
+      <DraggablePanel id="motors" title="Motors">
+        <table style={tableStyle}>
+          <thead>
+            <tr>
+              <th style={thStyle}>Name</th>
+              <th style={{ ...thStyle, textAlign: "right" }}>Position</th>
+              <th style={thStyle}>Setpoint</th>
+              <th style={thStyle}>Tweak</th>
+              <th style={thStyle}>Status</th>
+              <th style={thStyle} />
+              <th style={thStyle} />
+            </tr>
+          </thead>
+          <tbody>
+            {MOTORS.map(m => (
+              <MotorRow key={m.pv} label={m.label} pv={m.pv} displays={MOTOR_DISPLAYS} macros={m.macros} />
+            ))}
+          </tbody>
+        </table>
+      </DraggablePanel>
+
+      <DraggablePanel id="lorentzian" title="Detector — Simulated Lorentzian">
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 24 }}>
+          <table style={tableStyle}>
+            <thead><tr><th style={thStyle}>Name</th><th style={thStyle}>Value</th></tr></thead>
+            <tbody>{LORENTZIAN.map(r => <ReadbackRow key={r.pv} label={r.label} pv={r.pv} />)}</tbody>
           </table>
           <StripChartWidget pv="fr:userCalc1.VAL" label="Noisy" />
         </div>
-      </div>
+      </DraggablePanel>
 
-      <div style={styles.group}>
-        <h2 style={styles.groupTitle}>Area Detector — myad:cam1</h2>
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 32 }}>
-          <table style={styles.table}>
-            <thead>
-              <tr>
-                <th style={styles.th}>Name</th>
-                <th style={styles.th}>Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              {AREA_DETECTOR.map(r => (
-                <ReadbackRow key={r.pv} label={r.label} pv={r.pv} />
-              ))}
-            </tbody>
+      <DraggablePanel id="area-detector" title="Area Detector — myad:cam1">
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 24 }}>
+          <table style={tableStyle}>
+            <thead><tr><th style={thStyle}>Name</th><th style={thStyle}>Value</th></tr></thead>
+            <tbody>{AREA_DETECTOR.map(r => <ReadbackRow key={r.pv} label={r.label} pv={r.pv} />)}</tbody>
           </table>
           <UiRenderer file="/ui/29id_cam.ui" macros={{ P: "myad:" }} />
         </div>
-      </div>
+      </DraggablePanel>
+
     </div>
   );
 }
 
-const styles: Record<string, React.CSSProperties> = {
-  page: {
-    background: "#0d1b2a",
-    minHeight: "100vh",
-    padding: "24px 32px",
-    fontFamily: "Liberation Sans, Arial, sans-serif",
-    color: "#e0e0e0",
-  },
-  title: {
-    color: "#90caf9",
-    fontSize: 22,
-    fontWeight: 700,
-    margin: "0 0 24px 0",
-    borderBottom: "1px solid #1e3a5f",
-    paddingBottom: 12,
-  },
-  group: { marginBottom: 32 },
-  groupTitle: {
-    color: "#bbdefb",
-    fontSize: 15,
-    fontWeight: 600,
-    margin: "0 0 8px 0",
-    textTransform: "uppercase",
-    letterSpacing: 1,
-  },
-  table: {
-    borderCollapse: "collapse",
-    width: "auto",
-    background: "#0f2035",
-    borderRadius: 6,
-    overflow: "hidden",
-  },
-  th: {
-    padding: "8px 12px",
-    background: "#1a3a5c",
-    color: "#90caf9",
-    fontSize: 12,
-    fontWeight: 600,
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-    textAlign: "left",
-  },
+const tableStyle: React.CSSProperties = {
+  borderCollapse: "collapse", width: "auto",
+  background: "#0a1828", borderRadius: 4, overflow: "hidden",
+};
+const thStyle: React.CSSProperties = {
+  padding: "7px 12px", background: "#1a3a5c", color: "#90caf9",
+  fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.8, textAlign: "left",
 };
