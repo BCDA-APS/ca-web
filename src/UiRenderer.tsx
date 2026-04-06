@@ -10,7 +10,7 @@ import { pvwsWriter } from "./pvwsWriter";
 
 // ── contexts ──────────────────────────────────────────────────────────────────
 
-interface OverlayState { file: string; macros: Record<string, string>; label: string }
+interface OverlayState { file: string; macros: Record<string, string>; label: string; replace?: boolean }
 const OpenContext = createContext<(s: OverlayState) => void>(() => {});
 // Base URL directory of the current .ui file — used to resolve related display paths.
 const BaseDirContext = createContext("/ui");
@@ -503,14 +503,16 @@ function CaRelatedDisplayWidget({ widget, ns: _ns }: { widget: ParsedWidget; ns:
   const fg = widget.props["foreground"] ?? "#fff";
   const bg = widget.props["background"] ?? "rgb(51,153,0)";
 
-  const files  = (widget.props["files"]  ?? "").split(";").filter(Boolean);
-  const labels = (widget.props["labels"] ?? "").split(";").filter(Boolean);
-  const args   = (widget.props["args"]   ?? "").split(";").filter(Boolean);
+  const files        = (widget.props["files"]        ?? "").split(";").filter(Boolean);
+  const labels       = (widget.props["labels"]       ?? "").split(";").filter(Boolean);
+  const args         = (widget.props["args"]         ?? "").split(";").filter(Boolean);
+  const removeParent = (widget.props["removeParent"] ?? "").split(";");
 
   const items = files.map((f, i) => ({
     label: labels[i] ?? f,
     file: `${baseDir}/${f.replace(/\.adl$/, ".ui")}`,
     macros: parseArgs(args[i] ?? ""),
+    replace: removeParent[i]?.trim().toLowerCase() === "true",
   }));
 
   if (items.length === 0) return null;
@@ -1409,7 +1411,12 @@ export function UiRenderer({ file, macros = {}, scale }: UiRendererProps) {
   function openOverlay(s: OverlayState) {
     const id = ++overlayCounter.current;
     const offset = ((id - 1) % 6) * 24;
-    setOverlays(prev => [...prev, { id, state: s, initPos: { x: 120 + offset, y: 80 + offset } }]);
+    if (s.replace) {
+      // removeParent=true: close all current child overlays and open the new one in their place.
+      setOverlays([{ id, state: s, initPos: { x: 120, y: 80 } }]);
+    } else {
+      setOverlays(prev => [...prev, { id, state: s, initPos: { x: 120 + offset, y: 80 + offset } }]);
+    }
   }
 
   if (error) return <div style={{ color: "red", padding: 8 }}>Failed to load {file}: {error}</div>;
