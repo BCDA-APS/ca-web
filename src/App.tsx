@@ -8,9 +8,9 @@ import { UiRenderer } from "./UiRenderer";
 // ── Draggable panel ───────────────────────────────────────────────────────────
 
 const PANEL_DEFAULTS: Record<string, { x: number; y: number }> = {
-  motors:          { x: 24, y: 56 },
+  motors:          { x: 24, y:  56 },
   lorentzian:      { x: 24, y: 460 },
-  "area-detector": { x: 24, y: 670 },
+  "area-detector": { x: 24, y: 800 },
 };
 
 // Global z-index counter so clicking a panel brings it to the front.
@@ -172,11 +172,134 @@ function AppOverlayPanel({ ov, onClose }: { ov: AppOverlay; onClose: () => void 
   );
 }
 
+// ── Settings panel ────────────────────────────────────────────────────────────
+
+const PANEL_IDS = Object.keys(PANEL_DEFAULTS);
+
+type SavedLayout = { name: string; positions: Record<string, { x: number; y: number; locked: boolean }> };
+
+function loadSavedLayouts(): SavedLayout[] {
+  try { return JSON.parse(localStorage.getItem("panel:layouts") ?? "[]"); } catch { return []; }
+}
+
+function SettingsPanel({ onClose, onReset }: { onClose: () => void; onReset: () => void }) {
+  const [naming, setNaming] = useState(false);
+  const [nameInput, setNameInput] = useState("");
+  const [layouts, setLayouts] = useState<SavedLayout[]>(loadSavedLayouts);
+
+  function persistLayouts(next: SavedLayout[]) {
+    localStorage.setItem("panel:layouts", JSON.stringify(next));
+    setLayouts(next);
+  }
+
+  function saveLayout() {
+    const name = nameInput.trim();
+    if (!name) return;
+    const positions: SavedLayout["positions"] = {};
+    PANEL_IDS.forEach(id => {
+      const s = localStorage.getItem(`panel:${id}`);
+      if (s) try { positions[id] = JSON.parse(s); } catch { /* skip */ }
+    });
+    persistLayouts([...layouts.filter(l => l.name !== name), { name, positions }]);
+    setNaming(false);
+    setNameInput("");
+  }
+
+  function restoreLayout(layout: SavedLayout) {
+    PANEL_IDS.forEach(id => {
+      if (layout.positions[id])
+        localStorage.setItem(`panel:${id}`, JSON.stringify(layout.positions[id]));
+    });
+    onReset();
+    onClose();
+  }
+
+  function resetToDefault() {
+    PANEL_IDS.forEach(id => {
+      const def = PANEL_DEFAULTS[id] ?? { x: 60, y: 60 };
+      localStorage.setItem(`panel:${id}`, JSON.stringify({ ...def, locked: false }));
+    });
+    onReset();
+    onClose();
+  }
+
+  const menuItemStyle: React.CSSProperties = {
+    display: "block", width: "100%", textAlign: "left",
+    padding: "7px 14px", background: "none", border: "none",
+    color: "#cce0ff", fontSize: 13, cursor: "pointer",
+  };
+  const hoverOn  = (e: React.MouseEvent) => { (e.currentTarget as HTMLElement).style.background = "#1a3a5c"; };
+  const hoverOff = (e: React.MouseEvent) => { (e.currentTarget as HTMLElement).style.background = "none"; };
+
+  return (
+    <div style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 200, background: "#0f2035", border: "1px solid #1e3a5f", borderRadius: 6, boxShadow: "0 4px 16px rgba(0,0,0,0.6)", minWidth: 220, padding: "8px 0" }}>
+
+      {/* Section header */}
+      <div style={{ padding: "4px 14px 6px", color: "#546e8a", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>Layout</div>
+
+      {/* Save current layout */}
+      {naming ? (
+        <div style={{ padding: "4px 14px 8px", display: "flex", gap: 6 }}>
+          <input
+            autoFocus
+            value={nameInput}
+            placeholder="Layout name…"
+            onChange={e => setNameInput(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === "Enter") saveLayout();
+              if (e.key === "Escape") { setNaming(false); setNameInput(""); }
+            }}
+            style={{ flex: 1, background: "#1e2a3a", border: "1px solid #4a90d9", color: "#fff", padding: "4px 6px", borderRadius: 3, fontSize: 12 }}
+          />
+          <button
+            onClick={e => { e.stopPropagation(); saveLayout(); }}
+            style={{ background: "#1a3a5c", border: "1px solid #4a90d9", color: "#90caf9", borderRadius: 3, padding: "4px 8px", cursor: "pointer", fontSize: 12 }}
+          >Save</button>
+        </div>
+      ) : (
+        <button style={menuItemStyle} onMouseEnter={hoverOn} onMouseLeave={hoverOff}
+          onClick={e => { e.stopPropagation(); setNaming(true); }}>
+          Save current layout…
+        </button>
+      )}
+
+      {/* Reset to defaults */}
+      <button style={menuItemStyle} onMouseEnter={hoverOn} onMouseLeave={hoverOff}
+        onClick={e => { e.stopPropagation(); resetToDefault(); }}>
+        Reset to default positions
+      </button>
+
+      {/* Saved layouts list */}
+      {layouts.length > 0 && <>
+        <div style={{ margin: "6px 14px", borderTop: "1px solid #1e3a5f" }} />
+        <div style={{ padding: "4px 14px 6px", color: "#546e8a", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>Saved layouts</div>
+        {layouts.map(layout => (
+          <div key={layout.name} style={{ display: "flex", alignItems: "center" }}>
+            <button style={{ ...menuItemStyle, flex: 1, padding: "5px 14px" }} onMouseEnter={hoverOn} onMouseLeave={hoverOff}
+              onClick={e => { e.stopPropagation(); restoreLayout(layout); }}>
+              {layout.name}
+            </button>
+            <button
+              title="Delete"
+              onClick={e => { e.stopPropagation(); persistLayouts(layouts.filter(l => l.name !== layout.name)); }}
+              style={{ background: "none", border: "none", color: "#546e8a", cursor: "pointer", fontSize: 15, padding: "4px 10px", lineHeight: 1, flexShrink: 0 }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "#ef5350"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "#546e8a"; }}
+            >×</button>
+          </div>
+        ))}
+      </>}
+    </div>
+  );
+}
+
 // ── App ───────────────────────────────────────────────────────────────────────
 
 export default function App() {
   const [overlays, setOverlays] = useState<AppOverlay[]>([]);
   const counter = useRef(0);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [layoutKey, setLayoutKey] = useState(0);
 
   useEffect(() => {
     function handler(e: Event) {
@@ -190,7 +313,10 @@ export default function App() {
   }, []);
 
   return (
-    <div style={{ background: "#0d1b2a", minHeight: "100vh", fontFamily: "Liberation Sans, Arial, sans-serif" }}>
+    <div
+      style={{ background: "#0d1b2a", minHeight: "100vh", fontFamily: "Liberation Sans, Arial, sans-serif" }}
+      onClick={() => settingsOpen && setSettingsOpen(false)}
+    >
 
       {/* App-level overlays from motor ⋯ menu */}
       {overlays.map(ov => (
@@ -203,13 +329,28 @@ export default function App() {
       </div>
 
       {/* Page title (fixed, acts as header) */}
-      <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, background: "#0a1520", borderBottom: "1px solid #1e3a5f", padding: "8px 24px" }}>
+      <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, background: "#0a1520", borderBottom: "1px solid #1e3a5f", padding: "8px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <span style={{ color: "#90caf9", fontSize: 16, fontWeight: 700, letterSpacing: 0.5 }}>Simulated IOC</span>
+        <div style={{ position: "relative" }} onClick={e => e.stopPropagation()}>
+          <button
+            onClick={() => setSettingsOpen(o => !o)}
+            title="Settings"
+            style={{ background: settingsOpen ? "#1a3a5c" : "none", border: "1px solid " + (settingsOpen ? "#4a7ab5" : "transparent"), borderRadius: 4, color: "#90caf9", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: "3px 7px" }}
+          >
+            ⚙
+          </button>
+          {settingsOpen && (
+            <SettingsPanel
+              onClose={() => setSettingsOpen(false)}
+              onReset={() => setLayoutKey(k => k + 1)}
+            />
+          )}
+        </div>
       </div>
 
       {/* ── Draggable panels ── */}
 
-      <DraggablePanel id="motors" title="Motors">
+      <DraggablePanel key={`motors-${layoutKey}`} id="motors" title="Motors">
         <table style={tableStyle}>
           <thead>
             <tr>
@@ -230,7 +371,7 @@ export default function App() {
         </table>
       </DraggablePanel>
 
-      <DraggablePanel id="lorentzian" title="Detector — Simulated Lorentzian">
+      <DraggablePanel key={`lorentzian-${layoutKey}`} id="lorentzian" title="Detector — Simulated Lorentzian">
         <div style={{ display: "flex", alignItems: "flex-start", gap: 24 }}>
           <table style={tableStyle}>
             <thead><tr><th style={thStyle}>Name</th><th style={thStyle}>Value</th></tr></thead>
@@ -240,7 +381,7 @@ export default function App() {
         </div>
       </DraggablePanel>
 
-      <DraggablePanel id="area-detector" title="Area Detector — myad:cam1">
+      <DraggablePanel key={`area-detector-${layoutKey}`} id="area-detector" title="Area Detector — myad:cam1">
         <div style={{ display: "flex", alignItems: "flex-start", gap: 24 }}>
           <table style={tableStyle}>
             <thead><tr><th style={thStyle}>Name</th><th style={thStyle}>Value</th></tr></thead>
