@@ -32,9 +32,12 @@ export function MotorRow({ label, pv, uiFile, macros }: MotorRowProps) {
   const [, connected, , rbvValue]  = useConnection(`${id}-rbv`,  `ca://${pv}.RBV`);
   const [, , ,          dmovValue] = useConnection(`${id}-dmov`, `ca://${pv}.DMOV`);
   const [, , ,          descValue] = useConnection(`${id}-desc`, `ca://${pv}.DESC`);
+  const [, , ,          twvValue]  = useConnection(`${id}-twv`,  `ca://${pv}.TWV`);
 
-  const [editing, setEditing]           = useState(false);
+  const [editing, setEditing]             = useState(false);
   const [setpointInput, setSetpointInput] = useState("");
+  const [editingTweak, setEditingTweak]   = useState(false);
+  const [tweakInput, setTweakInput]       = useState("");
 
   const [overlayOpen, setOverlayOpen] = useState(false);
   const [overlayPos, setOverlayPos]   = useState({ x: 120, y: 80 });
@@ -62,7 +65,9 @@ export function MotorRow({ label, pv, uiFile, macros }: MotorRowProps) {
   const position = toDouble(rbvValue);
   const dmov     = (toDouble(dmovValue) ?? 0) !== 0;
   const desc     = toStr(descValue) || label;
-  const posStr   = connected && position !== null ? position.toFixed(5) : "—";
+  const posStr   = connected && position !== null ? position.toFixed(4) : "—";
+  const twv      = toDouble(twvValue);
+  const twvStr   = twv !== null ? String(twv) : "0";
 
   function sendMove() {
     const val = parseFloat(setpointInput);
@@ -78,6 +83,16 @@ export function MotorRow({ label, pv, uiFile, macros }: MotorRowProps) {
 
   function sendStop() {
     pvwsWriter.write(`${pv}.STOP`, 1);
+  }
+
+  function sendTweakForward()  { pvwsWriter.write(`${pv}.TWF`, 1); }
+  function sendTweakBackward() { pvwsWriter.write(`${pv}.TWR`, 1); }
+
+  function submitTweak() {
+    const val = parseFloat(tweakInput);
+    if (!isNaN(val)) pvwsWriter.write(`${pv}.TWV`, val);
+    setEditingTweak(false);
+    setTweakInput("");
   }
 
   const statusColor = !connected ? "#888" : dmov ? "#4caf50" : "#ff9800";
@@ -107,6 +122,28 @@ export function MotorRow({ label, pv, uiFile, macros }: MotorRowProps) {
           </button>
         )}
       </td>
+      <td style={styles.tweakCell}>
+        <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+          <button style={styles.tweakBtn} onClick={sendTweakBackward} disabled={!connected}>◀</button>
+          {editingTweak ? (
+            <input
+              autoFocus
+              style={styles.tweakInput}
+              value={tweakInput}
+              placeholder={twvStr}
+              onChange={e => setTweakInput(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === "Enter")  submitTweak();
+                if (e.key === "Escape") { setEditingTweak(false); setTweakInput(""); }
+              }}
+              onBlur={() => { setEditingTweak(false); setTweakInput(""); }}
+            />
+          ) : (
+            <button style={styles.tweakValBtn} onClick={() => setEditingTweak(true)}>{twvStr}</button>
+          )}
+          <button style={styles.tweakBtn} onClick={sendTweakForward} disabled={!connected}>▶</button>
+        </div>
+      </td>
       <td style={{ ...styles.statusCell, color: statusColor }}>{statusLabel}</td>
       <td style={styles.stopCell}>
         <button style={styles.stopBtn} onClick={sendStop} disabled={!connected}>
@@ -135,11 +172,15 @@ export function MotorRow({ label, pv, uiFile, macros }: MotorRowProps) {
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  labelCell:    { padding: "6px 12px", color: "#cce0ff", fontWeight: 500, width: 180 },
-  valueCell:    { padding: "6px 12px", fontFamily: "monospace", textAlign: "right", width: 110, color: "#90caf9" },
-  setpointCell: { padding: "4px 8px", width: 200 },
-  input:        { background: "#1e2a3a", border: "1px solid #4a90d9", color: "#fff", padding: "4px 8px", fontFamily: "monospace", width: "100%", borderRadius: 3, boxSizing: "border-box" },
-  editBtn:      { background: "#1e2a3a", border: "1px solid #2a4a6a", color: "#90caf9", fontFamily: "monospace", padding: "4px 8px", borderRadius: 3, cursor: "text", width: "100%", textAlign: "right" },
+  labelCell:    { padding: "6px 8px", color: "#cce0ff", fontWeight: 500, width: 120 },
+  valueCell:    { padding: "6px 4px", fontFamily: "monospace", textAlign: "right", width: 65, color: "#90caf9" },
+  setpointCell: { padding: "4px 4px", width: 90 },
+  input:        { background: "#1e2a3a", border: "1px solid #4a90d9", color: "#fff", padding: "4px 6px", fontFamily: "monospace", width: "100%", borderRadius: 3, boxSizing: "border-box" },
+  editBtn:      { background: "#1e2a3a", border: "1px solid #2a4a6a", color: "#90caf9", fontFamily: "monospace", padding: "4px 6px", borderRadius: 3, cursor: "text", width: "100%", textAlign: "right" },
+  tweakCell:    { padding: "4px 4px" },
+  tweakBtn:     { background: "#1e3a5c", color: "#90caf9", border: "1px solid #2a4a6a", borderRadius: 3, padding: "3px 6px", cursor: "pointer", fontWeight: 700, fontSize: 10 },
+  tweakValBtn:  { background: "#1e2a3a", border: "1px solid #2a4a6a", color: "#90caf9", fontFamily: "monospace", padding: "3px 5px", borderRadius: 3, cursor: "text", minWidth: 50, textAlign: "center", fontSize: 11 },
+  tweakInput:   { background: "#1e2a3a", border: "1px solid #4a90d9", color: "#fff", padding: "3px 5px", fontFamily: "monospace", width: 60, borderRadius: 3, fontSize: 11 },
   statusCell:   { padding: "6px 12px", textAlign: "center", width: 70, fontWeight: 600 },
   stopCell:     { padding: "4px 8px", width: 80 },
   stopBtn:      { background: "#c62828", color: "#fff", border: "none", borderRadius: 3, padding: "4px 12px", cursor: "pointer", fontWeight: 700, width: "100%" },

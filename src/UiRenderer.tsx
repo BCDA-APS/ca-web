@@ -27,10 +27,34 @@ function extractDouble(d: unknown): number | null {
 
 function extractString(d: unknown): string | null {
   if (!d) return null;
-  const val = (d as { value?: { stringValue?: string; doubleValue?: number } }).value;
+  const val = (d as { value?: { stringValue?: string; doubleValue?: number; arrayValue?: { [i: number]: number; length: number } } }).value;
   if (val?.stringValue !== undefined) return val.stringValue;
   if (val?.doubleValue !== undefined) return String(val.doubleValue);
+  // Char waveform (e.g. StatusMessage_RBV, NDAttributesFile): array of char codes → string.
+  if (val?.arrayValue) {
+    let s = "";
+    for (let i = 0; i < val.arrayValue.length; i++) {
+      const c = val.arrayValue[i];
+      if (c === 0) break;
+      s += String.fromCharCode(c);
+    }
+    return s;
+  }
   return null;
+}
+
+// Decode a char waveform (arrayValue of char codes) to a string.
+// Used as fallback when stringValue is absent (pvws sends DBF_CHAR waveforms this way).
+function decodeCharWaveform(d: unknown): string | null {
+  const arr = (d as { value?: { arrayValue?: { [i: number]: number; length: number } } })?.value?.arrayValue;
+  if (!arr) return null;
+  let s = "";
+  for (let i = 0; i < arr.length; i++) {
+    const c = arr[i];
+    if (c === 0) break;
+    s += String.fromCharCode(c);
+  }
+  return s;
 }
 
 // PV precision from the PREC field. cs-web-lib stores it at display.precision
@@ -165,7 +189,8 @@ function CaLineEditWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) 
   // the stringValue is non-numeric (e.g. "asynMotor", "Use", "Degrees").
   const dbl = extractDouble(rawValue);
   const prec = extractPrecision(rawValue);
-  const rawSV = (rawValue as { value?: { stringValue?: string } })?.value?.stringValue;
+  const rawSV = ((rawValue as { value?: { stringValue?: string } })?.value?.stringValue?.replace(/\x00.*/, ""))
+             ?? decodeCharWaveform(rawValue) ?? undefined;
 
   // Hex format: caLineEdit formatType="hexadecimal" → show 0x… (e.g. MSTA bitmask).
   // When hex format is requested, always use the numeric value even if a string label exists.
@@ -176,7 +201,11 @@ function CaLineEditWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) 
   // (Some mbbo PVs send only text; if the text is the decimal form we can hex it.)
   const numForHex = dbl ?? (rawSV !== undefined ? Number(rawSV) : NaN);
 
-  const str = connected
+  // cs-web-lib keeps connected=true with stale data after IOC disconnect.
+  // Treat as live only if we have actual value data.
+  const isLive = connected && (dbl !== null || rawSV !== undefined);
+
+  const str = isLive
     ? isHex && !isNaN(numForHex)
       ? `0x${Math.round(numForHex).toString(16).toUpperCase()}`  // e.g. "0x2", "0x401"
       : rawSV && isNaN(Number(rawSV))
@@ -188,13 +217,14 @@ function CaLineEditWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) 
 
   const fg = widget.props["foreground"] ?? "rgb(10,0,184)";
   const bg = widget.props["background"] ?? "rgb(200,200,200)";
+  const alignment = widget.props["alignment"] ?? "";
 
   // Alarm coloring: apply unless colorMode is Static without Alarm prefix.
   // Alarm_Static and Alarm_Default → alarm colors on. Static alone → off.
   const colorMode = widget.props["colorMode"] ?? "";
   const isStatic = colorMode.includes("Static") && !colorMode.includes("Alarm");
   const alarmQ = extractAlarmQuality(rawValue);
-  const textColor = (!isStatic && connected) ? (ALARM_COLORS[alarmQ] ?? fg) : fg;
+  const textColor = (!isStatic && isLive) ? (ALARM_COLORS[alarmQ] ?? fg) : fg;
 
   return (
     <div
@@ -202,10 +232,12 @@ function CaLineEditWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) 
       style={{
         ...geoStyle(widget.geometry, widget.zIndex),
         color: textColor,
-        background: bg,
+        background: isLive ? bg : "white",
         display: "flex",
         alignItems: "center",
-        justifyContent: "center",
+        justifyContent: alignment.includes("AlignHCenter") ? "center"
+          : alignment.includes("AlignRight") ? "flex-end"
+          : "flex-start",
         fontFamily: "monospace",
         fontSize: scaledFont(widget.geometry.height),
         overflow: "hidden",
@@ -225,8 +257,12 @@ function CaTextEntryWidget({ widget, ns }: { widget: ParsedWidget; ns: string })
 
   const pvDouble = extractDouble(rawValue);
   const prec = extractPrecision(rawValue);
-  const rawSV = (rawValue as { value?: { stringValue?: string } })?.value?.stringValue;
-  const isStringPv = rawSV !== undefined && isNaN(Number(rawSV));
+  const rawSV = ((rawValue as { value?: { stringValue?: string } })?.value?.stringValue?.replace(/\x00.*/, ""))
+             ?? decodeCharWaveform(rawValue) ?? undefined;
+  // Treat as string PV if: stringValue is non-numeric, OR it's an empty string (file/macro fields).
+  const isStringPv = rawSV !== undefined && (rawSV === "" || isNaN(Number(rawSV)));
+  // cs-web-lib keeps connected=true with stale data after IOC disconnect.
+  const isLive = connected && (pvDouble !== null || rawSV !== undefined);
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
@@ -237,7 +273,7 @@ function CaTextEntryWidget({ widget, ns }: { widget: ParsedWidget; ns: string })
     ? fmtDouble(pvDouble, prec)
     : rawSV ?? "—";
 
-  const displayVal = editing ? draft : connected ? currentDisplay : "—";
+  const displayVal = editing ? draft : isLive ? currentDisplay : "—";
 
   function handleFocus() {
     setDraft(currentDisplay ?? "");
@@ -265,7 +301,7 @@ function CaTextEntryWidget({ widget, ns }: { widget: ParsedWidget; ns: string })
       style={{
         ...geoStyle(widget.geometry, widget.zIndex),
         color: fg,
-        background: bg,
+        background: isLive ? bg : "white",
         border: "1px groove #444",
         borderRadius: 1,
         fontFamily: "monospace",
@@ -375,10 +411,6 @@ function CaLabelWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
         fontSize,
         overflow: "visible",
         whiteSpace: "nowrap",
-        // Shadow only for conditional labels (channel present) — they can appear over
-        // a same-colored caGraphics background and need contrast help. Static labels
-        // (no channel) always render on a fixed background, so no shadow needed.
-        textShadow: channel ? "0 0 3px rgba(0,0,0,0.6)" : "none",
       }}
     >
       {text}
@@ -896,6 +928,9 @@ function PvInfoPanel({ channel, widgetName, widgetClass, onClose }: PvInfoPanelP
   const dbl = extractDouble(rawValue);
   const prec = extractPrecision(rawValue);
   const rawSV = (rawValue as { value?: { stringValue?: string } })?.value?.stringValue;
+  // cs-web-lib may keep connected=true with stale data after IOC disconnect.
+  // Treat as live only if we have actual value data.
+  const isLive = connected && (dbl !== null || rawSV !== undefined);
   const choices = (rawValue as { display?: { choices?: string[] } })?.display?.choices;
   const units   = (rawValue as { display?: { units?: string } })?.display?.units;
   const range   = (rawValue as { display?: { controlRange?: { min?: number; max?: number } } })?.display?.controlRange;
@@ -965,9 +1000,9 @@ function PvInfoPanel({ channel, widgetName, widgetClass, onClose }: PvInfoPanelP
         <div style={{ color: "#888", fontSize: 10 }}>! configuration values are only fetched once</div>
         <div style={{ margin: "4px 0", borderTop: "1px solid #bbb" }} />
         <div style={{ color: "#000080", fontWeight: 700 }}>{channel}</div>
-        <div>Plugin: epics3 : {connected ? "loaded & connected" : <span style={{ color: "red" }}>not connected</span>}</div>
+        <div>Plugin: epics3 : {isLive ? "loaded & connected" : <span style={{ color: "red" }}>loaded but not connected</span>}</div>
         <div style={{ margin: "4px 0", borderTop: "1px solid #aaa", borderBottom: "1px solid #aaa", padding: "2px 0", letterSpacing: 2 }}>========================</div>
-        {connected && rawValue ? <>
+        {isLive ? <>
           {timestamp && row("TimeStamp:", new Date(timestamp).toLocaleString())}
           {row("Type:", dbfType)}
           {row("Count:", 1)}

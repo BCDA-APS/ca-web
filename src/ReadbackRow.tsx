@@ -19,8 +19,8 @@ export function ReadbackRow({ label, pv }: ReadbackRowProps) {
 
   return (
     <tr>
-      <td style={{ padding: "6px 12px", color: "#cce0ff", fontWeight: 500, width: 180 }}>{label}</td>
-      <td style={{ padding: "6px 12px", fontFamily: "monospace", color: "#90caf9", width: 200 }}>{display}</td>
+      <td style={{ padding: "6px 8px", color: "#cce0ff", fontWeight: 500, width: 120 }}>{label}</td>
+      <td style={{ padding: "6px 8px", fontFamily: "monospace", color: "#90caf9", width: 100 }}>{display}</td>
     </tr>
   );
 }

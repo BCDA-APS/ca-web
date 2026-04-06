@@ -54,3 +54,44 @@ The app is currently hardcoded to specific screens. Options:
   wired up for all widget types
 - **Font scaling** — verify that font sizes match caQtDM across all widget
   types at different scales
+
+## 6. Movable / lockable panels
+
+The main page sections (Motors, Lorentzian, Area Detector, etc.) should be
+draggable so users can rearrange the layout to suit their workflow. Each panel
+would have a drag handle and a lock toggle to pin it in place. State could be
+persisted in `localStorage` so the layout survives a page reload.
+
+## 7. Tabbed sidebar navigation
+
+Replace (or supplement) the single-page layout with a left sidebar showing
+named tabs — one per logical group (Motors, Detector, Camera, custom `.ui`
+screens, etc.). Clicking a tab switches the main view. This scales better as
+the number of screens grows and keeps the page from getting too long.
+
+## 8. Distributed access across the beamline subnet
+
+Demonstrate that the app is accessible from any computer on the beamline
+subnet, not just localhost. Steps:
+
+- Bind Vite dev server (or a production build served by nginx/caddy) to
+  `0.0.0.0` so it's reachable by IP
+- Ensure pvws is similarly bound and that `VITE_PVWS_SOCKET` in `.env`
+  points to the server's hostname/IP rather than `localhost`
+- Document the setup in README so any beamline workstation can connect
+
+## 9. Line profile on images
+
+On the caCamera canvas, allow the user to draw a horizontal or vertical line
+by clicking and dragging. Display the pixel intensity profile along that line
+in a small chart below or beside the image. Useful for beam alignment and
+diagnostics.
+
+## 10. Click-to-move on line scans and images
+
+- **Line scan** (strip chart / caCartesianPlot): clicking on a point in a
+  scan curve writes the corresponding motor position to the motor's `.VAL` PV,
+  moving the motor to that position.
+- **Camera image**: clicking on a pixel writes the corresponding X/Y motor
+  positions (requires a coordinate mapping configuration linking pixel
+  coordinates to motor PV pairs).

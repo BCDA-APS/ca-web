@@ -36,6 +36,7 @@ function MotorGroup({ label, motors }: { label: string; motors: typeof MOTORS })
             <th style={styles.th}>Name</th>
             <th style={{ ...styles.th, textAlign: "right" }}>Position</th>
             <th style={styles.th}>Setpoint</th>
+            <th style={styles.th}>Tweak</th>
             <th style={styles.th}>Status</th>
             <th style={styles.th} />
             <th style={styles.th} />
@@ -61,6 +62,9 @@ function MotorGroup({ label, motors }: { label: string; motors: typeof MOTORS })
 export default function App() {
   return (
     <div style={styles.page}>
+      <div style={{ position: "fixed", bottom: 16, right: 16, zIndex: 1000, opacity: 0.85 }}>
+        <img src="/aps-logo.png" alt="Argonne National Laboratory | APS" style={{ height: "40px", width: "auto", display: "block" }} />
+      </div>
       <h1 style={styles.title}>Simulated IOC</h1>
       <MotorGroup label="Motors" motors={MOTORS} />
 
