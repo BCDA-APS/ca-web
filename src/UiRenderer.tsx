@@ -67,6 +67,7 @@ function extractPrecision(d: unknown): number | null {
   return null;
 }
 
+
 function fmtDouble(v: number, prec: number | null): string {
   if (prec !== null) return v.toFixed(prec);
   // Fallback when PREC not available: engineering notation for large/tiny values.
@@ -1319,6 +1320,331 @@ function CaIncludeWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
   );
 }
 
+// ── caLed ─────────────────────────────────────────────────────────────────────
+
+function CaLedWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
+  const pv = widget.props["channel"] ?? "";
+  const [, connected, , raw] = useConnection(`${ns}-${widget.name}`, `ca://${pv}`);
+  const val = extractDouble(raw);
+  const alarm = extractAlarmQuality(raw);
+  const on = connected && val !== null && val !== 0;
+  // Alarm overrides value-based color (matches caQtDM alarm-sensitive behavior)
+  const trueColor  = widget.props["trueColor"]  ?? "#f44336"; // red (caQtDM default)
+  const falseColor = widget.props["falseColor"] ?? "#666";    // grey
+  const color = !connected   ? "#444"
+              : alarm === "alarm"   ? "#f44336"
+              : alarm === "warning" ? "#ff9800"
+              : on ? trueColor : falseColor;
+  const size = Math.min(widget.geometry.width, widget.geometry.height);
+  return (
+    <div style={{ ...geoStyle(widget.geometry, widget.zIndex), display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ width: size - 4, height: size - 4, borderRadius: "50%", background: color, boxShadow: on ? `0 0 6px ${color}` : "none", border: "1px solid #333" }} />
+    </div>
+  );
+}
+
+// ── caThermo ──────────────────────────────────────────────────────────────────
+
+function CaThermoWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
+  const pv = widget.props["channel"] ?? "";
+  const [, connected, , raw] = useConnection(`${ns}-${widget.name}`, `ca://${pv}`);
+  const minVal = parseFloat(widget.props["minValue"] ?? "0");
+  const maxVal = parseFloat(widget.props["maxValue"] ?? "100");
+  const val = extractDouble(raw) ?? minVal;
+  const frac = Math.max(0, Math.min(1, (val - minVal) / (maxVal - minVal)));
+  const { width, height } = widget.geometry;
+  const vertical = height > width;
+  return (
+    <div style={{ ...geoStyle(widget.geometry, widget.zIndex), background: "#0a1828", border: "1px solid #1e3a5f", borderRadius: 2, overflow: "hidden", display: "flex", alignItems: vertical ? "flex-end" : "flex-start" }}>
+      <div style={{
+        background: connected ? "#29b6f6" : "#1e3a5f",
+        width:  vertical ? "100%" : `${frac * 100}%`,
+        height: vertical ? `${frac * 100}%` : "100%",
+        transition: "width 0.3s, height 0.3s",
+      }} />
+    </div>
+  );
+}
+
+// ── caSpinbox ─────────────────────────────────────────────────────────────────
+
+function CaSpinboxWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
+  const pv = widget.props["channel"] ?? "";
+  const [, connected, , raw] = useConnection(`${ns}-${widget.name}`, `ca://${pv}`);
+  const val = extractDouble(raw);
+  const [editing, setEditing] = useState(false);
+  const [input, setInput] = useState("");
+
+  function commit() {
+    const n = parseFloat(input);
+    if (!isNaN(n)) pvwsWriter.write(pv, n);
+    setEditing(false);
+    setInput("");
+  }
+
+  const display = connected && val !== null ? val.toFixed(4) : "—";
+  const step = parseFloat(widget.props["stepSize"] ?? "1");
+
+  return (
+    <div style={{ ...geoStyle(widget.geometry, widget.zIndex), display: "flex", alignItems: "center", border: "1px solid #4a90d9", borderRadius: 3, background: "#1e2a3a", overflow: "hidden" }}>
+      {editing ? (
+        <input autoFocus value={input} onChange={e => setInput(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") commit(); if (e.key === "Escape") { setEditing(false); setInput(""); } }}
+          onBlur={() => { setEditing(false); setInput(""); }}
+          style={{ flex: 1, background: "none", border: "none", color: "#fff", fontFamily: "monospace", fontSize: 12, padding: "0 4px", outline: "none" }} />
+      ) : (
+        <span onClick={() => { setEditing(true); setInput(display === "—" ? "" : display); }}
+          style={{ flex: 1, fontFamily: "monospace", fontSize: 12, color: "#90caf9", padding: "0 4px", cursor: "text" }}>{display}</span>
+      )}
+      <div style={{ display: "flex", flexDirection: "column", borderLeft: "1px solid #2a4a6a" }}>
+        <button onClick={() => { if (val !== null) pvwsWriter.write(pv, val + step); }}
+          disabled={!connected}
+          style={{ background: "none", border: "none", color: "#90caf9", cursor: "pointer", fontSize: 9, padding: "1px 4px", lineHeight: 1 }}>▲</button>
+        <button onClick={() => { if (val !== null) pvwsWriter.write(pv, val - step); }}
+          disabled={!connected}
+          style={{ background: "none", border: "none", color: "#90caf9", cursor: "pointer", fontSize: 9, padding: "1px 4px", lineHeight: 1 }}>▼</button>
+      </div>
+    </div>
+  );
+}
+
+// ── caSlider ──────────────────────────────────────────────────────────────────
+
+function CaSliderWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
+  const pv = widget.props["channel"] ?? "";
+  // Strip field suffix to get base record (e.g. "fr:m2.VAL" → "fr:m2")
+  const basePv = pv.replace(/\.[A-Za-z_]+$/, "");
+  const [, connected, , raw]  = useConnection(`${ns}-${widget.name}`,      `ca://${pv}`);
+  const [,,, loprRaw]         = useConnection(`${ns}-${widget.name}-lopr`, `ca://${basePv}.LOPR`);
+  const [,,, hoprRaw]         = useConnection(`${ns}-${widget.name}-hopr`, `ca://${basePv}.HOPR`);
+  const [,,, dllmRaw]         = useConnection(`${ns}-${widget.name}-dllm`, `ca://${basePv}.DLLM`);
+  const [,,, dhlmRaw]         = useConnection(`${ns}-${widget.name}-dhlm`, `ca://${basePv}.DHLM`);
+  // Priority: LOPR/HOPR (general) → DLLM/DHLM (motor) → .ui minValue/maxValue → 0/100
+  // Only use a limit pair if they form a non-zero range (LOPR=HOPR=0 means "not configured")
+  const lopr = extractDouble(loprRaw), hopr = extractDouble(hoprRaw);
+  const dllm = extractDouble(dllmRaw), dhlm = extractDouble(dhlmRaw);
+  const uiMin = parseFloat(widget.props["minValue"] ?? "0");
+  const uiMax = parseFloat(widget.props["maxValue"] ?? "100");
+  const minVal = (lopr !== null && hopr !== null && lopr !== hopr) ? lopr
+               : (dllm !== null && dhlm !== null && dllm !== dhlm) ? dllm
+               : uiMin;
+  const maxVal = (lopr !== null && hopr !== null && lopr !== hopr) ? hopr
+               : (dllm !== null && dhlm !== null && dllm !== dhlm) ? dhlm
+               : uiMax;
+  const val = extractDouble(raw) ?? minVal;
+  const orientation = widget.props["orientation"] ?? "";
+  const vertical = orientation ? orientation.includes("Vertical") : widget.geometry.height > widget.geometry.width;
+  return (
+    <div style={geoStyle(widget.geometry, widget.zIndex)}>
+      <input type="range" min={minVal} max={maxVal} step={(maxVal - minVal) / 100}
+        value={connected && val !== null ? val : minVal}
+        disabled={!connected}
+        onChange={e => pvwsWriter.write(pv, parseFloat(e.target.value))}
+        style={{
+          width: vertical ? widget.geometry.height : "100%",
+          height: vertical ? widget.geometry.width : "100%",
+          transform: vertical ? `rotate(-90deg) translateX(-${widget.geometry.height}px)` : "none",
+          transformOrigin: vertical ? "top left" : undefined,
+          cursor: connected ? "pointer" : "default",
+          accentColor: "#4a90d9",
+        }} />
+    </div>
+  );
+}
+
+// ── caToggleButton ────────────────────────────────────────────────────────────
+
+function CaToggleButtonWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
+  const pv = widget.props["channel"] ?? "";
+  const label = widget.props["text"] ?? "";
+  const [, connected, , raw] = useConnection(`${ns}-${widget.name}`, `ca://${pv}`);
+  const val = extractDouble(raw);
+  const checked = connected && val !== null && val !== 0;
+  return (
+    <div style={{ ...geoStyle(widget.geometry, widget.zIndex), display: "flex", alignItems: "center", gap: 6 }}>
+      <input type="checkbox" checked={checked} disabled={!connected}
+        onChange={e => pvwsWriter.write(pv, e.target.checked ? 1 : 0)}
+        style={{ accentColor: "#4a90d9", width: 14, height: 14, cursor: connected ? "pointer" : "default" }} />
+      <span style={{ color: connected ? "#cce0ff" : "#555", fontSize: 12, fontFamily: "sans-serif" }}>{label}</span>
+    </div>
+  );
+}
+
+// ── caTable ───────────────────────────────────────────────────────────────────
+
+const CA_TABLE_MAX = 16;
+
+function CaTableRow({ pv, ns, idx }: { pv: string; ns: string; idx: number }) {
+  const [, connected, , raw] = useConnection(`${ns}-table-${idx}`, `ca://${pv}`);
+  const val = extractDouble(raw);
+  const units = (raw as { display?: { units?: string } } | null)?.display?.units ?? "";
+  const display = connected && val !== null ? val.toFixed(4) : "—";
+  const td: React.CSSProperties = { padding: "2px 6px", fontFamily: "monospace", fontSize: 11, borderBottom: "1px solid #1e3a5f", whiteSpace: "nowrap" };
+  return (
+    <tr>
+      <td style={{ ...td, color: "#90caf9" }}>{pv}</td>
+      <td style={{ ...td, color: connected ? "#cce0ff" : "#555", textAlign: "right" }}>{display}</td>
+      <td style={{ ...td, color: "#7a9ab8" }}>{units}</td>
+    </tr>
+  );
+}
+
+function CaTableWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
+  const pvList = (widget.props["channels"] ?? "").split(";").map(s => s.trim()).filter(Boolean).slice(0, CA_TABLE_MAX);
+  const padded = [...pvList, ...Array(CA_TABLE_MAX - pvList.length).fill("")];
+  return (
+    <div style={{ ...geoStyle(widget.geometry, widget.zIndex), overflow: "auto", background: "#0a1828", border: "1px solid #1e3a5f", borderRadius: 3 }}>
+      <table style={{ borderCollapse: "collapse", width: "100%" }}>
+        <tbody>
+          {padded.map((pv, i) => pv ? <CaTableRow key={i} pv={pv} ns={ns} idx={i} /> : null)}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ── caStripPlot ───────────────────────────────────────────────────────────────
+// Channels format: "R=pvName;G=pv2" — letter prefix maps to color.
+
+const STRIP_COLORS: Record<string, string> = {
+  R: "#ef5350", G: "#66bb6a", B: "#29b6f6", Y: "#ffa726",
+  W: "#e0e0e0", C: "#26c6da", M: "#ab47bc", K: "#78909c",
+};
+const STRIP_COLOR_LIST = ["#29b6f6", "#66bb6a", "#ffa726", "#ef5350"];
+
+function fmtTime(secsAgo: number): string {
+  if (secsAgo === 0) return "now";
+  return `-${secsAgo}s`;
+}
+
+function CaStripPlotWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
+  const rawChannels = widget.props["channels"] ?? "";
+  // Parse "R=pv1;G=pv2" entries (up to 4)
+  const entries = rawChannels.split(";").map(s => {
+    const eq = s.indexOf("=");
+    if (eq >= 0) return { letter: s.slice(0, eq).trim().toUpperCase(), pv: s.slice(eq + 1).trim() };
+    return { letter: "", pv: s.trim() };
+  }).filter(e => e.pv).slice(0, 4);
+
+  const pvs = entries.map(e => e.pv);
+  const colors = entries.map((e, i) => STRIP_COLORS[e.letter] ?? STRIP_COLOR_LIST[i % STRIP_COLOR_LIST.length]);
+
+  const period = Math.max(10, parseInt(widget.props["period"] ?? "60") || 60); // seconds = samples at 1Hz
+  const MAX_PTS = period;
+  const historyRef = useRef<(number | null)[][]>([[], [], [], []]);
+  const latestRef = useRef<(number | null)[]>([null, null, null, null]);
+  const [, forceRender] = useState(0);
+
+  // Fixed 4 unconditional hook calls (pad missing pvs with empty string)
+  const [,,, raw0] = useConnection(`${ns}-strip-${widget.name}-0`, pvs[0] ? `ca://${pvs[0]}` : "");
+  const [,,, raw1] = useConnection(`${ns}-strip-${widget.name}-1`, pvs[1] ? `ca://${pvs[1]}` : "");
+  const [,,, raw2] = useConnection(`${ns}-strip-${widget.name}-2`, pvs[2] ? `ca://${pvs[2]}` : "");
+  const [,,, raw3] = useConnection(`${ns}-strip-${widget.name}-3`, pvs[3] ? `ca://${pvs[3]}` : "");
+
+  // Keep latest values in ref without triggering re-render
+  useEffect(() => { latestRef.current[0] = extractDouble(raw0); }, [raw0]);
+  useEffect(() => { latestRef.current[1] = extractDouble(raw1); }, [raw1]);
+  useEffect(() => { latestRef.current[2] = extractDouble(raw2); }, [raw2]);
+  useEffect(() => { latestRef.current[3] = extractDouble(raw3); }, [raw3]);
+
+  // 1Hz sampling
+  useEffect(() => {
+    const id = setInterval(() => {
+      latestRef.current.forEach((v, i) => {
+        if (i < entries.length) {
+          historyRef.current[i] = [...historyRef.current[i], v].slice(-MAX_PTS);
+        }
+      });
+      forceRender(n => n + 1);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [entries.length]);
+
+  const PAD_L = 42, PAD_R = 8, PAD_T = 8, PAD_B = 32, LEG_H = entries.length > 0 ? 18 : 0;
+  const W = widget.geometry.width;
+  const H = widget.geometry.height - LEG_H;
+  const plotW = W - PAD_L - PAD_R;
+  const plotH = H - PAD_T - PAD_B;
+
+  // Compute Y range across all active channels
+  const allVals = historyRef.current.slice(0, entries.length).flat().filter((v): v is number => v !== null && !isNaN(v));
+  const minV = allVals.length ? Math.min(...allVals) : 0;
+  const maxVraw = allVals.length ? Math.max(...allVals) : 1;
+  const maxV = maxVraw === minV ? minV + 1 : maxVraw;
+  const range = maxV - minV;
+
+  const toSvgX = (i: number, total: number) => PAD_L + (total <= 1 ? plotW : (i / (total - 1)) * plotW);
+  const toSvgY = (v: number) => PAD_T + plotH - ((v - minV) / range) * plotH;
+
+  // Y-axis ticks (5 divisions)
+  const N_TICKS = 5;
+  const yTicks = Array.from({ length: N_TICKS + 1 }, (_, i) => minV + (i / N_TICKS) * range);
+  // X-axis ticks as fractions of the plot width [oldest=0 .. newest=1]
+  const xTickFracs = [0, 0.25, 0.5, 0.75, 1.0];
+
+  return (
+    <div style={geoStyle(widget.geometry, widget.zIndex)}>
+      <svg width={W} height={H + LEG_H} style={{ display: "block", background: "#0a1828", border: "1px solid #1e3a5f" }}>
+        {/* Grid */}
+        {yTicks.map((v, i) => {
+          const sy = toSvgY(v);
+          return <line key={`gy${i}`} x1={PAD_L} y1={sy} x2={W - PAD_R} y2={sy} stroke="#1e3a5f" strokeWidth={1} />;
+        })}
+        {xTickFracs.map((frac, i) => {
+          const sx = PAD_L + frac * plotW;
+          return <line key={`gx${i}`} x1={sx} y1={PAD_T} x2={sx} y2={PAD_T + plotH} stroke="#1e3a5f" strokeWidth={1} />;
+        })}
+
+        {/* Axes */}
+        <line x1={PAD_L} y1={PAD_T} x2={PAD_L} y2={PAD_T + plotH} stroke="#4a6a8a" strokeWidth={1} />
+        <line x1={PAD_L} y1={PAD_T + plotH} x2={W - PAD_R} y2={PAD_T + plotH} stroke="#4a6a8a" strokeWidth={1} />
+
+        {/* Y ticks + labels */}
+        {yTicks.map((v, i) => {
+          const sy = toSvgY(v);
+          const label = Math.abs(v) >= 1000 ? v.toExponential(1) : v.toPrecision(3).replace(/\.?0+$/, "");
+          return (
+            <g key={`yt${i}`}>
+              <line x1={PAD_L - 4} y1={sy} x2={PAD_L} y2={sy} stroke="#4a6a8a" strokeWidth={1} />
+              <text x={PAD_L - 6} y={sy + 4} textAnchor="end" fill="#90a4ae" fontSize={9}>{label}</text>
+            </g>
+          );
+        })}
+
+        {/* X ticks + labels */}
+        {xTickFracs.map((frac, i) => {
+          const sx = PAD_L + frac * plotW;
+          const secsAgo = Math.round((1 - frac) * period);
+          return (
+            <g key={`xt${i}`}>
+              <line x1={sx} y1={PAD_T + plotH} x2={sx} y2={PAD_T + plotH + 4} stroke="#4a6a8a" strokeWidth={1} />
+              <text x={sx} y={PAD_T + plotH + 14} textAnchor="middle" fill="#90a4ae" fontSize={9}>{fmtTime(secsAgo)}</text>
+            </g>
+          );
+        })}
+
+        {/* Traces */}
+        {historyRef.current.slice(0, entries.length).map((pts, ci) => {
+          const validPts = pts.map((v, i) => ({ v, i })).filter(p => p.v !== null) as { v: number; i: number }[];
+          if (validPts.length < 2) return null;
+          const d = validPts.map(({ v, i }, idx) =>
+            `${idx === 0 ? "M" : "L"}${toSvgX(i, pts.length).toFixed(1)},${toSvgY(v).toFixed(1)}`
+          ).join(" ");
+          return <path key={`tr${ci}`} d={d} fill="none" stroke={colors[ci]} strokeWidth={1.5} />;
+        })}
+
+        {/* Legend */}
+        {entries.map((e, i) => (
+          <g key={`lg${i}`} transform={`translate(${PAD_L + i * 90}, ${H + 2})`}>
+            <line x1={0} y1={8} x2={18} y2={8} stroke={colors[i]} strokeWidth={2} />
+            <text x={22} y={12} fill="#90a4ae" fontSize={10}>{e.pv.split(".")[0].slice(-12)}</text>
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
 // ── widget router ─────────────────────────────────────────────────────────────
 
 function WidgetRouter({ widget, ns }: { widget: ParsedWidget; ns: string }) {
@@ -1336,6 +1662,13 @@ function WidgetRouter({ widget, ns }: { widget: ParsedWidget; ns: string }) {
     case "caByte":           return <CaByteWidget widget={widget} ns={ns} />;
     case "caCamera":         return <CaCameraWidget widget={widget} ns={ns} />;
     case "caInclude":        return <CaIncludeWidget widget={widget} ns={ns} />;
+    case "caLed":            return <CaLedWidget widget={widget} ns={ns} />;
+    case "caThermo":         return <CaThermoWidget widget={widget} ns={ns} />;
+    case "caSpinbox":        return <CaSpinboxWidget widget={widget} ns={ns} />;
+    case "caSlider":         return <CaSliderWidget widget={widget} ns={ns} />;
+    case "caToggleButton":   return <CaToggleButtonWidget widget={widget} ns={ns} />;
+    case "caTable":          return <CaTableWidget widget={widget} ns={ns} />;
+    case "caStripPlot":      return <CaStripPlotWidget widget={widget} ns={ns} />;
     default:                 return null;
   }
 }

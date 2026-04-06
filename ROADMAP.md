@@ -2,16 +2,11 @@
 
 ## 1. More widget types
 
-Open real `.ui` files and see what fails to render. Likely candidates:
+Open real `.ui` files and see what fails to render. Remaining candidates:
 
-- `caSpinbox` — numeric input with up/down arrows
-- `caSlider` — horizontal/vertical slider for PV writes
-- `caToggleButton` — button that toggles between two states
-- `caTable` — tabular display of multiple PVs
-- `caCartesianPlot` — XY plot widget
-- `caStripPlot` — strip chart embedded in a `.ui` file
-- `caLed` — indicator light (on/off based on PV value)
-- `caThermo` — thermometer-style bar widget
+- `caWaveTable` — editable waveform table
+- `caDoubleTabWidget` — specialised tab container
+- `caScriptButton` — button that runs a script
 
 A good test: open `ADBase.ui` and audit what renders vs. what shows nothing.
 
@@ -55,19 +50,9 @@ The app is currently hardcoded to specific screens. Options:
 - **Font scaling** — verify that font sizes match caQtDM across all widget
   types at different scales
 
-## 6. Movable / lockable panels
+## 6. ~~Movable / lockable panels~~ ✓ Done
 
-The main page sections (Motors, Lorentzian, Area Detector, etc.) should be
-draggable so users can rearrange the layout to suit their workflow. Each panel
-would have a drag handle and a lock toggle to pin it in place. State could be
-persisted in `localStorage` so the layout survives a page reload.
-
-## 7. Tabbed sidebar navigation
-
-Replace (or supplement) the single-page layout with a left sidebar showing
-named tabs — one per logical group (Motors, Detector, Camera, custom `.ui`
-screens, etc.). Clicking a tab switches the main view. This scales better as
-the number of screens grows and keeps the page from getting too long.
+## 7. ~~Tabbed sidebar navigation~~ ✓ Done
 
 ## 8. Distributed access across the beamline subnet
 
@@ -95,3 +80,16 @@ diagnostics.
 - **Camera image**: clicking on a pixel writes the corresponding X/Y motor
   positions (requires a coordinate mapping configuration linking pixel
   coordinates to motor PV pairs).
+
+## 11. QTabWidget support
+
+`.ui` files that use `QTabWidget` as a container currently render all tab
+pages stacked on top of each other (the parser flattens them). Proper support
+would:
+
+- Detect `QTabWidget` in the parser and emit it as a typed container node
+  (rather than flattening children into the widget list)
+- Render it as a real tab bar with clickable tabs, respecting `currentIndex`
+  as the initially selected tab
+- Handle nested `QTabWidget` (tabs within tabs, as seen in `test.ui`)
+- Preserve absolute positioning of child widgets within each tab page

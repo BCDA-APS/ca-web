@@ -108,16 +108,20 @@ export function parseUi(
           propEl.querySelector("string")?.textContent ??
           propEl.querySelector("enum")?.textContent ??
           propEl.querySelector("number")?.textContent ??
+          propEl.querySelector("double")?.textContent ??
           propEl.querySelector("set")?.textContent ??
           "";
         props[propName] = m(val);
       }
 
       // Known container types — recurse into them, offsetting by their position.
-      const isContainer = cls === "caFrame" || cls === "QGroupBox" || cls === "QWidget";
-      if (isContainer && geometry) {
+      // QTabWidget children (tab pages) are QWidgets with no geometry — they fill the parent.
+      const isContainer = cls === "caFrame" || cls === "QGroupBox" || cls === "QWidget" || cls === "QTabWidget";
+      if (isContainer) {
         const z = zMap[name] ?? parentZ;
-        collectWidgets(child, offsetX + geometry.x, offsetY + geometry.y, z);
+        const dx = geometry ? geometry.x : 0;
+        const dy = geometry ? geometry.y : 0;
+        collectWidgets(child, offsetX + dx, offsetY + dy, z);
       } else if (geometry) {
         const zIndex = zMap[name] ?? parentZ;
         widgets.push({

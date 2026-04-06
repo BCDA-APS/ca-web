@@ -11,6 +11,7 @@ const PANEL_DEFAULTS: Record<string, { x: number; y: number }> = {
   motors:          { x: 108, y:  56 },
   lorentzian:      { x: 108, y: 460 },
   "area-detector": { x: 108, y: 800 },
+  test:            { x: 108, y:  56 },
 };
 
 // Global z-index counter so clicking a panel brings it to the front.
@@ -425,7 +426,7 @@ export default function App() {
             <thead><tr><th style={thStyle}>Name</th><th style={thStyle}>Value</th></tr></thead>
             <tbody>{AREA_DETECTOR.map(r => <ReadbackRow key={r.pv} label={r.label} pv={r.pv} />)}</tbody>
           </table>
-          <UiRenderer file="/ui/29id_cam.ui" macros={{ P: "myad:" }} />
+          <UiRenderer file="/ui/29id/29id_cam.ui" macros={{ P: "myad:" }} />
         </div>
       </DraggablePanel>
 
@@ -433,9 +434,9 @@ export default function App() {
 
       {/* ── Tab 2: Test ── */}
       {activeTab === 2 && (
-        <div style={{ position: "fixed", top: 56, left: 92, color: "#546e8a", fontStyle: "italic", fontSize: 13 }}>
-          Tab 2 — Widget Test
-        </div>
+        <DraggablePanel id="test" title="Widget Test">
+          <UiRenderer file="/ui/test.ui" macros={{}} />
+        </DraggablePanel>
       )}
 
     </div>

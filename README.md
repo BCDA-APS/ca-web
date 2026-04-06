@@ -48,8 +48,7 @@ podman run --network=host -d --name pvws \
 |---|---|
 | `public/ui/motors` | motor screens (`motorApp/op/ui/autoconvert/`) |
 | `public/ui/ADCore` | area detector screens (`ADCore/ADApp/op/ui/`) |
-
-Custom screens (e.g. `29id_cam.ui`) live directly in `public/ui/`.
+| `public/ui/29id` | 29-ID beamline screens (`/net/s29dserv/xorApps/ui/29id/`) |
 
 ## Page Layout
 
@@ -76,6 +75,13 @@ Custom screens (e.g. `29id_cam.ui`) live directly in `public/ui/`.
 | `caCamera` | Live area detector image display (see below) |
 | `caInclude` | Embeds another `.ui` file inline; inherits parent macros |
 | `caCartesianPlot` | XY line/dot chart for waveform PVs; auto-scales axes; up to 4 curves |
+| `caLed` | Boolean indicator; color from `trueColor`/`falseColor` props (default: red/grey) |
+| `caThermo` | Vertical bar gauge; reads `maxValue` from `.ui`; navy/blue theme |
+| `caSpinbox` | Numeric spin control with ▲/▼ buttons; respects `stepSize` |
+| `caSlider` | Horizontal/vertical slider; limits from LOPR/HOPR (then DLLM/DHLM, then `.ui` min/max) |
+| `caToggleButton` | Checkbox that writes 0/1 to a PV |
+| `caTable` | Multi-PV readback table (name · value · units); up to 16 PVs |
+| `caStripPlot` | Rolling time-series chart; SVG with grid, axes, ticks, legend; `period` prop sets window (default 60 s) |
 
 ### caCartesianPlot
 
