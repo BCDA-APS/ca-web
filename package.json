@@ -1,0 +1,31 @@
+{
+  "name": "caqtdm-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@diamondlightsource/cs-web-lib": "file:../phoebus-web/cs-web-lib/diamondlightsource-cs-web-lib-0.10.6.tgz",
+    "@emotion/react": "^11.11.4",
+    "@emotion/styled": "^11.11.5",
+    "@mui/material": "^5.15.17",
+    "@reduxjs/toolkit": "^2.11.2",
+    "js-yaml": "^4.1.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-redux": "^7.2.9"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/react": "^18.3.1",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.2.1",
+    "typescript": "^5.2.2",
+    "vite": "^7.2.2",
+    "vite-plugin-node-polyfills": "^0.24.0"
+  }
+}

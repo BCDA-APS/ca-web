@@ -1,0 +1,401 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>455</width>
+    <height>368</height>
+   </rect>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">
+QWidget#centralWidget {background: rgb(222, 222, 227);}QPushButton::menu-indicator {image: url(none.png); width: 0}
+
+</string>
+  </property>
+  <property name="tabShape">
+   <enum>QTabWidget::Rounded</enum>
+  </property>
+  <widget class="QWidget" name="centralWidget">
+   <widget class="caLabel" name="caLabel_16">
+    <property name="geometry">
+     <rect>
+      <x>1082</x>
+      <y>1097</y>
+      <width>167</width>
+      <height>55</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Diode:</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignAbsolute|Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+    </property>
+    <property name="fontScaleMode">
+     <enum>ESimpleLabel::WidthAndHeight</enum>
+    </property>
+    <property name="foreground">
+     <color>
+      <red>0</red>
+      <green>0</green>
+      <blue>0</blue>
+     </color>
+    </property>
+    <property name="background">
+     <color alpha="0">
+      <red>0</red>
+      <green>0</green>
+      <blue>0</blue>
+     </color>
+    </property>
+    <property name="frameShape">
+     <enum>QFrame::NoFrame</enum>
+    </property>
+   </widget>
+   <widget class="caCamera" name="Cam29id">
+    <property name="geometry">
+     <rect>
+      <x>0</x>
+      <y>5</y>
+      <width>490</width>
+      <height>325</height>
+     </rect>
+    </property>
+    <property name="sizePolicy">
+     <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+      <horstretch>0</horstretch>
+      <verstretch>0</verstretch>
+     </sizepolicy>
+    </property>
+    <property name="channelData" stdset="0">
+     <string notr="true">$(P)image1:ArrayData</string>
+    </property>
+    <property name="channelWidth" stdset="0">
+     <string notr="true">$(P)image1:ArraySize0_RBV</string>
+    </property>
+    <property name="channelHeight" stdset="0">
+     <string notr="true">$(P)image1:ArraySize1_RBV</string>
+    </property>
+    <property name="simpleZoomedView" stdset="0">
+     <bool>false</bool>
+    </property>
+    <property name="Zoom" stdset="0">
+     <enum>caCamera::Yes</enum>
+    </property>
+    <property name="automaticLevels" stdset="0">
+     <bool>false</bool>
+    </property>
+    <property name="minLevel">
+     <string notr="true"/>
+    </property>
+    <property name="maxLevel">
+     <string notr="true"/>
+    </property>
+    <property name="ColorMap" stdset="0">
+     <enum>caCamera::color_to_mono</enum>
+    </property>
+    <property name="ROI_writeType" stdset="0">
+     <enum>caCamera::none</enum>
+    </property>
+    <property name="channelCode" stdset="0">
+     <string notr="true">$(P)$(IMAGE):DataType_RBV</string>
+    </property>
+    <property name="channelBPP" stdset="0">
+     <string notr="true">$(P)$(IMAGE):DataType_RBV</string>
+    </property>
+   </widget>
+   <widget class="caFrame" name="caFrame_12">
+    <property name="geometry">
+     <rect>
+      <x>240</x>
+      <y>580</y>
+      <width>21</width>
+      <height>27</height>
+     </rect>
+    </property>
+    <widget class="caLabel" name="caLabel_51">
+     <property name="geometry">
+      <rect>
+       <x>-20</x>
+       <y>0</y>
+       <width>20</width>
+       <height>20</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>T</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignAbsolute|Qt::AlignCenter|Qt::AlignHCenter|Qt::AlignVCenter</set>
+     </property>
+     <property name="fontScaleMode">
+      <enum>ESimpleLabel::WidthAndHeight</enum>
+     </property>
+     <property name="foreground">
+      <color>
+       <red>0</red>
+       <green>0</green>
+       <blue>0</blue>
+      </color>
+     </property>
+     <property name="background">
+      <color alpha="0">
+       <red>0</red>
+       <green>0</green>
+       <blue>0</blue>
+      </color>
+     </property>
+     <property name="frameShape">
+      <enum>QFrame::NoFrame</enum>
+     </property>
+    </widget>
+   </widget>
+   <widget class="caRelatedDisplay" name="caRelatedDisplay_9">
+    <property name="geometry">
+     <rect>
+      <x>425</x>
+      <y>339</y>
+      <width>20</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="label">
+     <string notr="true">-!</string>
+    </property>
+    <property name="foreground">
+     <color>
+      <red>255</red>
+      <green>255</green>
+      <blue>255</blue>
+     </color>
+    </property>
+    <property name="background">
+     <color>
+      <red>83</red>
+      <green>181</green>
+      <blue>72</blue>
+     </color>
+    </property>
+    <property name="labels">
+     <string>Camera 1;Camera 2;Camera 3;Camera 4;Camera 6</string>
+    </property>
+    <property name="files">
+     <string>ADCore/autoconvert/ADBase.ui</string>
+    </property>
+    <property name="args">
+     <string>P=$(P),R=cam1:</string>
+    </property>
+    <property name="stackingMode" stdset="0">
+     <enum>caRowColMenu::Menu</enum>
+    </property>
+    <property name="removeParent" stdset="0">
+     <string>false;false;false;false;false</string>
+    </property>
+   </widget>
+   <widget class="caTextEntry" name="caTextEntry_12">
+    <property name="geometry">
+     <rect>
+      <x>332</x>
+      <y>340</y>
+      <width>50</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>Sans Serif</family>
+      <pointsize>7</pointsize>
+      <stylestrategy>PreferDefault</stylestrategy>
+     </font>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignCenter</set>
+    </property>
+    <property name="channel" stdset="0">
+     <string notr="true">$(P)cam1:AcquireTime</string>
+    </property>
+    <property name="foreground">
+     <color>
+      <red>10</red>
+      <green>0</green>
+      <blue>184</blue>
+     </color>
+    </property>
+    <property name="background">
+     <color>
+      <red>174</red>
+      <green>203</green>
+      <blue>255</blue>
+     </color>
+    </property>
+    <property name="colorMode">
+     <enum>caLineEdit::Static</enum>
+    </property>
+    <property name="precisionMode">
+     <enum>caLineEdit::Channel</enum>
+    </property>
+    <property name="limitsMode">
+     <enum>caLineEdit::Channel</enum>
+    </property>
+    <property name="maxValue">
+     <double>1.000000000000000</double>
+    </property>
+    <property name="minValue">
+     <double>0.000000000000000</double>
+    </property>
+    <property name="fontScaleMode" stdset="0">
+     <enum>caLineEdit::WidthAndHeight</enum>
+    </property>
+    <property name="formatType">
+     <enum>caLineEdit::decimal</enum>
+    </property>
+   </widget>
+   <widget class="caLabel" name="caLabel_63">
+    <property name="geometry">
+     <rect>
+      <x>250</x>
+      <y>342</y>
+      <width>75</width>
+      <height>18</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>11</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>Exposure:</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+    </property>
+    <property name="fontScaleMode">
+     <enum>ESimpleLabel::None</enum>
+    </property>
+    <property name="foreground">
+     <color>
+      <red>0</red>
+      <green>0</green>
+      <blue>0</blue>
+     </color>
+    </property>
+    <property name="background">
+     <color alpha="0">
+      <red>0</red>
+      <green>0</green>
+      <blue>0</blue>
+     </color>
+    </property>
+    <property name="frameShape">
+     <enum>QFrame::NoFrame</enum>
+    </property>
+   </widget>
+   <widget class="caLabel" name="caLabel_39">
+    <property name="geometry">
+     <rect>
+      <x>5</x>
+      <y>340</y>
+      <width>80</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>$(P)</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignAbsolute|Qt::AlignCenter|Qt::AlignHCenter|Qt::AlignVCenter</set>
+    </property>
+    <property name="fontScaleMode">
+     <enum>ESimpleLabel::WidthAndHeight</enum>
+    </property>
+    <property name="foreground">
+     <color>
+      <red>10</red>
+      <green>0</green>
+      <blue>184</blue>
+     </color>
+    </property>
+    <property name="background">
+     <color alpha="0">
+      <red>10</red>
+      <green>0</green>
+      <blue>184</blue>
+     </color>
+    </property>
+    <property name="frameShape">
+     <enum>QFrame::NoFrame</enum>
+    </property>
+   </widget>
+   <widget class="caChoice" name="cachoice">
+    <property name="geometry">
+     <rect>
+      <x>101</x>
+      <y>338</y>
+      <width>106</width>
+      <height>25</height>
+     </rect>
+    </property>
+    <property name="channel" stdset="0">
+     <string notr="true">$(P)cam1:Acquire</string>
+    </property>
+    <property name="colorMode">
+     <enum>caChoice::Static</enum>
+    </property>
+    <property name="stackingMode" stdset="0">
+     <enum>caChoice::Column</enum>
+    </property>
+    <property name="startBit">
+     <number>0</number>
+    </property>
+    <property name="endBit">
+     <number>1</number>
+    </property>
+   </widget>
+  </widget>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>caChoice</class>
+   <extends>QWidget</extends>
+   <header>caChoice</header>
+  </customwidget>
+  <customwidget>
+   <class>caRelatedDisplay</class>
+   <extends>QWidget</extends>
+   <header>caRelatedDisplay</header>
+  </customwidget>
+  <customwidget>
+   <class>caTextEntry</class>
+   <extends>caLineEdit</extends>
+   <header>caTextEntry</header>
+  </customwidget>
+  <customwidget>
+   <class>caFrame</class>
+   <extends>QFrame</extends>
+   <header>caFrame</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>caLabel</class>
+   <extends>QLabel</extends>
+   <header>caLabel</header>
+  </customwidget>
+  <customwidget>
+   <class>caLineEdit</class>
+   <extends>QLineEdit</extends>
+   <header>caLineEdit</header>
+  </customwidget>
+  <customwidget>
+   <class>caCamera</class>
+   <extends>QWidget</extends>
+   <header>caCamera</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>
