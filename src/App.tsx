@@ -8,9 +8,9 @@ import { UiRenderer } from "./UiRenderer";
 // ── Draggable panel ───────────────────────────────────────────────────────────
 
 const PANEL_DEFAULTS: Record<string, { x: number; y: number }> = {
-  motors:          { x: 24, y:  56 },
-  lorentzian:      { x: 24, y: 460 },
-  "area-detector": { x: 24, y: 800 },
+  motors:          { x: 108, y:  56 },
+  lorentzian:      { x: 108, y: 460 },
+  "area-detector": { x: 108, y: 800 },
 };
 
 // Global z-index counter so clicking a panel brings it to the front.
@@ -172,6 +172,39 @@ function AppOverlayPanel({ ov, onClose }: { ov: AppOverlay; onClose: () => void 
   );
 }
 
+// ── Sidebar ───────────────────────────────────────────────────────────────────
+
+const TABS = [
+  { id: 1, icon: "⌂", label: "Home" },
+  { id: 2, icon: "🔬", label: "Test" },
+];
+
+function Sidebar({ active, onSelect }: { active: number; onSelect: (id: number) => void }) {
+  return (
+    <div style={{ position: "fixed", top: 40, left: 0, bottom: 0, width: 68, zIndex: 40, background: "#0a1520", borderRight: "1px solid #1e3a5f", display: "flex", flexDirection: "column", paddingTop: 8 }}>
+      {TABS.map(tab => (
+        <button
+          key={tab.id}
+          onClick={() => onSelect(tab.id)}
+          style={{
+            background: active === tab.id ? "#1a3a5c" : "none",
+            border: "none",
+            borderLeft: `3px solid ${active === tab.id ? "#4a90d9" : "transparent"}`,
+            color: active === tab.id ? "#90caf9" : "#546e8a",
+            cursor: "pointer",
+            padding: "12px 0",
+            width: "100%",
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+          }}
+        >
+          <span style={{ fontSize: 16, lineHeight: 1 }}>{tab.icon}</span>
+          <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8 }}>{tab.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 // ── Settings panel ────────────────────────────────────────────────────────────
 
 const PANEL_IDS = Object.keys(PANEL_DEFAULTS);
@@ -300,6 +333,7 @@ export default function App() {
   const counter = useRef(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [layoutKey, setLayoutKey] = useState(0);
+  const [activeTab, setActiveTab] = useState(1);
 
   useEffect(() => {
     function handler(e: Event) {
@@ -328,6 +362,9 @@ export default function App() {
         <img src="/aps-logo.png" alt="Argonne National Laboratory | APS" style={{ height: "40px", width: "auto", display: "block" }} />
       </div>
 
+      {/* Sidebar */}
+      <Sidebar active={activeTab} onSelect={setActiveTab} />
+
       {/* Page title (fixed, acts as header) */}
       <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, background: "#0a1520", borderBottom: "1px solid #1e3a5f", padding: "8px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <span style={{ color: "#90caf9", fontSize: 16, fontWeight: 700, letterSpacing: 0.5 }}>Simulated IOC</span>
@@ -348,7 +385,8 @@ export default function App() {
         </div>
       </div>
 
-      {/* ── Draggable panels ── */}
+      {/* ── Tab 1: Main ── */}
+      {activeTab === 1 && <>
 
       <DraggablePanel key={`motors-${layoutKey}`} id="motors" title="Motors">
         <table style={tableStyle}>
@@ -390,6 +428,15 @@ export default function App() {
           <UiRenderer file="/ui/29id_cam.ui" macros={{ P: "myad:" }} />
         </div>
       </DraggablePanel>
+
+      </>}
+
+      {/* ── Tab 2: Test ── */}
+      {activeTab === 2 && (
+        <div style={{ position: "fixed", top: 56, left: 92, color: "#546e8a", fontStyle: "italic", fontSize: 13 }}>
+          Tab 2 — Widget Test
+        </div>
+      )}
 
     </div>
   );
