@@ -171,6 +171,76 @@ Because the source directory is NFS-shared, you can:
 2. The running dev server on the beamline machine picks up changes via HMR automatically.
 3. No restart needed for most changes (React component edits, CSS). Restart needed for changes to `vite.config.ts` or `src/main.tsx`.
 
+## Known pitfalls (lessons learned from first deployment to `mite`)
+
+### Build machine must be `rodolakis`, not `29iduser`
+
+`29iduser`'s subuid/subgid entries are not configured on the APS machines, so
+rootless podman fails immediately for that account. Build and load the image as
+yourself (`rodolakis`).
+
+### `XDG_RUNTIME_DIR` is not set in non-login shells
+
+Podman requires this variable. Set it before any podman command:
+
+```bash
+export XDG_RUNTIME_DIR=/var/tmp/${USER}-runtime
+mkdir -p $XDG_RUNTIME_DIR
+```
+
+Add this to your `~/.bashrc` on the beamline machine so it persists.
+
+### NFS home directories break podman overlay storage
+
+Podman's overlay filesystem requires extended attributes that NFS does not
+support. If your home directory is NFS-mounted (as it is for `rodolakis` on
+`mite`), create `~/.config/containers/storage.conf` with:
+
+```
+[storage]
+driver = "overlay"
+graphRoot = "/var/tmp/rodolakis-containers"
+
+[storage.options]
+ignore_chown_errors = "true"
+```
+
+The `ignore_chown_errors` line suppresses chown failures that occur because
+rootless podman cannot chown files it doesn't own on NFS.
+
+### `--network=host` fails without `--no-hosts`
+
+On the beamline machines, `/etc/hosts` is not writable by regular users.
+`podman run --network=host` tries to write to it and fails with "permission
+denied". Add `--no-hosts` to skip that step:
+
+```bash
+podman run --network=host --no-hosts -d --name pvws-29id \
+  -e PV_WRITE_SUPPORT=true \
+  -e EPICS_CA_MAX_ARRAY_BYTES=8000000 \
+  -e PV_ARRAY_THROTTLE_MS=1000 \
+  pvws:latest
+```
+
+### Use `pvws-29id` as the container name
+
+The generic name `pvws` may conflict with other containers on shared machines.
+Using `pvws-29id` avoids that and makes it clear which instance this is.
+
+### Vite HMR does not work over NFS
+
+When `npm run dev` is running on a beamline machine and source files are edited
+on the workstation (NFS-shared), Vite's file watcher does not detect changes.
+A hard browser refresh is not enough — the dev server must be restarted:
+
+```bash
+# Ctrl-C the running server, then:
+conda activate nodejs
+npm run dev
+```
+
+---
+
 ## Git remote (future)
 
 The repo currently has no remote. Options when a remote becomes needed:
