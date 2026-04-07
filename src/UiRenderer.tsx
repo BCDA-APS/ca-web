@@ -182,6 +182,7 @@ function CaGraphicsWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) 
         border: `${lineSize}px ${lineStyle} ${lineColor}`,
         boxSizing: "border-box",
         borderRadius: isCircle ? "50%" : undefined,
+        pointerEvents: "none",
       }}
     />
   );
@@ -335,6 +336,9 @@ function CaMessageButtonWidget({ widget, ns: _ns }: { widget: ParsedWidget; ns: 
   const fg = widget.props["foreground"] ?? "#fff";
   const bg = widget.props["background"] ?? "#c00";
 
+  // Pre-subscribe so pvws has the CA channel open before the first click.
+  useEffect(() => { pvwsWriter.subscribe(channel); }, [channel]);
+
   function handleClick() {
     const v = parseFloat(pressMsg);
     pvwsWriter.write(channel, isNaN(v) ? pressMsg : v);
@@ -421,6 +425,7 @@ function CaLabelWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
         fontSize,
         overflow: "visible",
         whiteSpace: "nowrap",
+        pointerEvents: "none",
       }}
     >
       {text}
@@ -915,7 +920,7 @@ function CaPolyLineWidget({ widget }: { widget: ParsedWidget }) {
 
   return (
     <svg
-      style={{ position: "absolute", left: x, top: y, width, height, zIndex: widget.zIndex, overflow: "visible" }}
+      style={{ position: "absolute", left: x, top: y, width, height, zIndex: widget.zIndex, overflow: "visible", pointerEvents: "none" }}
     >
       {filled
         ? <polygon points={points} fill={fg} stroke={lineColor} strokeWidth={lineSize} strokeDasharray={dashArray} />

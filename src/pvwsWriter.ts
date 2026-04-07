@@ -30,6 +30,22 @@ class PvwsWriter {
     };
   }
 
+  // Pre-subscribe a PV so pvws has time to open the CA channel before a write arrives.
+  // Call this from useEffect when a write-only widget (e.g. caMessageButton) mounts.
+  subscribe(pvName: string) {
+    if (!pvName) return;
+    const fullName = pvName.startsWith("ca://") ? pvName : `ca://${pvName}`;
+    if (this.subscribed.has(fullName)) return;
+    this.subscribed.add(fullName);
+    const msg = JSON.stringify({ type: "subscribe", pvs: [fullName] });
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      this.ws.send(msg);
+    } else {
+      this.queue.push(msg);
+      this.connect();
+    }
+  }
+
   write(pvName: string, value: number | string) {
     const fullName = pvName.startsWith("ca://") ? pvName : `ca://${pvName}`;
     const msgs: string[] = [];
