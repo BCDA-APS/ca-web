@@ -2,7 +2,8 @@
 // Fetches the file, parses it with uiParser, then routes each widget to the
 // appropriate React component. All PV connections use cs-web-lib's useConnection.
 
-import { useState, useEffect, useRef, createContext, useContext, CSSProperties } from "react";
+import { useState, useEffect, useRef, createContext, useContext, CSSProperties, Component } from "react";
+import type { ErrorInfo } from "react";
 import { createPortal } from "react-dom";
 import { useConnection } from "@diamondlightsource/cs-web-lib";
 import { parseUi, ParsedWidget, ParsedUi, ParsedTab } from "./uiParser";
@@ -1338,7 +1339,7 @@ function QTabWidgetComponent({ widget, ns }: { widget: ParsedWidget; ns: string 
       {/* Tab content — children are positioned relative to this div */}
       <div style={{ position: "relative", width, height: contentH, overflow: "hidden" }}>
         {tabs[activeTab]?.widgets.map(w => (
-          <WidgetRouter key={w.name} widget={w} ns={`${ns}_tab${activeTab}`} />
+          <WidgetErrorBoundary key={w.name} name={w.name}><WidgetRouter widget={w} ns={`${ns}_tab${activeTab}`} /></WidgetErrorBoundary>
         ))}
       </div>
     </div>
@@ -1377,7 +1378,7 @@ function CaIncludeSingle({
       <BaseDirContext.Provider value={subBaseDir}>
         <MacrosContext.Provider value={macros}>
           <div style={{ width: subUi.nativeWidth, height: subUi.nativeHeight, transform: `scale(${s})`, transformOrigin: "top left", position: "relative" }}>
-            {subUi.widgets.map(w => <WidgetRouter key={w.name} widget={w} ns={ns} />)}
+            {subUi.widgets.map(w => <WidgetErrorBoundary key={w.name} name={w.name}><WidgetRouter widget={w} ns={ns} /></WidgetErrorBoundary>)}
           </div>
         </MacrosContext.Provider>
       </BaseDirContext.Provider>
@@ -1756,6 +1757,34 @@ function CaStripPlotWidget({ widget, ns }: { widget: ParsedWidget; ns: string })
 
 // ── widget router ─────────────────────────────────────────────────────────────
 
+// ── Error boundary — catches render errors in individual widgets ───────────────
+// Prevents a single bad widget (e.g. unexpected PV data after IOC restart) from
+// crashing the entire React tree and showing a white page.
+
+class WidgetErrorBoundary extends Component<
+  { children: React.ReactNode; name: string },
+  { error: boolean }
+> {
+  constructor(props: { children: React.ReactNode; name: string }) {
+    super(props);
+    this.state = { error: false };
+  }
+  static getDerivedStateFromError() { return { error: true }; }
+  componentDidCatch(e: Error, info: ErrorInfo) {
+    console.error("[WidgetErrorBoundary]", this.props.name, e, info);
+  }
+  // Reset when the widget name changes (e.g. after a remount)
+  componentDidUpdate(prev: { name: string }) {
+    if (prev.name !== this.props.name && this.state.error)
+      this.setState({ error: false });
+  }
+  render() {
+    if (this.state.error)
+      return <div title={`Render error: ${this.props.name}`} style={{ position: "absolute", width: 8, height: 8, borderRadius: "50%", background: "red", opacity: 0.7 }} />;
+    return this.props.children;
+  }
+}
+
 function WidgetRouter({ widget, ns }: { widget: ParsedWidget; ns: string }) {
   switch (widget.class) {
     case "caLineEdit":       return <CaLineEditWidget widget={widget} ns={ns} />;
@@ -1889,7 +1918,7 @@ export function UiRenderer({ file, macros = {}, scale }: UiRendererProps) {
               }}
             >
               {ui.widgets.map(w => (
-                <WidgetRouter key={w.name} widget={w} ns={ns} />
+                <WidgetErrorBoundary key={w.name} name={w.name}><WidgetRouter widget={w} ns={ns} /></WidgetErrorBoundary>
               ))}
             </div>
           </BaseDirContext.Provider>

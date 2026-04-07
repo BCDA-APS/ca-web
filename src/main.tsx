@@ -11,7 +11,7 @@ const pvwsSsl    = import.meta.env.VITE_PVWS_SSL === "true";
 
 const container = document.getElementById("root")!;
 createRoot(container).render(
-  <Provider store={store({ PVWS_SOCKET: pvwsSocket, PVWS_SSL: pvwsSsl })}>
+  <Provider store={store({ PVWS_SOCKET: pvwsSocket, PVWS_SSL: pvwsSsl } as Parameters<typeof store>[0])}>
     <OutlineProvider>
       <App />
     </OutlineProvider>
