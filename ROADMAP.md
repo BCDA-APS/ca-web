@@ -54,16 +54,12 @@ The app is currently hardcoded to specific screens. Options:
 
 ## 7. ~~Tabbed sidebar navigation~~ ✓ Done
 
-## 8. Distributed access across the beamline subnet
+## 8. ~~Distributed access across the beamline subnet~~ ✓ Done
 
-Demonstrate that the app is accessible from any computer on the beamline
-subnet, not just localhost. Steps:
-
-- Bind Vite dev server (or a production build served by nginx/caddy) to
-  `0.0.0.0` so it's reachable by IP
-- Ensure pvws is similarly bound and that `VITE_PVWS_SOCKET` in `.env`
-  points to the server's hostname/IP rather than `localhost`
-- Document the setup in README so any beamline workstation can connect
+pvws runs on `mite` (beamline machine on the 29ID private subnet). Vite dev
+server binds to `0.0.0.0:4200`. Any browser on the subnet can open
+`http://mite:4200` and reach real 29ID PVs. See `DEPLOYMENT.md` for the
+full setup including known pitfalls (NFS overlay storage, `--no-hosts`, etc.).
 
 ## 9. Line profile on images
 
@@ -81,15 +77,8 @@ diagnostics.
   positions (requires a coordinate mapping configuration linking pixel
   coordinates to motor PV pairs).
 
-## 11. QTabWidget support
+## 11. ~~QTabWidget support~~ ✓ Done
 
-`.ui` files that use `QTabWidget` as a container currently render all tab
-pages stacked on top of each other (the parser flattens them). Proper support
-would:
-
-- Detect `QTabWidget` in the parser and emit it as a typed container node
-  (rather than flattening children into the widget list)
-- Render it as a real tab bar with clickable tabs, respecting `currentIndex`
-  as the initially selected tab
-- Handle nested `QTabWidget` (tabs within tabs, as seen in `test.ui`)
-- Preserve absolute positioning of child widgets within each tab page
+Parser emits `QTabWidget` as a structured widget with per-tab widget lists.
+Renderer shows a clickable tab bar; active tab defaults to `currentIndex`.
+Child widget positions are relative to the tab page content area.

@@ -52,28 +52,34 @@ podman run --network=host -d --name pvws \
 
 ## Page Layout
 
-| Section | Description |
-|---|---|
-| **Motors** | Table of 8 simulated motors (`fr:m1`–`fr:m8`). Each row has a `⋯` button that opens `motorx_tiny.ui` for that motor in a draggable overlay. |
-| **Detector — Simulated Lorentzian** | Readback table + rolling strip chart for `fr:userCalc1.VAL`. |
-| **Area Detector — myad:cam1** | Readback table alongside the live camera `.ui` (`29id_cam.ui`). The green `!` button in the camera panel opens `ADBase.ui`. |
+Three tabs in the left sidebar:
+
+| Tab | Section | Description |
+|---|---|---|
+| ⌂ Home | **Motors** | Table of 8 simulated motors (`fr:m1`–`fr:m8`). Each row has a `⋯` button that opens `motorx_tiny.ui` for that motor in a draggable overlay. |
+| ⌂ Home | **Detector — Simulated Lorentzian** | Readback table + rolling strip chart for `fr:userCalc1.VAL`. |
+| ⌂ Home | **Area Detector — myad:cam1** | Readback table alongside the live camera `.ui` (`29id_cam.ui`). The green `!` button in the camera panel opens `ADBase.ui`. |
+| 🔬 Test | **Widget Test** | `test.ui` — exercises all implemented widget types against simulated PVs. |
+| ⚛ 29ID-C | **ARPES** | `29idc_ARPES.ui` — real 29ID-C beamline screen. Requires pvws running on `mite`. |
 
 ## Implemented Widgets
 
 | Widget | Notes |
 |---|---|
 | `caLabel` | Static text |
-| `caLineEdit` | Readback; supports hex format (`0x…`) |
+| `caLineEdit` | Readback; uses PV PREC for formatting; switches to exponential for values < 0.01 or ≥ 1e5 (matches caQtDM decimal format); supports hex format (`0x…`) |
 | `caTextEntry` | Writeable PV input |
-| `caGraphics` | Rectangle/frame decorations |
+| `caGraphics` | Rectangle, circle/ellipse (via `borderRadius: 50%`), filled or outlined; dashed border |
 | `caChoice` | Enum dropdown |
 | `caMenu` | Variable dropdown with 3D relief |
 | `caMessageButton` | Momentary write button |
 | `caRelatedDisplay` | Opens overlay panels; `stackingMode="Hidden"` renders as transparent overlay |
-| `caPolyLine` | SVG decorative lines |
+| `caPolyLine` | SVG polylines and filled polygons; dash styles (Dot, Dash, BigDash); filters INT_MIN sentinel points |
 | `caByte` | Bit field display (colored squares, startBit..endBit) |
 | `caCamera` | Live area detector image display (see below) |
-| `caInclude` | Embeds another `.ui` file inline; inherits parent macros |
+| `caInclude` | Embeds another `.ui` file inline; inherits parent macros; supports `stacking=Column/Row` with `numberOfItems` for side-by-side or stacked copies each with their own macro set |
+| `caImage` | Static image file (GIF, PNG, etc.) referenced by `filename` prop |
+| `QTabWidget` | Tabbed container with clickable tab bar; defaults to `currentIndex`; children positioned relative to tab page |
 | `caCartesianPlot` | XY line/dot chart for waveform PVs; auto-scales axes; up to 4 curves |
 | `caLed` | Boolean indicator; color from `trueColor`/`falseColor` props (default: red/grey) |
 | `caThermo` | Vertical bar gauge; reads `maxValue` from `.ui`; navy/blue theme |
