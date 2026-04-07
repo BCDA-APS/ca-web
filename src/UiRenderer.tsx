@@ -161,10 +161,12 @@ function CaGraphicsWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) 
   if (!visible) return null;
 
   const fg = widget.props["foreground"] ?? "transparent";
-  const filled = widget.props["fillstyle"] === "Filled";
-  const lineStyle = widget.props["linestyle"] === "Dash" ? "dashed" : "solid";
+  const filled = (widget.props["fillstyle"] ?? "").includes("Filled");
+  const lineStyle = (widget.props["linestyle"] ?? "").includes("Dash") ? "dashed" : "solid";
   const lineSize = parseInt(widget.props["lineSize"] ?? "1");
   const lineColor = widget.props["lineColor"] ?? fg;
+  const form = widget.props["form"] ?? "";
+  const isCircle = form.includes("Circle") || form.includes("Ellipse");
 
   return (
     <div
@@ -173,6 +175,7 @@ function CaGraphicsWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) 
         background: filled ? fg : "transparent",
         border: `${lineSize}px ${lineStyle} ${lineColor}`,
         boxSizing: "border-box",
+        borderRadius: isCircle ? "50%" : undefined,
       }}
     />
   );
@@ -887,32 +890,31 @@ function CaCameraWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
 function CaPolyLineWidget({ widget }: { widget: ParsedWidget }) {
   const xyPairs = widget.props["xyPairs"] ?? "";
   const fg = widget.props["foreground"] ?? "#00f";
+  const lineColor = widget.props["lineColor"] ?? fg;
   const lineSize = parseInt(widget.props["lineSize"] ?? "1");
-  const { x, y, width, height, } = widget.geometry;
+  const filled = (widget.props["fillstyle"] ?? "").includes("Filled");
+  const ls = widget.props["linestyle"] ?? "";
+  const dashArray = ls.includes("BigDash") ? "12,6" : ls.includes("Dash") ? "6,4" : ls.includes("Dot") ? "2,4" : undefined;
+  const { x, y, width, height } = widget.geometry;
 
-  // Parse "x1,y1;x2,y2;..." relative to widget origin
-  const points = xyPairs
-    .split(";")
-    .filter(Boolean)
-    .map(pair => {
-      const [px, py] = pair.split(",").map(Number);
-      return `${px},${py}`;
-    })
-    .join(" ");
+  // Parse "x1,y1;x2,y2;..." relative to widget origin.
+  // Sentinel value near INT_MIN means the point auto-fits to geometry — skip those.
+  const SENTINEL = -2147483640;
+  const rawPoints = xyPairs.split(";").filter(Boolean).map(pair => {
+    const [px, py] = pair.split(",").map(Number);
+    return { px, py };
+  }).filter(p => p.px > SENTINEL && p.py > SENTINEL);
+
+  const points = rawPoints.map(p => `${p.px},${p.py}`).join(" ");
 
   return (
     <svg
-      style={{
-        position: "absolute",
-        left: x,
-        top: y,
-        width,
-        height,
-        zIndex: widget.zIndex,
-        overflow: "visible",
-      }}
+      style={{ position: "absolute", left: x, top: y, width, height, zIndex: widget.zIndex, overflow: "visible" }}
     >
-      <polyline points={points} fill="none" stroke={fg} strokeWidth={lineSize} />
+      {filled
+        ? <polygon points={points} fill={fg} stroke={lineColor} strokeWidth={lineSize} strokeDasharray={dashArray} />
+        : <polyline points={points} fill="none" stroke={lineColor} strokeWidth={lineSize} strokeDasharray={dashArray} />
+      }
     </svg>
   );
 }
@@ -1268,6 +1270,20 @@ function PvInfoPanel({ channel, widgetName, widgetClass, onClose }: PvInfoPanelP
       </div>
     </div>,
     document.body
+  );
+}
+
+// ── caImage — static image file ──────────────────────────────────────────────
+
+function CaImageWidget({ widget }: { widget: ParsedWidget }) {
+  const baseDir = useContext(BaseDirContext);
+  const filename = widget.props["filename"] ?? "";
+  if (!filename) return null;
+  const src = filename.startsWith("/") ? filename : `${baseDir}/${filename}`;
+  return (
+    <div style={{ ...geoStyle(widget.geometry, widget.zIndex), overflow: "hidden" }}>
+      <img src={src} alt={filename} style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
+    </div>
   );
 }
 
@@ -1662,6 +1678,7 @@ function WidgetRouter({ widget, ns }: { widget: ParsedWidget; ns: string }) {
     case "caByte":           return <CaByteWidget widget={widget} ns={ns} />;
     case "caCamera":         return <CaCameraWidget widget={widget} ns={ns} />;
     case "caInclude":        return <CaIncludeWidget widget={widget} ns={ns} />;
+    case "caImage":          return <CaImageWidget widget={widget} />;
     case "caLed":            return <CaLedWidget widget={widget} ns={ns} />;
     case "caThermo":         return <CaThermoWidget widget={widget} ns={ns} />;
     case "caSpinbox":        return <CaSpinboxWidget widget={widget} ns={ns} />;

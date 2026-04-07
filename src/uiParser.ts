@@ -116,11 +116,16 @@ export function parseUi(
 
       // Known container types — recurse into them, offsetting by their position.
       // QTabWidget children (tab pages) are QWidgets with no geometry — they fill the parent.
-      const isContainer = cls === "caFrame" || cls === "QGroupBox" || cls === "QWidget" || cls === "QTabWidget";
+      const isContainer = cls === "caFrame" || cls === "QGroupBox" || cls === "QWidget" || cls === "QTabWidget" || cls === "QFrame";
       if (isContainer) {
         const z = zMap[name] ?? parentZ;
         const dx = geometry ? geometry.x : 0;
         const dy = geometry ? geometry.y : 0;
+        // Build a local z-order map for children of this container.
+        const localZorders = Array.from(child.querySelectorAll(":scope > zorder"));
+        if (localZorders.length > 0) {
+          localZorders.forEach((lz, i) => { zMap[lz.textContent ?? ""] = z + i * 0.001; });
+        }
         collectWidgets(child, offsetX + dx, offsetY + dy, z);
       } else if (geometry) {
         const zIndex = zMap[name] ?? parentZ;

@@ -12,6 +12,7 @@ const PANEL_DEFAULTS: Record<string, { x: number; y: number }> = {
   lorentzian:      { x: 108, y: 460 },
   "area-detector": { x: 108, y: 800 },
   test:            { x: 108, y:  56 },
+  "29idc-arpes":   { x: 108, y:  56 },
 };
 
 // Global z-index counter so clicking a panel brings it to the front.
@@ -176,8 +177,9 @@ function AppOverlayPanel({ ov, onClose }: { ov: AppOverlay; onClose: () => void 
 // ── Sidebar ───────────────────────────────────────────────────────────────────
 
 const TABS = [
-  { id: 1, icon: "⌂", label: "Home" },
+  { id: 1, icon: "⌂",  label: "Home" },
   { id: 2, icon: "🔬", label: "Test" },
+  { id: 3, icon: "⚛",  label: "29ID-C" },
 ];
 
 function Sidebar({ active, onSelect }: { active: number; onSelect: (id: number) => void }) {
@@ -358,17 +360,18 @@ export default function App() {
         <AppOverlayPanel key={ov.id} ov={ov} onClose={() => setOverlays(prev => prev.filter(o => o.id !== ov.id))} />
       ))}
 
-      {/* APS logo */}
-      <div style={{ position: "fixed", bottom: 16, right: 16, zIndex: 1000, opacity: 0.85 }}>
-        <img src="/aps-logo.png" alt="Argonne National Laboratory | APS" style={{ height: "40px", width: "auto", display: "block" }} />
-      </div>
-
       {/* Sidebar */}
       <Sidebar active={activeTab} onSelect={setActiveTab} />
 
       {/* Page title (fixed, acts as header) */}
+      {/* APS logo — bottom right */}
+      <div style={{ position: "fixed", bottom: 16, right: 16, zIndex: 1000, opacity: 0.85 }}>
+        <img src="/aps-logo.png" alt="Argonne National Laboratory | APS" style={{ height: "40px", width: "auto", display: "block" }} />
+      </div>
+
+      {/* Page title (fixed, acts as header) */}
       <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, background: "#0a1520", borderBottom: "1px solid #1e3a5f", padding: "8px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span style={{ color: "#90caf9", fontSize: 16, fontWeight: 700, letterSpacing: 0.5 }}>Simulated IOC</span>
+        <span style={{ color: "#90caf9", fontSize: 16, fontWeight: 700, letterSpacing: 0.5 }}>29ID Beamline</span>
         <div style={{ position: "relative" }} onClick={e => e.stopPropagation()}>
           <button
             onClick={() => setSettingsOpen(o => !o)}
@@ -436,6 +439,13 @@ export default function App() {
       {activeTab === 2 && (
         <DraggablePanel id="test" title="Widget Test">
           <UiRenderer file="/ui/test.ui" macros={{}} />
+        </DraggablePanel>
+      )}
+
+      {/* ── Tab 3: 29ID-C ── */}
+      {activeTab === 3 && (
+        <DraggablePanel id="29idc-arpes" title="29ID-C ARPES">
+          <UiRenderer file="/ui/29id/29idc_ARPES.ui" macros={{}} />
         </DraggablePanel>
       )}
 
