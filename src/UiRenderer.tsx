@@ -5,7 +5,7 @@
 import { useState, useEffect, useRef, createContext, useContext, CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { useConnection } from "@diamondlightsource/cs-web-lib";
-import { parseUi, ParsedWidget, ParsedUi } from "./uiParser";
+import { parseUi, ParsedWidget, ParsedUi, ParsedTab } from "./uiParser";
 import { pvwsWriter } from "./pvwsWriter";
 
 // ── contexts ──────────────────────────────────────────────────────────────────
@@ -1293,6 +1293,53 @@ function CaImageWidget({ widget }: { widget: ParsedWidget }) {
   );
 }
 
+// ── QTabWidget ────────────────────────────────────────────────────────────────
+
+const TAB_BAR_H = 26; // approximate Qt tab bar height in pixels
+
+function QTabWidgetComponent({ widget, ns }: { widget: ParsedWidget; ns: string }) {
+  const defaultTab = parseInt(widget.props["currentIndex"] ?? "0") || 0;
+  const [activeTab, setActiveTab] = useState(defaultTab);
+  const tabs = widget.tabs ?? [];
+  const { width, height } = widget.geometry;
+  const contentH = height - TAB_BAR_H;
+
+  return (
+    <div style={{ ...geoStyle(widget.geometry, widget.zIndex), overflow: "hidden", background: "#dededf" }}>
+      {/* Tab bar */}
+      <div style={{ display: "flex", height: TAB_BAR_H, alignItems: "flex-end", background: "#c8c8c8", borderBottom: "1px solid #808080" }}>
+        {tabs.map((tab, i) => (
+          <div
+            key={i}
+            onClick={() => setActiveTab(i)}
+            style={{
+              padding: "2px 10px 1px",
+              background: activeTab === i ? "#dededf" : "#b8b8b8",
+              border: "1px solid #808080",
+              borderBottom: activeTab === i ? "1px solid #dededf" : "1px solid #808080",
+              marginRight: 2,
+              cursor: "pointer",
+              fontSize: 11,
+              fontFamily: "Liberation Sans, Arial, sans-serif",
+              userSelect: "none",
+              color: "#000",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {tab.title}
+          </div>
+        ))}
+      </div>
+      {/* Tab content — children are positioned relative to this div */}
+      <div style={{ position: "relative", width, height: contentH, overflow: "hidden" }}>
+        {tabs[activeTab]?.widgets.map(w => (
+          <WidgetRouter key={w.name} widget={w} ns={`${ns}_tab${activeTab}`} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── caInclude — embeds another .ui file inline ────────────────────────────────
 
 // Single instance of an included UI file — used by CaIncludeWidget for both
@@ -1719,6 +1766,7 @@ function WidgetRouter({ widget, ns }: { widget: ParsedWidget; ns: string }) {
     case "caByte":           return <CaByteWidget widget={widget} ns={ns} />;
     case "caCamera":         return <CaCameraWidget widget={widget} ns={ns} />;
     case "caInclude":        return <CaIncludeWidget widget={widget} ns={ns} />;
+    case "QTabWidget":       return <QTabWidgetComponent widget={widget} ns={ns} />;
     case "caImage":          return <CaImageWidget widget={widget} />;
     case "caLed":            return <CaLedWidget widget={widget} ns={ns} />;
     case "caThermo":         return <CaThermoWidget widget={widget} ns={ns} />;

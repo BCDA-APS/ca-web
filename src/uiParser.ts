@@ -8,12 +8,18 @@ export interface WidgetGeometry {
   height: number;
 }
 
+export interface ParsedTab {
+  title: string;
+  widgets: ParsedWidget[];
+}
+
 export interface ParsedWidget {
   class: string;        // e.g. "caLineEdit", "caGraphics"
   name: string;         // widget instance name
   geometry: WidgetGeometry;
   props: Record<string, string>;  // all properties as strings (colors as "rgba(r,g,b,a)")
   zIndex: number;       // from <zorder> list
+  tabs?: ParsedTab[];   // only present for QTabWidget
 }
 
 export interface ParsedUi {
@@ -58,6 +64,30 @@ function getGeometry(widget: Element): WidgetGeometry | null {
   };
 }
 
+function collectProps(child: Element, m: (s: string) => string): Record<string, string> {
+  const props: Record<string, string> = {};
+  for (const propEl of child.children) {
+    if (propEl.tagName !== "property") continue;
+    const propName = propEl.getAttribute("name") ?? "";
+
+    const colorEl = propEl.querySelector("color");
+    if (colorEl) {
+      props[propName] = parseColor(colorEl);
+      continue;
+    }
+
+    const val =
+      propEl.querySelector("string")?.textContent ??
+      propEl.querySelector("enum")?.textContent ??
+      propEl.querySelector("number")?.textContent ??
+      propEl.querySelector("double")?.textContent ??
+      propEl.querySelector("set")?.textContent ??
+      "";
+    props[propName] = m(val);
+  }
+  return props;
+}
+
 // ── main parser ───────────────────────────────────────────────────────────────
 
 export function parseUi(
@@ -81,42 +111,45 @@ export function parseUi(
   const zMap: Record<string, number> = {};
   zorders.forEach((z, i) => { zMap[z.textContent ?? ""] = i; });
 
-  const widgets: ParsedWidget[] = [];
-
-  // Recursively collect widgets. offsetX/Y accumulate parent container positions.
-  function collectWidgets(parent: Element, offsetX: number, offsetY: number, parentZ: number) {
+  // Recursively collect widgets into `out`.
+  // offsetX/Y accumulate parent container positions (absolute screen coords).
+  // Tab widget children use offset 0,0 — they are positioned relative to the tab page.
+  function collectWidgets(parent: Element, out: ParsedWidget[], offsetX: number, offsetY: number, parentZ: number) {
     for (const child of parent.children) {
       if (child.tagName !== "widget") continue;
 
       const cls = child.getAttribute("class") ?? "";
       const name = child.getAttribute("name") ?? "";
       const geometry = getGeometry(child);
+      const props = collectProps(child, m);
 
-      // Collect all properties.
-      const props: Record<string, string> = {};
-      for (const propEl of child.children) {
-        if (propEl.tagName !== "property") continue;
-        const propName = propEl.getAttribute("name") ?? "";
-
-        const colorEl = propEl.querySelector("color");
-        if (colorEl) {
-          props[propName] = parseColor(colorEl);
-          continue;
+      // QTabWidget — emit as a widget with structured tab data.
+      if (cls === "QTabWidget") {
+        if (!geometry) continue;
+        const zIndex = zMap[name] ?? parentZ;
+        const tabs: ParsedTab[] = [];
+        for (const tabEl of child.children) {
+          if (tabEl.tagName !== "widget") continue;
+          const titleAttr = Array.from(tabEl.children).find(
+            el => el.tagName === "attribute" && el.getAttribute("name") === "title"
+          );
+          const title = titleAttr?.querySelector("string")?.textContent ?? "";
+          const tabWidgets: ParsedWidget[] = [];
+          // Tab-page children are positioned relative to the tab page (0,0).
+          collectWidgets(tabEl, tabWidgets, 0, 0, zIndex);
+          tabWidgets.sort((a, b) => a.zIndex - b.zIndex);
+          tabs.push({ title, widgets: tabWidgets });
         }
-
-        const val =
-          propEl.querySelector("string")?.textContent ??
-          propEl.querySelector("enum")?.textContent ??
-          propEl.querySelector("number")?.textContent ??
-          propEl.querySelector("double")?.textContent ??
-          propEl.querySelector("set")?.textContent ??
-          "";
-        props[propName] = m(val);
+        out.push({
+          class: cls, name,
+          geometry: { ...geometry, x: geometry.x + offsetX, y: geometry.y + offsetY },
+          props, zIndex, tabs,
+        });
+        continue;
       }
 
-      // Known container types — recurse into them, offsetting by their position.
-      // QTabWidget children (tab pages) are QWidgets with no geometry — they fill the parent.
-      const isContainer = cls === "caFrame" || cls === "QGroupBox" || cls === "QWidget" || cls === "QTabWidget" || cls === "QFrame";
+      // Known transparent containers — recurse, offsetting by their position.
+      const isContainer = cls === "caFrame" || cls === "QGroupBox" || cls === "QWidget" || cls === "QFrame";
       if (isContainer) {
         const z = zMap[name] ?? parentZ;
         const dx = geometry ? geometry.x : 0;
@@ -126,10 +159,10 @@ export function parseUi(
         if (localZorders.length > 0) {
           localZorders.forEach((lz, i) => { zMap[lz.textContent ?? ""] = z + i * 0.001; });
         }
-        collectWidgets(child, offsetX + dx, offsetY + dy, z);
+        collectWidgets(child, out, offsetX + dx, offsetY + dy, z);
       } else if (geometry) {
         const zIndex = zMap[name] ?? parentZ;
-        widgets.push({
+        out.push({
           class: cls, name,
           geometry: { ...geometry, x: geometry.x + offsetX, y: geometry.y + offsetY },
           props, zIndex,
@@ -138,7 +171,8 @@ export function parseUi(
     }
   }
 
-  collectWidgets(central, 0, 0, 0);
+  const widgets: ParsedWidget[] = [];
+  collectWidgets(central, widgets, 0, 0, 0);
 
   // Render back-to-front
   widgets.sort((a, b) => a.zIndex - b.zIndex);
