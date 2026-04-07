@@ -444,14 +444,14 @@ export default function App() {
 
       {/* ── Tab 2: Test ── */}
       {activeTab === 2 && (
-        <DraggablePanel id="test" title="Widget Test">
+        <DraggablePanel key={`test-${layoutKey}`} id="test" title="Widget Test">
           <UiRenderer file="/ui/test.ui" macros={{}} />
         </DraggablePanel>
       )}
 
       {/* ── Tab 3: 29ID-C ── */}
       {activeTab === 3 && (
-        <DraggablePanel id="29idc-arpes" title="29ID-C ARPES">
+        <DraggablePanel key={`29idc-arpes-${layoutKey}`} id="29idc-arpes" title="29ID-C ARPES">
           <UiRenderer file="/ui/29id/29idc_ARPES.ui" macros={{}} />
         </DraggablePanel>
       )}
