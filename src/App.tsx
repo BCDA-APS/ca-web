@@ -91,14 +91,21 @@ function DraggablePanel({ id, title, children }: { id: string; title: string; ch
           onClick={() => setPs(p => ({ ...p, locked: !p.locked }))}
           title={ps.locked ? "Unlock panel" : "Lock panel"}
           style={{
-            cursor: "pointer", fontSize: 11, fontWeight: 700, letterSpacing: 0.5,
-            padding: "2px 7px", borderRadius: 3, lineHeight: "18px",
-            border: ps.locked ? "1px solid #546e8a" : "1px solid #4caf50",
-            background: ps.locked ? "transparent" : "rgba(76,175,80,0.15)",
-            color: ps.locked ? "#7a9ab8" : "#81c784",
+            cursor: "pointer", background: "none", border: "none",
+            padding: "2px 4px", lineHeight: 1, display: "flex", alignItems: "center",
+            color: ps.locked ? "#4a90d9" : "#546e8a",
           }}
         >
-          {ps.locked ? "LOCKED" : "LOCK"}
+          {ps.locked
+            ? /* closed padlock */
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
+              </svg>
+            : /* open padlock */
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                <path d="M12 1C9.24 1 7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2H9V6c0-1.66 1.34-3 3-3 1.66 0 3 1.34 3 3h2c0-2.76-2.24-5-5-5zm0 15c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/>
+              </svg>
+          }
         </button>
       </div>
 
