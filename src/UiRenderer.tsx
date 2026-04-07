@@ -69,8 +69,14 @@ function extractPrecision(d: unknown): number | null {
 
 
 function fmtDouble(v: number, prec: number | null): string {
-  if (prec !== null) return v.toFixed(prec);
-  // Fallback when PREC not available: engineering notation for large/tiny values.
+  if (prec !== null) {
+    // Match caQtDM: use exponential for very small or very large values,
+    // fixed decimal otherwise. Threshold matches caQtDM's decimal format behavior.
+    if (v !== 0 && (Math.abs(v) < 0.01 || Math.abs(v) >= 1e5))
+      return v.toExponential(prec);
+    return v.toFixed(prec);
+  }
+  // Fallback when PREC not available: exponential for large/tiny values.
   if (Math.abs(v) >= 1e5 || (Math.abs(v) < 0.01 && v !== 0)) return v.toExponential(4);
   return v.toPrecision(6);
 }
