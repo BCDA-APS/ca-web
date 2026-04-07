@@ -1614,94 +1614,127 @@ function CaTableWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
 }
 
 // ── caStripPlot ───────────────────────────────────────────────────────────────
-// Channels format: "R=pvName;G=pv2" — letter prefix maps to color.
+// Channels: semicolon-separated PV names or macros expanding to PV names.
+// Up to 4 active channels (unresolved macros are skipped).
+// period + units drive the time window; absolute timestamps on x-axis.
 
-const STRIP_COLORS: Record<string, string> = {
-  R: "#ef5350", G: "#66bb6a", B: "#29b6f6", Y: "#ffa726",
-  W: "#e0e0e0", C: "#26c6da", M: "#ab47bc", K: "#78909c",
-};
-const STRIP_COLOR_LIST = ["#29b6f6", "#66bb6a", "#ffa726", "#ef5350"];
-
-function fmtTime(secsAgo: number): string {
-  if (secsAgo === 0) return "now";
-  return `-${secsAgo}s`;
-}
+const STRIP_COLOR_LIST = ["#ef5350", "#66bb6a", "#ffd740", "#26c6da", "#ce93d8", "#ffa726"];
 
 function CaStripPlotWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
   const rawChannels = widget.props["channels"] ?? "";
-  // Parse "R=pv1;G=pv2" entries (up to 4)
-  const entries = rawChannels.split(";").map(s => {
+
+  // Each entry may be "LETTER=pvName" (color hint) or just "pvName".
+  // Skip entries where the PV is still an unresolved macro "$(…)".
+  const allEntries = rawChannels.split(";").map(s => {
     const eq = s.indexOf("=");
-    if (eq >= 0) return { letter: s.slice(0, eq).trim().toUpperCase(), pv: s.slice(eq + 1).trim() };
-    return { letter: "", pv: s.trim() };
-  }).filter(e => e.pv).slice(0, 4);
-
+    if (eq >= 0) return { pv: s.slice(eq + 1).trim() };
+    return { pv: s.trim() };
+  });
+  const entries = allEntries.filter(e => e.pv && !e.pv.includes("$(")).slice(0, 4);
   const pvs = entries.map(e => e.pv);
-  const colors = entries.map((e, i) => STRIP_COLORS[e.letter] ?? STRIP_COLOR_LIST[i % STRIP_COLOR_LIST.length]);
+  const colors = pvs.map((_, i) => STRIP_COLOR_LIST[i % STRIP_COLOR_LIST.length]);
 
-  const period = Math.max(10, parseInt(widget.props["period"] ?? "60") || 60); // seconds = samples at 1Hz
-  const MAX_PTS = period;
-  const historyRef = useRef<(number | null)[][]>([[], [], [], []]);
-  const latestRef = useRef<(number | null)[]>([null, null, null, null]);
+  // Time window: period × unit multiplier
+  const unitsStr = widget.props["units"] ?? "";
+  const unitMs = unitsStr.includes("Hour") ? 3_600_000
+               : unitsStr.includes("Minute") ? 60_000
+               : 1_000;                         // default: seconds
+  const periodNum = parseFloat(widget.props["period"] ?? "60") || 60;
+  const totalMs = periodNum * unitMs;
+
+  // Timestamped history per channel — store {t: epoch-ms, v: number}
+  type Pt = { t: number; v: number };
+  const historyRef = useRef<Pt[][]>([[], [], [], []]);
   const [, forceRender] = useState(0);
 
-  // Fixed 4 unconditional hook calls (pad missing pvs with empty string)
+  // Fixed 4 hook calls (pad missing pvs with "")
   const [,,, raw0] = useConnection(`${ns}-strip-${widget.name}-0`, pvs[0] ? `ca://${pvs[0]}` : "");
   const [,,, raw1] = useConnection(`${ns}-strip-${widget.name}-1`, pvs[1] ? `ca://${pvs[1]}` : "");
   const [,,, raw2] = useConnection(`${ns}-strip-${widget.name}-2`, pvs[2] ? `ca://${pvs[2]}` : "");
   const [,,, raw3] = useConnection(`${ns}-strip-${widget.name}-3`, pvs[3] ? `ca://${pvs[3]}` : "");
 
-  // Keep latest values in ref without triggering re-render
-  useEffect(() => { latestRef.current[0] = extractDouble(raw0); }, [raw0]);
-  useEffect(() => { latestRef.current[1] = extractDouble(raw1); }, [raw1]);
-  useEffect(() => { latestRef.current[2] = extractDouble(raw2); }, [raw2]);
-  useEffect(() => { latestRef.current[3] = extractDouble(raw3); }, [raw3]);
+  // Record a PV update with the current timestamp
+  const totalMsRef = useRef(totalMs);
+  totalMsRef.current = totalMs;
+  function record(idx: number, raw: unknown) {
+    const v = extractDouble(raw);
+    if (v === null || isNaN(v)) return;
+    const now = Date.now();
+    historyRef.current[idx] = [
+      ...historyRef.current[idx].filter(p => now - p.t <= totalMsRef.current),
+      { t: now, v },
+    ];
+  }
 
-  // 1Hz sampling
+  useEffect(() => { if (pvs[0]) record(0, raw0); }, [raw0]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (pvs[1]) record(1, raw1); }, [raw1]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (pvs[2]) record(2, raw2); }, [raw2]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (pvs[3]) record(3, raw3); }, [raw3]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Periodic re-render: advance the time axis even when PV is quiet
   useEffect(() => {
-    const id = setInterval(() => {
-      latestRef.current.forEach((v, i) => {
-        if (i < entries.length) {
-          historyRef.current[i] = [...historyRef.current[i], v].slice(-MAX_PTS);
-        }
-      });
-      forceRender(n => n + 1);
-    }, 1000);
+    const id = setInterval(() => forceRender(n => n + 1), 2000);
     return () => clearInterval(id);
-  }, [entries.length]);
+  }, []);
 
-  const PAD_L = 42, PAD_R = 8, PAD_T = 8, PAD_B = 32, LEG_H = entries.length > 0 ? 18 : 0;
+  const now = Date.now();
+  const startT = now - totalMs;
+
+  const PAD_L = 54, PAD_R = 8, PAD_T = 8, PAD_B = 36, LEG_H = entries.length > 0 ? 18 : 0;
   const W = widget.geometry.width;
   const H = widget.geometry.height - LEG_H;
   const plotW = W - PAD_L - PAD_R;
   const plotH = H - PAD_T - PAD_B;
 
-  // Compute Y range across all active channels
-  const allVals = historyRef.current.slice(0, entries.length).flat().filter((v): v is number => v !== null && !isNaN(v));
+  // Clip histories to visible window
+  const histories = historyRef.current.slice(0, 4).map((pts, i) =>
+    i < entries.length ? pts.filter(p => p.t >= startT) : []
+  );
+
+  // Y range across all active channels
+  const allVals = histories.flat().map(p => p.v).filter(v => !isNaN(v));
   const minV = allVals.length ? Math.min(...allVals) : 0;
   const maxVraw = allVals.length ? Math.max(...allVals) : 1;
   const maxV = maxVraw === minV ? minV + 1 : maxVraw;
   const range = maxV - minV;
 
-  const toSvgX = (i: number, total: number) => PAD_L + (total <= 1 ? plotW : (i / (total - 1)) * plotW);
+  const toSvgX = (t: number) => PAD_L + ((t - startT) / totalMs) * plotW;
   const toSvgY = (v: number) => PAD_T + plotH - ((v - minV) / range) * plotH;
 
-  // Y-axis ticks (5 divisions)
-  const N_TICKS = 5;
-  const yTicks = Array.from({ length: N_TICKS + 1 }, (_, i) => minV + (i / N_TICKS) * range);
-  // X-axis ticks as fractions of the plot width [oldest=0 .. newest=1]
-  const xTickFracs = [0, 0.25, 0.5, 0.75, 1.0];
+  // Y ticks
+  const N_Y = 5;
+  const yTicks = Array.from({ length: N_Y + 1 }, (_, i) => minV + (i / N_Y) * range);
+
+  function fmtY(v: number): string {
+    if (v === 0) return "0";
+    const abs = Math.abs(v);
+    if (abs >= 1e4 || abs < 0.01) return v.toExponential(1);
+    return v.toPrecision(3).replace(/\.?0+$/, "");
+  }
+
+  // X ticks — absolute timestamps
+  const N_X = 5;
+  const xTicks = Array.from({ length: N_X + 1 }, (_, i) => startT + (i / N_X) * totalMs);
+
+  function fmtX(t: number): string {
+    const d = new Date(t);
+    const hh = d.getHours().toString().padStart(2, "0");
+    const mm = d.getMinutes().toString().padStart(2, "0");
+    if (unitMs >= 60_000) return `${hh}:${mm}`;
+    const ss = d.getSeconds().toString().padStart(2, "0");
+    return `${hh}:${mm}:${ss}`;
+  }
 
   return (
     <div style={geoStyle(widget.geometry, widget.zIndex)}>
       <svg width={W} height={H + LEG_H} style={{ display: "block", background: "#0a1828", border: "1px solid #1e3a5f" }}>
-        {/* Grid */}
+        {/* Grid lines */}
         {yTicks.map((v, i) => {
           const sy = toSvgY(v);
           return <line key={`gy${i}`} x1={PAD_L} y1={sy} x2={W - PAD_R} y2={sy} stroke="#1e3a5f" strokeWidth={1} />;
         })}
-        {xTickFracs.map((frac, i) => {
-          const sx = PAD_L + frac * plotW;
+        {xTicks.map((t, i) => {
+          const sx = toSvgX(t);
           return <line key={`gx${i}`} x1={sx} y1={PAD_T} x2={sx} y2={PAD_T + plotH} stroke="#1e3a5f" strokeWidth={1} />;
         })}
 
@@ -1712,42 +1745,39 @@ function CaStripPlotWidget({ widget, ns }: { widget: ParsedWidget; ns: string })
         {/* Y ticks + labels */}
         {yTicks.map((v, i) => {
           const sy = toSvgY(v);
-          const label = Math.abs(v) >= 1000 ? v.toExponential(1) : v.toPrecision(3).replace(/\.?0+$/, "");
           return (
             <g key={`yt${i}`}>
               <line x1={PAD_L - 4} y1={sy} x2={PAD_L} y2={sy} stroke="#4a6a8a" strokeWidth={1} />
-              <text x={PAD_L - 6} y={sy + 4} textAnchor="end" fill="#90a4ae" fontSize={9}>{label}</text>
+              <text x={PAD_L - 6} y={sy + 4} textAnchor="end" fill="#90a4ae" fontSize={9}>{fmtY(v)}</text>
             </g>
           );
         })}
 
         {/* X ticks + labels */}
-        {xTickFracs.map((frac, i) => {
-          const sx = PAD_L + frac * plotW;
-          const secsAgo = Math.round((1 - frac) * period);
+        {xTicks.map((t, i) => {
+          const sx = toSvgX(t);
           return (
             <g key={`xt${i}`}>
               <line x1={sx} y1={PAD_T + plotH} x2={sx} y2={PAD_T + plotH + 4} stroke="#4a6a8a" strokeWidth={1} />
-              <text x={sx} y={PAD_T + plotH + 14} textAnchor="middle" fill="#90a4ae" fontSize={9}>{fmtTime(secsAgo)}</text>
+              <text x={sx} y={PAD_T + plotH + 14} textAnchor="middle" fill="#90a4ae" fontSize={9}>{fmtX(t)}</text>
             </g>
           );
         })}
 
         {/* Traces */}
-        {historyRef.current.slice(0, entries.length).map((pts, ci) => {
-          const validPts = pts.map((v, i) => ({ v, i })).filter(p => p.v !== null) as { v: number; i: number }[];
-          if (validPts.length < 2) return null;
-          const d = validPts.map(({ v, i }, idx) =>
-            `${idx === 0 ? "M" : "L"}${toSvgX(i, pts.length).toFixed(1)},${toSvgY(v).toFixed(1)}`
+        {histories.map((pts, ci) => {
+          if (ci >= entries.length || pts.length < 2) return null;
+          const d = pts.map(({ t, v }, idx) =>
+            `${idx === 0 ? "M" : "L"}${toSvgX(t).toFixed(1)},${toSvgY(v).toFixed(1)}`
           ).join(" ");
           return <path key={`tr${ci}`} d={d} fill="none" stroke={colors[ci]} strokeWidth={1.5} />;
         })}
 
         {/* Legend */}
         {entries.map((e, i) => (
-          <g key={`lg${i}`} transform={`translate(${PAD_L + i * 90}, ${H + 2})`}>
+          <g key={`lg${i}`} transform={`translate(${PAD_L + i * 110}, ${H + 2})`}>
             <line x1={0} y1={8} x2={18} y2={8} stroke={colors[i]} strokeWidth={2} />
-            <text x={22} y={12} fill="#90a4ae" fontSize={10}>{e.pv.split(".")[0].slice(-12)}</text>
+            <text x={22} y={12} fill="#90a4ae" fontSize={10}>{e.pv.split(":").pop()?.split(".")[0] ?? e.pv}</text>
           </g>
         ))}
       </svg>

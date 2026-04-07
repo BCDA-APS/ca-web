@@ -103,7 +103,8 @@ export function parseUi(
   const nativeWidth = rootGeom?.width ?? 800;
   const nativeHeight = rootGeom?.height ?? 600;
 
-  const central = doc.querySelector('widget[name="centralWidget"]');
+  const central = doc.querySelector('widget[name="centralWidget"]') ??
+                  doc.querySelector('widget[name="centralwidget"]');
   if (!central) return { nativeWidth, nativeHeight, widgets: [] };
 
   // Build z-index map from <zorder> elements (rendering order = z-index)
