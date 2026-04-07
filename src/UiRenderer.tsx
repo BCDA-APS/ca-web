@@ -1295,17 +1295,14 @@ function CaImageWidget({ widget }: { widget: ParsedWidget }) {
 
 // ── caInclude — embeds another .ui file inline ────────────────────────────────
 
-function CaIncludeWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
-  const baseDir = useContext(BaseDirContext);
-  const parentMacros = useContext(MacrosContext);
-
-  const filename = widget.props["filename"] ?? "";
-  const extraMacros = parseArgs(widget.props["macro"] ?? "");
-  const macros = { ...parentMacros, ...extraMacros };
-
-  const file = filename ? `${baseDir}/${filename.replace(/\.adl$/, ".ui")}` : "";
-  const subBaseDir = file.substring(0, file.lastIndexOf("/")) || "/ui";
-
+// Single instance of an included UI file — used by CaIncludeWidget for both
+// normal and stacked (numberOfItems > 1) caInclude widgets.
+function CaIncludeSingle({
+  file, macros, ns, width, height, subBaseDir,
+}: {
+  file: string; macros: Record<string, string>; ns: string;
+  width: number; height: number; subBaseDir: string;
+}) {
   const [subUi, setSubUi] = useState<ParsedUi | null>(null);
   const [error, setError]  = useState<string | null>(null);
 
@@ -1319,25 +1316,63 @@ function CaIncludeWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [file, JSON.stringify(macros)]);
 
-  const { width, height } = widget.geometry;
-  const containerStyle = { ...geoStyle(widget.geometry, widget.zIndex), overflow: "hidden" as const };
-
-  if (!file)   return null;
-  if (error)   return <div style={{ ...containerStyle, color: "red",  fontSize: 9 }}>{filename}: {error}</div>;
-  if (!subUi)  return <div style={{ ...containerStyle, color: "#888", fontSize: 9 }}>Loading…</div>;
+  if (error)  return <div style={{ width, height, flexShrink: 0, color: "red",  fontSize: 9 }}>{error}</div>;
+  if (!subUi) return <div style={{ width, height, flexShrink: 0, color: "#888", fontSize: 9 }}>…</div>;
 
   const s = Math.min(width / subUi.nativeWidth, height / subUi.nativeHeight);
-  const subNs = `${ns}_${widget.name}`;
-
   return (
-    <div style={containerStyle}>
+    <div style={{ width, height, flexShrink: 0, overflow: "hidden", position: "relative" }}>
       <BaseDirContext.Provider value={subBaseDir}>
         <MacrosContext.Provider value={macros}>
           <div style={{ width: subUi.nativeWidth, height: subUi.nativeHeight, transform: `scale(${s})`, transformOrigin: "top left", position: "relative" }}>
-            {subUi.widgets.map(w => <WidgetRouter key={w.name} widget={w} ns={subNs} />)}
+            {subUi.widgets.map(w => <WidgetRouter key={w.name} widget={w} ns={ns} />)}
           </div>
         </MacrosContext.Provider>
       </BaseDirContext.Provider>
+    </div>
+  );
+}
+
+function CaIncludeWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
+  const baseDir = useContext(BaseDirContext);
+  const parentMacros = useContext(MacrosContext);
+
+  const filename = widget.props["filename"] ?? "";
+  const macroStr = widget.props["macro"] ?? "";
+  const stacking  = widget.props["stacking"] ?? "";
+  const n = parseInt(widget.props["numberOfItems"] ?? "1") || 1;
+
+  const file = filename ? `${baseDir}/${filename.replace(/\.adl$/, ".ui")}` : "";
+  const subBaseDir = file.substring(0, file.lastIndexOf("/")) || "/ui";
+  const { width, height } = widget.geometry;
+  const containerStyle = { ...geoStyle(widget.geometry, widget.zIndex), overflow: "hidden" as const };
+
+  if (!file) return null;
+
+  // Stacked: render N copies side-by-side (Column) or top-to-bottom (Row),
+  // each with its own macro set from the semicolon-separated macro string.
+  const isColumn = stacking.includes("Column");
+  const isRow    = stacking.includes("Row");
+  if (n > 1 && (isColumn || isRow)) {
+    const macroSets = macroStr.split(";").filter(Boolean).map(s => parseArgs(s));
+    const itemW = isColumn ? Math.floor(width / n) : width;
+    const itemH = isRow    ? Math.floor(height / n) : height;
+    return (
+      <div style={{ ...containerStyle, display: "flex", flexDirection: isColumn ? "row" : "column", alignItems: "flex-start" }}>
+        {Array.from({ length: n }, (_, i) => {
+          const extra = macroSets[i] ?? macroSets[macroSets.length - 1] ?? {};
+          const macros = { ...parentMacros, ...extra };
+          return <CaIncludeSingle key={i} file={file} macros={macros} ns={`${ns}_${widget.name}_${i}`} width={itemW} height={itemH} subBaseDir={subBaseDir} />;
+        })}
+      </div>
+    );
+  }
+
+  // Single instance
+  const macros = { ...parentMacros, ...parseArgs(macroStr) };
+  return (
+    <div style={containerStyle}>
+      <CaIncludeSingle file={file} macros={macros} ns={`${ns}_${widget.name}`} width={width} height={height} subBaseDir={subBaseDir} />
     </div>
   );
 }
