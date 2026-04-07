@@ -11,7 +11,7 @@ The source tree lives on an NFS-mounted home directory (`/home/beams3/RODOLAKIS/
   (local PVs)                   (29ID PVs via pvws)
 ```
 
-Both invocations of `npm run dev` run against the same source files. Vite's hot-module replacement means that code edits made on the workstation are picked up immediately by a running dev server on the beamline machine.
+Both invocations of `npm run dev` run against the same source files. However, Vite's file watcher does not detect changes over NFS — after editing code on the workstation, the dev server on the beamline machine must be restarted to pick up the changes.
 
 ## APS security rule
 
@@ -165,11 +165,10 @@ PV names that use 29ID prefixes (e.g. `29idd:`, `29id:`) will connect through pv
 | Local development (simulated PVs) | workstation (beams3) | local podman |
 | Testing 29ID screens | beamline machine | beamline machine |
 
-Because the source directory is NFS-shared, you can:
-
-1. Edit code on the workstation.
-2. The running dev server on the beamline machine picks up changes via HMR automatically.
-3. No restart needed for most changes (React component edits, CSS). Restart needed for changes to `vite.config.ts` or `src/main.tsx`.
+Because the source directory is NFS-shared, you can edit code on the workstation
+and the beamline machine sees the same files. However, Vite's file watcher does
+not detect NFS changes — **restart the dev server on the beamline machine after
+every code edit**.
 
 ## Known pitfalls (lessons learned from first deployment to `mite`)
 
