@@ -1625,14 +1625,18 @@ function CaStripPlotWidget({ widget, ns }: { widget: ParsedWidget; ns: string })
 
   // Each entry may be "LETTER=pvName" (color hint) or just "pvName".
   // Skip entries where the PV is still an unresolved macro "$(…)".
-  const allEntries = rawChannels.split(";").map(s => {
+  // Keep the original slot index so we can look up color_N from the UI file.
+  const allEntries = rawChannels.split(";").map((s, slotIdx) => {
     const eq = s.indexOf("=");
-    if (eq >= 0) return { pv: s.slice(eq + 1).trim() };
-    return { pv: s.trim() };
+    const pv = eq >= 0 ? s.slice(eq + 1).trim() : s.trim();
+    return { pv, slotIdx };
   });
   const entries = allEntries.filter(e => e.pv && !e.pv.includes("$(")).slice(0, 4);
   const pvs = entries.map(e => e.pv);
-  const colors = pvs.map((_, i) => STRIP_COLOR_LIST[i % STRIP_COLOR_LIST.length]);
+  // color_N (1-indexed) is defined in the UI file per slot; fall back to built-in palette.
+  const colors = entries.map((e, i) =>
+    widget.props[`color_${e.slotIdx + 1}`] ?? STRIP_COLOR_LIST[i % STRIP_COLOR_LIST.length]
+  );
 
   // Time window: period × unit multiplier
   const unitsStr = widget.props["units"] ?? "";
@@ -1645,6 +1649,7 @@ function CaStripPlotWidget({ widget, ns }: { widget: ParsedWidget; ns: string })
   // Timestamped history per channel — store {t: epoch-ms, v: number}
   type Pt = { t: number; v: number };
   const historyRef = useRef<Pt[][]>([[], [], [], []]);
+  const latestRef  = useRef<(number | null)[]>([null, null, null, null]);
   const [, forceRender] = useState(0);
 
   // Fixed 4 hook calls (pad missing pvs with "")
@@ -1653,29 +1658,31 @@ function CaStripPlotWidget({ widget, ns }: { widget: ParsedWidget; ns: string })
   const [,,, raw2] = useConnection(`${ns}-strip-${widget.name}-2`, pvs[2] ? `ca://${pvs[2]}` : "");
   const [,,, raw3] = useConnection(`${ns}-strip-${widget.name}-3`, pvs[3] ? `ca://${pvs[3]}` : "");
 
-  // Record a PV update with the current timestamp
-  const totalMsRef = useRef(totalMs);
-  totalMsRef.current = totalMs;
-  function record(idx: number, raw: unknown) {
-    const v = extractDouble(raw);
-    if (v === null || isNaN(v)) return;
-    const now = Date.now();
-    historyRef.current[idx] = [
-      ...historyRef.current[idx].filter(p => now - p.t <= totalMsRef.current),
-      { t: now, v },
-    ];
-  }
+  // Keep latest numeric values in ref so the interval can sample them
+  useEffect(() => { latestRef.current[0] = extractDouble(raw0); }, [raw0]);
+  useEffect(() => { latestRef.current[1] = extractDouble(raw1); }, [raw1]);
+  useEffect(() => { latestRef.current[2] = extractDouble(raw2); }, [raw2]);
+  useEffect(() => { latestRef.current[3] = extractDouble(raw3); }, [raw3]);
 
-  useEffect(() => { if (pvs[0]) record(0, raw0); }, [raw0]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { if (pvs[1]) record(1, raw1); }, [raw1]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { if (pvs[2]) record(2, raw2); }, [raw2]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { if (pvs[3]) record(3, raw3); }, [raw3]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Periodic re-render: advance the time axis even when PV is quiet
+  // Periodic sampler: record one timestamped point per channel at a rate
+  // that gives ≤600 points across the full window, minimum 1 s.
+  const sampleMs = Math.max(1000, Math.round(totalMs / 600));
   useEffect(() => {
-    const id = setInterval(() => forceRender(n => n + 1), 2000);
+    const id = setInterval(() => {
+      const now = Date.now();
+      latestRef.current.forEach((v, i) => {
+        if (i >= pvs.length || v === null || isNaN(v)) return;
+        historyRef.current[i] = [
+          ...historyRef.current[i].filter(p => now - p.t <= totalMs),
+          { t: now, v },
+        ];
+      });
+      forceRender(n => n + 1);
+    }, sampleMs);
     return () => clearInterval(id);
-  }, []);
+  // pvs.length and totalMs are derived from stable widget props
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sampleMs]);
 
   const now = Date.now();
   const startT = now - totalMs;
@@ -1766,7 +1773,11 @@ function CaStripPlotWidget({ widget, ns }: { widget: ParsedWidget; ns: string })
 
         {/* Traces */}
         {histories.map((pts, ci) => {
-          if (ci >= entries.length || pts.length < 2) return null;
+          if (ci >= entries.length || pts.length === 0) return null;
+          if (pts.length === 1) {
+            // Single point — draw a dot until the second sample arrives
+            return <circle key={`tr${ci}`} cx={toSvgX(pts[0].t)} cy={toSvgY(pts[0].v)} r={3} fill={colors[ci]} />;
+          }
           const d = pts.map(({ t, v }, idx) =>
             `${idx === 0 ? "M" : "L"}${toSvgX(t).toFixed(1)},${toSvgY(v).toFixed(1)}`
           ).join(" ");
@@ -1777,7 +1788,7 @@ function CaStripPlotWidget({ widget, ns }: { widget: ParsedWidget; ns: string })
         {entries.map((e, i) => (
           <g key={`lg${i}`} transform={`translate(${PAD_L + i * 110}, ${H + 2})`}>
             <line x1={0} y1={8} x2={18} y2={8} stroke={colors[i]} strokeWidth={2} />
-            <text x={22} y={12} fill="#90a4ae" fontSize={10}>{e.pv.split(":").pop()?.split(".")[0] ?? e.pv}</text>
+            <text x={22} y={12} fill="#90a4ae" fontSize={10}>{(() => { const p = e.pv.split(":"); return p.length >= 3 ? p.slice(-2).join(":") : e.pv; })()}</text>
           </g>
         ))}
       </svg>
