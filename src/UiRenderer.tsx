@@ -500,7 +500,10 @@ function CaChoiceWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
 
 function parseArgs(argsStr: string): Record<string, string> {
   const result: Record<string, string> = {};
-  for (const kv of argsStr.split(",")) {
+  // caQtDM uses ';' to separate macro sets; consume only the first set.
+  // EPICS PV names cannot contain ';' so this is always safe.
+  const firstSet = argsStr.split(";")[0] ?? "";
+  for (const kv of firstSet.split(",")) {
     const eq = kv.indexOf("=");
     if (eq === -1) continue;
     result[kv.slice(0, eq).trim()] = kv.slice(eq + 1).trim();
