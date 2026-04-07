@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [react(), nodePolyfills()],
   server: {
     port: 4200,
-    host: "0.0.0.0"
+    host: "0.0.0.0",
+    allowedHosts: "all"
   }
 });
