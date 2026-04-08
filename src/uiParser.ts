@@ -20,6 +20,7 @@ export interface ParsedWidget {
   props: Record<string, string>;  // all properties as strings (colors as "rgba(r,g,b,a)")
   zIndex: number;       // from <zorder> list
   tabs?: ParsedTab[];   // only present for QTabWidget
+  children?: ParsedWidget[]; // only present for caFrame (relative positions)
 }
 
 export interface ParsedUi {
@@ -149,8 +150,28 @@ export function parseUi(
         continue;
       }
 
-      // Known transparent containers — recurse, offsetting by their position.
-      const isContainer = cls === "caFrame" || cls === "QGroupBox" || cls === "QWidget" || cls === "QFrame";
+      // caFrame — emit as a widget with relative-positioned children so visibility
+      // can hide the whole group at once.
+      if (cls === "caFrame") {
+        if (!geometry) continue;
+        const zIndex = zMap[name] ?? parentZ;
+        const localZorders = Array.from(child.querySelectorAll(":scope > zorder"));
+        if (localZorders.length > 0) {
+          localZorders.forEach((lz, i) => { zMap[lz.textContent ?? ""] = zIndex + i * 0.001; });
+        }
+        const children: ParsedWidget[] = [];
+        collectWidgets(child, children, 0, 0, zIndex);
+        children.sort((a, b) => a.zIndex - b.zIndex);
+        out.push({
+          class: cls, name,
+          geometry: { ...geometry, x: geometry.x + offsetX, y: geometry.y + offsetY },
+          props, zIndex, children,
+        });
+        continue;
+      }
+
+      // Other known transparent containers (Qt internals) — recurse and flatten.
+      const isContainer = cls === "QGroupBox" || cls === "QWidget" || cls === "QFrame";
       if (isContainer) {
         const z = zMap[name] ?? parentZ;
         const dx = geometry ? geometry.x : 0;

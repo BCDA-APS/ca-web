@@ -99,15 +99,26 @@ const ALARM_COLORS: Record<string, string> = {
 };
 
 // ── calc normalization ────────────────────────────────────────────────────────
-// caQtDM visibility calcs use EPICS CALC syntax where = means ==.
-// Convert single = to == before evaluating as JS, preserving ==, !=, <=, >=.
+// caQtDM visibility calcs use EPICS CALC syntax:
+//   single =  → ==    AND/OR keywords → &&/||
 function normalizeCalc(expr: string): string {
   return expr
     .replace(/==/g, "\x00EQ\x00").replace(/!=/g, "\x00NE\x00")
     .replace(/<=/g, "\x00LE\x00").replace(/>=/g, "\x00GE\x00")
     .replace(/=/g, "==")
     .replace(/\x00EQ\x00/g, "==").replace(/\x00NE\x00/g, "!=")
-    .replace(/\x00LE\x00/g, "<=").replace(/\x00GE\x00/g, ">=");
+    .replace(/\x00LE\x00/g, "<=").replace(/\x00GE\x00/g, ">=")
+    .replace(/\bAND\b/gi, "&&").replace(/\bOR\b/gi, "||");
+}
+
+// Evaluate a normalised EPICS calc expression with up to 4 channel values (A–D).
+function evalVisCalc(visCalc: string, a: number, b: number, c: number, d: number): boolean {
+  try {
+    const expr = normalizeCalc(visCalc)
+      .replace(/\bA\b/g, String(a)).replace(/\bB\b/g, String(b))
+      .replace(/\bC\b/g, String(c)).replace(/\bD\b/g, String(d));
+    return Boolean(Function(`"use strict"; return (${expr})`)());
+  } catch { return true; }
 }
 
 // ── font scaling (caQtDM fontScaleMode::WidthAndHeight) ──────────────────────
@@ -137,32 +148,28 @@ function geoStyle(g: ParsedWidget["geometry"], zIndex: number): CSSProperties {
 // ── caGraphics — colored rectangle with conditional PV visibility ──────────────
 
 function CaGraphicsWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
-  const channel = widget.props["channel"] ?? "";
+  const channel  = widget.props["channel"]  ?? "";
   const channelB = widget.props["channelB"] ?? "";
+  const channelC = widget.props["channelC"] ?? "";
+  const channelD = widget.props["channelD"] ?? "";
   const visibility = widget.props["visibility"] ?? "";
-  const visCalc = widget.props["visibilityCalc"] ?? "";
+  const visCalc    = widget.props["visibilityCalc"] ?? "";
 
-  // Always call hooks unconditionally; pass dummy address when no channel.
-  const [, , , rawA] = useConnection(`${ns}-${widget.name}-a`, channel ? `ca://${channel}` : "ca://");
+  const [, , , rawA] = useConnection(`${ns}-${widget.name}-a`, channel  ? `ca://${channel}`  : "ca://");
   const [, , , rawB] = useConnection(`${ns}-${widget.name}-b`, channelB ? `ca://${channelB}` : "ca://");
+  const [, , , rawC] = useConnection(`${ns}-${widget.name}-c`, channelC ? `ca://${channelC}` : "ca://");
+  const [, , , rawD] = useConnection(`${ns}-${widget.name}-d`, channelD ? `ca://${channelD}` : "ca://");
 
   const a = extractDouble(rawA) ?? 0;
   const b = extractDouble(rawB) ?? 0;
+  const c = extractDouble(rawC) ?? 0;
+  const d = extractDouble(rawD) ?? 0;
 
   let visible = true;
   if (channel) {
-    if (visibility.endsWith("IfZero")) visible = a === 0;
+    if (visibility.endsWith("IfZero"))         visible = a === 0;
     else if (visibility.endsWith("IfNotZero")) visible = a !== 0;
-    else if (visibility.endsWith("Calc") && visCalc) {
-      // Evaluate simple calc expressions: replace A/B with values then eval.
-      // Only used for basic arithmetic comparisons — no user input involved.
-      try {
-        const expr = normalizeCalc(visCalc).replace(/\bA\b/g, String(a)).replace(/\bB\b/g, String(b));
-        visible = Boolean(Function(`"use strict"; return (${expr})`)());
-      } catch {
-        visible = true;
-      }
-    }
+    else if (visibility.endsWith("Calc") && visCalc) visible = evalVisCalc(visCalc, a, b, c, d);
   }
 
   if (!visible) return null;
@@ -330,10 +337,9 @@ function CaTextEntryWidget({ widget, ns }: { widget: ParsedWidget; ns: string })
 // ── caMessageButton — writes a fixed value to a PV on click ──────────────────
 
 function CaMessageButtonWidget({ widget, ns: _ns }: { widget: ParsedWidget; ns: string }) {
-  const channel = widget.props["channel"] ?? "";
-  const label = widget.props["label"] ?? "BTN";
+  const channel  = widget.props["channel"]  ?? "";
+  const label    = widget.props["label"]    ?? "BTN";
   const pressMsg = widget.props["pressMessage"] ?? "1";
-
   const fg = widget.props["foreground"] ?? "#fff";
   const bg = widget.props["background"] ?? "#c00";
 
@@ -378,24 +384,25 @@ function CaMessageButtonWidget({ widget, ns: _ns }: { widget: ParsedWidget; ns: 
 function CaLabelWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
   const channel  = widget.props["channel"]  ?? "";
   const channelB = widget.props["channelB"] ?? "";
+  const channelC = widget.props["channelC"] ?? "";
+  const channelD = widget.props["channelD"] ?? "";
   const visibility = widget.props["visibility"] ?? "";
   const visCalc    = widget.props["visibilityCalc"] ?? "";
   const [, , , rawA] = useConnection(`${ns}-${widget.name}-a`, channel  ? `ca://${channel}`  : "ca://");
   const [, , , rawB] = useConnection(`${ns}-${widget.name}-b`, channelB ? `ca://${channelB}` : "ca://");
+  const [, , , rawC] = useConnection(`${ns}-${widget.name}-c`, channelC ? `ca://${channelC}` : "ca://");
+  const [, , , rawD] = useConnection(`${ns}-${widget.name}-d`, channelD ? `ca://${channelD}` : "ca://");
 
   const a = extractDouble(rawA) ?? 0;
   const b = extractDouble(rawB) ?? 0;
+  const c = extractDouble(rawC) ?? 0;
+  const d = extractDouble(rawD) ?? 0;
 
   let visible = true;
   if (channel && visibility) {
-    if (visibility.endsWith("IfZero"))    visible = a === 0;
+    if (visibility.endsWith("IfZero"))         visible = a === 0;
     else if (visibility.endsWith("IfNotZero")) visible = a !== 0;
-    else if (visibility.endsWith("Calc") && visCalc) {
-      try {
-        const expr = normalizeCalc(visCalc).replace(/\bA\b/g, String(a)).replace(/\bB\b/g, String(b));
-        visible = Boolean(Function(`"use strict"; return (${expr})`)());
-      } catch { visible = true; }
-    }
+    else if (visibility.endsWith("Calc") && visCalc) visible = evalVisCalc(visCalc, a, b, c, d);
   }
 
   if (!visible) return null;
@@ -902,7 +909,32 @@ function CaCameraWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
 
 // ── caPolyLine — decorative SVG line ─────────────────────────────────────────
 
-function CaPolyLineWidget({ widget }: { widget: ParsedWidget }) {
+function CaPolyLineWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
+  const channel  = widget.props["channel"]  ?? "";
+  const channelB = widget.props["channelB"] ?? "";
+  const channelC = widget.props["channelC"] ?? "";
+  const channelD = widget.props["channelD"] ?? "";
+  const visibility = widget.props["visibility"] ?? "";
+  const visCalc    = widget.props["visibilityCalc"] ?? "";
+
+  const [, , , rawA] = useConnection(`${ns}-${widget.name}-a`, channel  ? `ca://${channel}`  : "ca://");
+  const [, , , rawB] = useConnection(`${ns}-${widget.name}-b`, channelB ? `ca://${channelB}` : "ca://");
+  const [, , , rawC] = useConnection(`${ns}-${widget.name}-c`, channelC ? `ca://${channelC}` : "ca://");
+  const [, , , rawD] = useConnection(`${ns}-${widget.name}-d`, channelD ? `ca://${channelD}` : "ca://");
+
+  const a = extractDouble(rawA) ?? 0;
+  const b = extractDouble(rawB) ?? 0;
+  const c = extractDouble(rawC) ?? 0;
+  const d = extractDouble(rawD) ?? 0;
+
+  let visible = true;
+  if (channel && visibility) {
+    if (visibility.endsWith("IfZero"))         visible = a === 0;
+    else if (visibility.endsWith("IfNotZero")) visible = a !== 0;
+    else if (visibility.endsWith("Calc") && visCalc) visible = evalVisCalc(visCalc, a, b, c, d);
+  }
+  if (!visible) return null;
+
   const xyPairs = widget.props["xyPairs"] ?? "";
   const fg = widget.props["foreground"] ?? "#00f";
   const lineColor = widget.props["lineColor"] ?? fg;
@@ -1290,8 +1322,33 @@ function PvInfoPanel({ channel, widgetName, widgetClass, onClose }: PvInfoPanelP
 
 // ── caImage — static image file ──────────────────────────────────────────────
 
-function CaImageWidget({ widget }: { widget: ParsedWidget }) {
-  const baseDir = useContext(BaseDirContext);
+function CaImageWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
+  const baseDir  = useContext(BaseDirContext);
+  const channel  = widget.props["channel"]  ?? "";
+  const channelB = widget.props["channelB"] ?? "";
+  const channelC = widget.props["channelC"] ?? "";
+  const channelD = widget.props["channelD"] ?? "";
+  const visibility = widget.props["visibility"] ?? "";
+  const visCalc    = widget.props["visibilityCalc"] ?? "";
+
+  const [, , , rawA] = useConnection(`${ns}-${widget.name}-a`, channel  ? `ca://${channel}`  : "ca://");
+  const [, , , rawB] = useConnection(`${ns}-${widget.name}-b`, channelB ? `ca://${channelB}` : "ca://");
+  const [, , , rawC] = useConnection(`${ns}-${widget.name}-c`, channelC ? `ca://${channelC}` : "ca://");
+  const [, , , rawD] = useConnection(`${ns}-${widget.name}-d`, channelD ? `ca://${channelD}` : "ca://");
+
+  const a = extractDouble(rawA) ?? 0;
+  const b = extractDouble(rawB) ?? 0;
+  const c = extractDouble(rawC) ?? 0;
+  const d = extractDouble(rawD) ?? 0;
+
+  let visible = true;
+  if (channel && visibility) {
+    if (visibility.endsWith("IfZero"))         visible = a === 0;
+    else if (visibility.endsWith("IfNotZero")) visible = a !== 0;
+    else if (visibility.endsWith("Calc") && visCalc) visible = evalVisCalc(visCalc, a, b, c, d);
+  }
+  if (!visible) return null;
+
   const filename = widget.props["filename"] ?? "";
   if (!filename) return null;
   const src = filename.startsWith("/") ? filename : `${baseDir}/${filename}`;
@@ -1389,9 +1446,71 @@ function CaIncludeSingle({
   );
 }
 
+// ── caFrame ───────────────────────────────────────────────────────────────────
+// Container widget that groups children and supports visibility.
+
+function CaFrameWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
+  const channel  = widget.props["channel"]  ?? "";
+  const channelB = widget.props["channelB"] ?? "";
+  const channelC = widget.props["channelC"] ?? "";
+  const channelD = widget.props["channelD"] ?? "";
+  const [, , , rawA] = useConnection(`${ns}-${widget.name}-a`, channel  ? `ca://${channel}`  : "ca://");
+  const [, , , rawB] = useConnection(`${ns}-${widget.name}-b`, channelB ? `ca://${channelB}` : "ca://");
+  const [, , , rawC] = useConnection(`${ns}-${widget.name}-c`, channelC ? `ca://${channelC}` : "ca://");
+  const [, , , rawD] = useConnection(`${ns}-${widget.name}-d`, channelD ? `ca://${channelD}` : "ca://");
+  const a = extractDouble(rawA) ?? 0;
+  const b = extractDouble(rawB) ?? 0;
+  const c = extractDouble(rawC) ?? 0;
+  const d = extractDouble(rawD) ?? 0;
+  const visibility = widget.props["visibility"] ?? "";
+  const visCalc    = widget.props["visibilityCalc"] ?? "";
+  let visible = true;
+  if (channel && visibility) {
+    if      (visibility === "ifNotZero")  visible = a !== 0;
+    else if (visibility === "ifZero")     visible = a === 0;
+    else if (visibility.endsWith("Calc") && visCalc) visible = evalVisCalc(visCalc, a, b, c, d);
+  }
+  if (!visible) return null;
+
+  const children = widget.children ?? [];
+  return (
+    <div style={{ ...geoStyle(widget.geometry, widget.zIndex), overflow: "hidden" }}>
+      {children.map(w => (
+        <WidgetErrorBoundary key={w.name} name={w.name}>
+          <WidgetRouter widget={w} ns={`${ns}_frame`} />
+        </WidgetErrorBoundary>
+      ))}
+    </div>
+  );
+}
+
+// ── caInclude ─────────────────────────────────────────────────────────────────
+
 function CaIncludeWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
   const baseDir = useContext(BaseDirContext);
   const parentMacros = useContext(MacrosContext);
+
+  const channel  = widget.props["channel"]  ?? "";
+  const channelB = widget.props["channelB"] ?? "";
+  const channelC = widget.props["channelC"] ?? "";
+  const channelD = widget.props["channelD"] ?? "";
+  const [, , , rawA] = useConnection(`${ns}-${widget.name}-a`, channel  ? `ca://${channel}`  : "ca://");
+  const [, , , rawB] = useConnection(`${ns}-${widget.name}-b`, channelB ? `ca://${channelB}` : "ca://");
+  const [, , , rawC] = useConnection(`${ns}-${widget.name}-c`, channelC ? `ca://${channelC}` : "ca://");
+  const [, , , rawD] = useConnection(`${ns}-${widget.name}-d`, channelD ? `ca://${channelD}` : "ca://");
+  const a = extractDouble(rawA) ?? 0;
+  const b = extractDouble(rawB) ?? 0;
+  const c = extractDouble(rawC) ?? 0;
+  const d = extractDouble(rawD) ?? 0;
+  const visibility = widget.props["visibility"] ?? "";
+  const visCalc    = widget.props["visibilityCalc"] ?? "";
+  let visible = true;
+  if (channel && visibility) {
+    if      (visibility === "ifNotZero")  visible = a !== 0;
+    else if (visibility === "ifZero")     visible = a === 0;
+    else if (visibility.endsWith("Calc") && visCalc) visible = evalVisCalc(visCalc, a, b, c, d);
+  }
+  if (!visible) return null;
 
   const filename = widget.props["filename"] ?? "";
   const macroStr = widget.props["macro"] ?? "";
@@ -1839,13 +1958,14 @@ function WidgetRouter({ widget, ns }: { widget: ParsedWidget; ns: string }) {
     case "caMessageButton":  return <CaMessageButtonWidget widget={widget} ns={ns} />;
     case "caRelatedDisplay": return <CaRelatedDisplayWidget widget={widget} ns={ns} />;
     case "caMenu":           return <CaMenuWidget widget={widget} ns={ns} />;
-    case "caPolyLine":       return <CaPolyLineWidget widget={widget} />;
+    case "caPolyLine":       return <CaPolyLineWidget widget={widget} ns={ns} />;
     case "caCartesianPlot":  return <CaCartesianPlotWidget widget={widget} ns={ns} />;
     case "caByte":           return <CaByteWidget widget={widget} ns={ns} />;
     case "caCamera":         return <CaCameraWidget widget={widget} ns={ns} />;
+    case "caFrame":          return <CaFrameWidget widget={widget} ns={ns} />;
     case "caInclude":        return <CaIncludeWidget widget={widget} ns={ns} />;
     case "QTabWidget":       return <QTabWidgetComponent widget={widget} ns={ns} />;
-    case "caImage":          return <CaImageWidget widget={widget} />;
+    case "caImage":          return <CaImageWidget widget={widget} ns={ns} />;
     case "caLed":            return <CaLedWidget widget={widget} ns={ns} />;
     case "caThermo":         return <CaThermoWidget widget={widget} ns={ns} />;
     case "caSpinbox":        return <CaSpinboxWidget widget={widget} ns={ns} />;
