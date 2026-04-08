@@ -66,19 +66,20 @@ Three tabs in the left sidebar:
 
 | Widget | Notes |
 |---|---|
-| `caLabel` | Static text |
+| `caLabel` | Static text; supports visibility |
 | `caLineEdit` | Readback; uses PV PREC for formatting; switches to exponential for values < 0.01 or ≥ 1e5 (matches caQtDM decimal format); supports hex format (`0x…`) |
 | `caTextEntry` | Writeable PV input |
-| `caGraphics` | Rectangle, circle/ellipse (via `borderRadius: 50%`), filled or outlined; dashed border |
+| `caGraphics` | Rectangle, circle/ellipse (via `borderRadius: 50%`), filled or outlined; dashed border; supports visibility |
 | `caChoice` | Enum dropdown |
 | `caMenu` | Variable dropdown with 3D relief |
 | `caMessageButton` | Momentary write button |
 | `caRelatedDisplay` | Opens overlay panels; `stackingMode="Hidden"` renders as transparent overlay |
-| `caPolyLine` | SVG polylines and filled polygons; dash styles (Dot, Dash, BigDash); filters INT_MIN sentinel points |
+| `caPolyLine` | SVG polylines and filled polygons; dash styles (Dot, Dash, BigDash); filters INT_MIN sentinel points; supports visibility |
 | `caByte` | Bit field display (colored squares, startBit..endBit) |
 | `caCamera` | Live area detector image display (see below) |
-| `caInclude` | Embeds another `.ui` file inline; inherits parent macros; supports `stacking=Column/Row` with `numberOfItems` for side-by-side or stacked copies each with their own macro set |
-| `caImage` | Static image file (GIF, PNG, etc.) referenced by `filename` prop |
+| `caFrame` | Grouping container; children are positioned relative to the frame; supports visibility (hides entire group) |
+| `caInclude` | Embeds another `.ui` file inline; inherits parent macros; supports `stacking=Column/Row` with `numberOfItems` for side-by-side or stacked copies each with their own macro set; supports visibility |
+| `caImage` | Static image file (GIF, PNG, etc.) referenced by `filename` prop; supports visibility |
 | `QTabWidget` | Tabbed container with clickable tab bar; defaults to `currentIndex`; children positioned relative to tab page |
 | `caCartesianPlot` | XY line/dot chart for waveform PVs; auto-scales axes; up to 4 curves |
 | `caLed` | Boolean indicator; color from `trueColor`/`falseColor` props (default: red/grey) |
@@ -87,7 +88,7 @@ Three tabs in the left sidebar:
 | `caSlider` | Horizontal/vertical slider; limits from LOPR/HOPR (then DLLM/DHLM, then `.ui` min/max) |
 | `caToggleButton` | Checkbox that writes 0/1 to a PV |
 | `caTable` | Multi-PV readback table (name · value · units); up to 16 PVs |
-| `caStripPlot` | Rolling time-series chart; SVG with grid, axes, ticks, legend; `period` prop sets window (default 60 s) |
+| `caStripPlot` | Rolling time-series chart; SVG with grid, axes, ticks, legend; `period` × `units` (Second/Minute/Hour) sets time window; per-slot colors from `color_N` props; legend shows last two colon-separated PV name segments |
 
 ### caCartesianPlot
 
@@ -108,3 +109,26 @@ Connects to `channelData`, `channelWidth`, `channelHeight` PVs. Features:
 - FPS counter
 - Cursor readout (x/y/pixel value on hover)
 - Zoom sidebar (1x–8x, fit-to-viewport)
+
+## Visibility System
+
+caQtDM widgets can be conditionally hidden via four properties:
+
+| Property | Description |
+|---|---|
+| `channel` / `channelB` / `channelC` / `channelD` | PVs mapped to variables A, B, C, D in the calc expression |
+| `visibility` | Mode: `ifNotZero` (show when A≠0), `ifZero` (show when A=0), `Calc` (evaluate `visibilityCalc`) |
+| `visibilityCalc` | EPICS CALC expression using A–D; result `false`/`0` hides the widget |
+
+Supported widgets: `caGraphics`, `caLabel`, `caPolyLine`, `caImage`, `caFrame`, `caInclude`.
+
+### EPICS CALC syntax differences from JavaScript
+
+caQtDM uses EPICS CALC syntax which differs from JavaScript in two ways that are normalised automatically:
+
+- Single `=` means equality (`==`), not assignment — e.g. `A=1` means `A == 1`
+- `AND` / `OR` keywords instead of `&&` / `||` — e.g. `C=0 AND A=1 OR B=2`
+
+### caFrame visibility
+
+A `caFrame` with visibility hides its entire group of children at once. In the parser, `caFrame` children are stored with positions relative to the frame (not flattened into the parent coordinate space), so the renderer can wrap them in a single clipping div and show/hide the whole group.
