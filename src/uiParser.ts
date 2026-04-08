@@ -108,10 +108,14 @@ export function parseUi(
                   doc.querySelector('widget[name="centralwidget"]');
   if (!central) return { nativeWidth, nativeHeight, widgets: [] };
 
-  // Build z-index map from <zorder> elements (rendering order = z-index)
+  // Build z-index map from <zorder> elements (rendering order = z-index).
+  // Top-level items are spaced 1000 apart so that local sub-indices (which use
+  // integer offsets of 0,1,2,...) stay within [N*1000, (N+1)*1000) and remain
+  // distinct integers in CSS — avoiding the CSS z-index truncation problem where
+  // fractional values like 2.003 and 2.000 both become CSS z-index:2.
   const zorders = Array.from(central.querySelectorAll(":scope > zorder"));
   const zMap: Record<string, number> = {};
-  zorders.forEach((z, i) => { zMap[z.textContent ?? ""] = i; });
+  zorders.forEach((z, i) => { zMap[z.textContent ?? ""] = i * 1000; });
 
   // Recursively collect widgets into `out`.
   // offsetX/Y accumulate parent container positions (absolute screen coords).
@@ -157,7 +161,7 @@ export function parseUi(
         const zIndex = zMap[name] ?? parentZ;
         const localZorders = Array.from(child.querySelectorAll(":scope > zorder"));
         if (localZorders.length > 0) {
-          localZorders.forEach((lz, i) => { zMap[lz.textContent ?? ""] = zIndex + i * 0.001; });
+          localZorders.forEach((lz, i) => { zMap[lz.textContent ?? ""] = zIndex + i; });
         }
         const children: ParsedWidget[] = [];
         collectWidgets(child, children, 0, 0, zIndex);
@@ -179,7 +183,7 @@ export function parseUi(
         // Build a local z-order map for children of this container.
         const localZorders = Array.from(child.querySelectorAll(":scope > zorder"));
         if (localZorders.length > 0) {
-          localZorders.forEach((lz, i) => { zMap[lz.textContent ?? ""] = z + i * 0.001; });
+          localZorders.forEach((lz, i) => { zMap[lz.textContent ?? ""] = z + i; });
         }
         collectWidgets(child, out, offsetX + dx, offsetY + dy, z);
       } else if (geometry) {

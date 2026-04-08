@@ -202,12 +202,13 @@ function CaLineEditWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) 
   const channel = widget.props["channel"] ?? "";
   const [, connected, , rawValue] = useConnection(`${ns}-${widget.name}`, `ca://${channel}`);
 
-  // Use PV's own PREC field for formatting (same as caQtDM).
-  // For string/enum PVs (DESC, DTYP, EGU, enum labels), pvws may send both
-  // doubleValue (enum index) and stringValue (label). Prefer the label when
-  // the stringValue is non-numeric (e.g. "asynMotor", "Use", "Degrees").
+  // Precision: use the UI file's precision prop if set; fall back to the PV's PREC field.
+  // caQtDM overrides with the UI file value when specified.
   const dbl = extractDouble(rawValue);
-  const prec = extractPrecision(rawValue);
+  const uiPrec = widget.props["precision"] !== undefined && widget.props["precision"] !== ""
+    ? parseInt(widget.props["precision"])
+    : null;
+  const prec = uiPrec !== null && !isNaN(uiPrec) ? uiPrec : extractPrecision(rawValue);
   const rawSV = ((rawValue as { value?: { stringValue?: string } })?.value?.stringValue?.replace(/\x00.*/, ""))
              ?? decodeCharWaveform(rawValue) ?? undefined;
 
@@ -367,9 +368,12 @@ function CaMessageButtonWidget({ widget, ns: _ns }: { widget: ParsedWidget; ns: 
         border: "none",
         borderRadius: 2,
         fontFamily: "sans-serif",
-        fontSize: scaledFont(widget.geometry.height),
+        // Scale font to fit both height and width — narrow buttons need smaller text.
+        fontSize: Math.min(scaledFont(widget.geometry.height), widget.geometry.width * 0.22),
         cursor: "pointer",
         padding: 0,
+        overflow: "hidden",
+        whiteSpace: "nowrap",
         boxShadow: pressed ? BTN_PRESSED : BTN_RAISED,
         filter: pressed ? "brightness(0.85)" : "brightness(1.05)",
       }}

@@ -42,7 +42,7 @@ podman run --network=host -d --name pvws \
 
 ## Public UI File Layout
 
-`.ui` files are served from `public/ui/`. Two symlinks provide access to external screen libraries:
+`.ui` files are served from `public/ui/`. Three symlinks provide access to external screen libraries:
 
 | Path | Points to |
 |---|---|
