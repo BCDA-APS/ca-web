@@ -182,6 +182,56 @@ function CaGraphicsWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) 
   const form = widget.props["form"] ?? "";
   const isCircle = form.includes("Circle") || form.includes("Ellipse");
 
+  // caGraphics::Arrow — rendered as SVG. tiltAngle: 0=right, 90=up, 180=left, 270=down.
+  // Computes arrow geometry directly so it always fits within the bounding box.
+  if (form.includes("Arrow")) {
+    const tiltAngle = parseInt(widget.props["tiltAngle"] ?? "0");
+    const arrowSize = parseInt(widget.props["arrowSize"] ?? "10");
+    const { x, y, width, height } = widget.geometry;
+    const cx = width / 2, cy = height / 2;
+
+    // Arrow direction vector in screen coords (y increases downward).
+    // tiltAngle=0→right, 90→up (−y), 180→left, 270→down (+y).
+    const rad = (tiltAngle * Math.PI) / 180;
+    const dirX = Math.cos(rad);
+    const dirY = -Math.sin(rad);
+
+    // Maximum reach from center before hitting the bounding box edge.
+    const tMax = Math.min(
+      Math.abs(dirX) > 1e-6 ? Math.abs(cx / dirX) : Infinity,
+      Math.abs(dirY) > 1e-6 ? Math.abs(cy / dirY) : Infinity,
+    );
+
+    // Arrowhead half-width is bounded by the perpendicular dimension.
+    const perpDim = Math.abs(dirX) > 0.5 ? height : width;
+    const headSize = Math.min(arrowSize, perpDim / 2);
+    const headHalf = headSize / 2;
+
+    // Key points along the arrow axis.
+    const tipX   = cx + tMax * dirX,           tipY   = cy + tMax * dirY;
+    const baseX  = cx + (tMax - headSize) * dirX, baseY  = cy + (tMax - headSize) * dirY;
+    const startX = cx - tMax * dirX,           startY = cy - tMax * dirY;
+
+    // Perpendicular unit vector for arrowhead spread.
+    const perpX = -dirY, perpY = dirX;
+    const h1x = baseX + perpX * headHalf, h1y = baseY + perpY * headHalf;
+    const h2x = baseX - perpX * headHalf, h2y = baseY - perpY * headHalf;
+
+    return (
+      <svg
+        style={{ position: "absolute", left: x, top: y, width, height, zIndex: widget.zIndex, overflow: "visible", pointerEvents: "none" }}
+      >
+        <line x1={startX} y1={startY} x2={baseX} y2={baseY} stroke={fg} strokeWidth={lineSize} />
+        <polygon
+          points={`${tipX},${tipY} ${h1x},${h1y} ${h2x},${h2y}`}
+          fill={filled ? fg : "none"}
+          stroke={fg}
+          strokeWidth={lineSize}
+        />
+      </svg>
+    );
+  }
+
   return (
     <div
       style={{
