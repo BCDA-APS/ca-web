@@ -398,6 +398,7 @@ function FilePickerDialog({ files, onClose, onOpen }: {
   const [query,    setQuery]    = useState("");
   const [selected, setSelected] = useState<UiFile | null>(null);
   const [macroStr, setMacroStr] = useState("");
+  const [hints,    setHints]    = useState<string[]>([]);
 
   // Close on Escape
   useEffect(() => {
@@ -405,6 +406,20 @@ function FilePickerDialog({ files, onClose, onOpen }: {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  // When a file is selected, fetch it and extract $(MACRO) references as hints.
+  useEffect(() => {
+    if (!selected) { setHints([]); return; }
+    fetch(`/ui/${selected.name}`)
+      .then(r => r.text())
+      .then(xml => {
+        const found = new Set<string>();
+        for (const m of xml.matchAll(/\$\(([A-Za-z_][A-Za-z0-9_]*)\)/g))
+          found.add(m[1]);
+        setHints([...found].sort());
+      })
+      .catch(() => setHints([]));
+  }, [selected]);
 
   const q = query.toLowerCase();
   const filtered = files.filter(f =>
@@ -497,15 +512,32 @@ function FilePickerDialog({ files, onClose, onOpen }: {
           </div>
 
           {/* Macros */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ color: "#90caf9", fontSize: 12, flexShrink: 0 }}>Macros:</span>
-            <input
-              placeholder="P=fr:,M=m1"
-              value={macroStr}
-              onChange={e => setMacroStr(e.target.value)}
-              onKeyDown={e => { if (e.key === "Enter") handleOpen(); }}
-              style={{ ...inputStyle, flex: 1 }}
-            />
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ color: "#90caf9", fontSize: 12, flexShrink: 0 }}>Macros:</span>
+              <input
+                placeholder="P=fr:,M=m1"
+                value={macroStr}
+                onChange={e => setMacroStr(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") handleOpen(); }}
+                style={{ ...inputStyle, flex: 1 }}
+              />
+            </div>
+            {hints.length > 0 && (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, paddingLeft: 58, flexWrap: "wrap" }}>
+                <span style={{ color: "#546e8a", fontSize: 11 }}>Expected:</span>
+                {hints.map(h => (
+                  <span
+                    key={h}
+                    title={`Click to add ${h}=`}
+                    onClick={() => setMacroStr(s => s ? `${s},${h}=` : `${h}=`)}
+                    style={{ color: "#4a90d9", fontSize: 11, fontFamily: "monospace", cursor: "pointer", background: "#0a1828", borderRadius: 3, padding: "1px 5px", border: "1px solid #1e3a5f" }}
+                  >
+                    {h}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Footer */}
