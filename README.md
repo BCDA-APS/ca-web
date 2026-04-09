@@ -42,13 +42,19 @@ podman run --network=host -d --name pvws \
 
 ## Public UI File Layout
 
-`.ui` files are served from `public/ui/`. Three symlinks provide access to external screen libraries:
+`.ui` files for the main 29-ID displays are served from `public/ui/`.
 
-| Path | Points to |
-|---|---|
-| `public/ui/motors` | motor screens (`motorApp/op/ui/autoconvert/`) |
-| `public/ui/ADCore` | area detector screens (`ADCore/ADApp/op/ui/`) |
-| `public/ui/29id` | 29-ID beamline screens (`/net/s29dserv/xorApps/ui/29id/`) |
+The dev server automatically resolves displays not found in `public/ui/` by searching
+the same directory list that the desktop caQtDM uses. It does this by parsing the
+caQtDM startup script (`/net/s29dserv/xorApps/ui/start_epics_29id`) and the sourced
+release file (`release_6.3`) at startup — no paths are hardcoded. This covers all
+synApps modules (motor, calc, sscan, optics, etc.), APSshare storage ring screens,
+and site-specific paths.
+
+If a display is only available in `.adl` (MEDM) format, it is converted on the fly
+using `/APSshare/bin/adl2ui` and cached in `.ui-cache/` (git-ignored).
+
+See `docs/display-path-resolution.md` for full details.
 
 ## Page Layout
 
