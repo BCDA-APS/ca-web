@@ -37,6 +37,27 @@ If for some reason pvws runs on a different machine than the Vite server, set:
 VITE_PVWS_SOCKET=<pvws-hostname>:8080
 ```
 
+> **Long-term plan:** once development stabilises, `.env` will default to
+> `VITE_PVWS_SOCKET=mite:8080` (distributed mode as the standard deployment) and will
+> be removed from version control so each machine can keep its own copy.
+
+### Running two instances simultaneously (NFS workspace)
+
+Because `.env` is on the NFS-shared workspace, it is the **same file** on all machines.
+To run `npm run dev` on both `nefarian` (simulated IOC) and `mite` (beamline PVs) at
+the same time without editing `.env`, override `VITE_PVWS_SOCKET` via a shell variable —
+Vite does not override existing shell env vars with `.env` values:
+
+```bash
+# on mite — browser connects to mite's pvws
+VITE_PVWS_SOCKET=mite:8080 npm run dev
+
+# on nefarian — uses .env default (localhost:8080), no override needed
+npm run dev
+```
+
+Each browser then connects to the pvws on the machine it is running on.
+
 ### `vite.config.ts`
 
 The dev server must bind to all interfaces so it is reachable from other machines on the subnet:

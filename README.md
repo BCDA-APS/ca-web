@@ -10,13 +10,39 @@ Requires a conda environment with Node.js. Create one if needed:
 conda create -n nodejs nodejs
 ```
 
-Then activate and run:
+### Local mode (default)
+
+Run Vite and pvws on the same machine; open the app in a browser on that machine.
+The default `.env` uses `localhost:8080` so each machine connects to its own pvws:
 
 ```bash
 cd ~/workspace/caqtdm-web
 conda activate nodejs
 npm run dev
 ```
+
+Then open `http://localhost:4200` in a browser on the same machine.
+
+### Distributed mode (beamline access)
+
+Run everything on a beamline subnet machine (e.g. `mite`) so any subnet browser can
+reach the app and its pvws. Because the workspace is NFS-mounted, no code duplication
+is needed — just override `VITE_PVWS_SOCKET` via a shell environment variable so the
+browser knows where to find pvws:
+
+```bash
+VITE_PVWS_SOCKET=mite:8080 npm run dev
+```
+
+Then open `http://mite:4200` from any machine on the subnet. pvws must also be running
+on `mite` (see pvws Setup below). The `.env` file is **not** edited — the shell variable
+takes precedence and the default `localhost:8080` remains correct for local mode on
+other machines sharing the same NFS workspace.
+
+> **Long-term plan:** once development stabilises, `.env` will default to
+> `VITE_PVWS_SOCKET=mite:8080` (distributed mode as the standard deployment) and will
+> be removed from version control so each machine can have its own copy. For now it
+> stays at `localhost:8080` and is kept in the repo to simplify the dev workflow.
 
 ## pvws Setup
 

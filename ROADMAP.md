@@ -12,25 +12,19 @@ A good test: open `ADBase.ui` and audit what renders vs. what shows nothing.
 
 ## 2. Macro inheritance in related displays
 
-When a `caRelatedDisplay` opens a screen with `args="P=$(P),R=cam1:"`,
-the `$(P)` is substituted at parse time by the parent macros — this works
-for one level. But if that child screen opens another screen, the chain
-may break because the overlay `UiRenderer` is given only the parsed args
-as macros, not the full parent macro set.
+`parseUi` already applies macro substitution to all property values at parse
+time, including the `args` string in `caRelatedDisplay`. So `$(P)` in args is
+resolved before `CaRelatedDisplayWidget` ever reads it — the chain works for
+the common case. The only gap is when a child's related display has empty args
+but the grandchild still needs macros from the grandparent (never explicitly
+forwarded). Not yet observed in practice at 29-ID.
 
-Fix: in `CaRelatedDisplayWidget`, merge parent macros (from `MacrosContext`)
-with the parsed item macros before passing them to the overlay.
+## 3. ~~Open arbitrary `.ui` files~~ ✓ Done
 
-## 3. Open arbitrary `.ui` files
-
-The app is currently hardcoded to specific screens. Options:
-
-- **URL parameter** — `?ui=/ui/ADCore/autoconvert/ADBase.ui&P=myad:&R=cam1:`
-  so any screen can be loaded by URL
-- **File picker** — a UI element to browse available `.ui` files from the
-  `motors/` and `ADCore/` symlink trees
-- **Config-driven** — a YAML/JSON config listing the screens to show on
-  the main page (revive `display.yaml` but actually load it)
+An "Open…" button in the header opens a searchable file picker listing all
+`.ui` files from the NFS display search path. Selecting a file opens it as a
+floating overlay. A macro input with auto-detected hints (scanned from the
+`.ui` file) lets the user supply the correct macro set before opening.
 
 ## 4. caCamera polish
 
