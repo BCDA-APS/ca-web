@@ -121,15 +121,51 @@ function buildSearchPaths(): string[] {
   return existing;
 }
 
+// Builds a list of all available .ui files from public/ui/ and NFS search paths.
+// .adl files are included as .ui (the serving layer converts them transparently).
+function buildFileList(searchPaths: string[]): { name: string; dir: string }[] {
+  const files: { name: string; dir: string }[] = [];
+
+  // public/ui/ first
+  const publicUiDir = path.join(process.cwd(), "public", "ui");
+  try {
+    for (const f of fs.readdirSync(publicUiDir)) {
+      if (f.endsWith(".ui")) files.push({ name: f, dir: "app" });
+    }
+  } catch {}
+
+  // NFS search paths
+  for (const dir of searchPaths) {
+    try {
+      for (const f of fs.readdirSync(dir)) {
+        if (f.endsWith(".ui"))  files.push({ name: f,                         dir: path.basename(dir) });
+        if (f.endsWith(".adl")) files.push({ name: f.replace(/\.adl$/, ".ui"), dir: path.basename(dir) });
+      }
+    } catch {}
+  }
+
+  return files;
+}
+
 // Vite plugin: intercepts GET /ui/<filename> and searches NFS paths as fallback.
 function uiSearchPathPlugin() {
   const searchPaths = buildSearchPaths();
+  const uiFileList  = buildFileList(searchPaths);
+  console.log(`[ui-search-path] ${uiFileList.length} display files indexed`);
 
   return {
     name: "ui-search-path",
     configureServer(server: any) {
       server.middlewares.use((req: any, res: any, next: any) => {
         const url: string = req.url ?? "";
+
+        // File index endpoint for the file picker.
+        if (url === "/api/ui-files" && req.method === "GET") {
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify(uiFileList));
+          return;
+        }
+
         if (!url.startsWith("/ui/")) return next();
 
         const filename = url.slice(4).split("?")[0]; // strip /ui/ prefix and query

@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import { MotorRow } from "./MotorRow";
 import { ReadbackRow } from "./ReadbackRow";
 import { StripChartWidget } from "./StripChartWidget";
-import { UiRenderer } from "./UiRenderer";
+import { UiRenderer, parseArgs } from "./UiRenderer";
 
 // ── Top-level error boundary ──────────────────────────────────────────────────
 // Catches crashes caused by unexpected PV data during IOC reconnection.
@@ -53,6 +53,7 @@ const PANEL_DEFAULTS: Record<string, { x: number; y: number }> = {
   "area-detector": { x: 108, y: 800 },
   test:            { x: 108, y:  56 },
   "29idc-arpes":   { x: 108, y:  56 },
+  "29idd-kappa":   { x: 108, y:  56 },
 };
 
 // Global z-index counter so clicking a panel brings it to the front.
@@ -227,6 +228,7 @@ const TABS = [
   { id: 1, icon: "⌂",  label: "Home" },
   { id: 2, icon: "🔬", label: "Test" },
   { id: 3, icon: "⚛",  label: "29ID-C" },
+  { id: 4, icon: "⚛",  label: "29ID-D" },
 ];
 
 function Sidebar({ active, onSelect }: { active: number; onSelect: (id: number) => void }) {
@@ -376,14 +378,164 @@ function SettingsPanel({ onClose, onReset }: { onClose: () => void; onReset: () 
   );
 }
 
+// ── File picker ───────────────────────────────────────────────────────────────
+
+interface UiFile { name: string; dir: string }
+
+function useUiFiles(): UiFile[] {
+  const [files, setFiles] = useState<UiFile[]>([]);
+  useEffect(() => {
+    fetch("/api/ui-files").then(r => r.json()).then(setFiles).catch(() => {});
+  }, []);
+  return files;
+}
+
+function FilePickerDialog({ files, onClose, onOpen }: {
+  files: UiFile[];
+  onClose: () => void;
+  onOpen: (file: string, macros: Record<string, string>) => void;
+}) {
+  const [query,    setQuery]    = useState("");
+  const [selected, setSelected] = useState<UiFile | null>(null);
+  const [macroStr, setMacroStr] = useState("");
+
+  // Close on Escape
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const q = query.toLowerCase();
+  const filtered = files.filter(f =>
+    f.name.toLowerCase().includes(q) || f.dir.toLowerCase().includes(q)
+  );
+  const capped    = filtered.slice(0, 100);
+  const overflow  = filtered.length > 100;
+
+  function handleOpen() {
+    if (!selected) return;
+    onOpen(`/ui/${selected.name}`, parseArgs(macroStr));
+    onClose();
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%", boxSizing: "border-box",
+    background: "#1e2a3a", border: "1px solid #4a90d9",
+    color: "#fff", padding: "6px 8px", borderRadius: 4,
+    fontSize: 13, outline: "none",
+  };
+  const btnStyle = (primary: boolean): React.CSSProperties => ({
+    background: primary ? "#1a3a5c" : "none",
+    border: `1px solid ${primary ? "#4a90d9" : "#546e8a"}`,
+    color: primary ? "#90caf9" : "#546e8a",
+    borderRadius: 4, padding: "5px 16px",
+    cursor: primary && !selected ? "default" : "pointer",
+    fontSize: 13, opacity: primary && !selected ? 0.4 : 1,
+  });
+
+  return createPortal(
+    <>
+      {/* Backdrop */}
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 9990 }} />
+
+      {/* Dialog */}
+      <div style={{
+        position: "fixed", top: "50%", left: "50%",
+        transform: "translate(-50%,-50%)",
+        zIndex: 9991, width: 520,
+        background: "#0f2035", border: "1px solid #1e3a5f",
+        borderRadius: 8, boxShadow: "0 8px 32px rgba(0,0,0,0.7)",
+        display: "flex", flexDirection: "column",
+        fontFamily: "Liberation Sans, Arial, sans-serif",
+      }}>
+        {/* Header */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 14px", background: "#1a3a5c", borderRadius: "8px 8px 0 0" }}>
+          <span style={{ color: "#bbdefb", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>Open Display</span>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "#90caf9", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: "0 2px" }}>×</button>
+        </div>
+
+        <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+          {/* Search */}
+          <input
+            autoFocus
+            placeholder="Search by name or module…"
+            value={query}
+            onChange={e => { setQuery(e.target.value); setSelected(null); }}
+            style={inputStyle}
+          />
+
+          {/* File list */}
+          <div style={{ height: 300, overflowY: "auto", border: "1px solid #1e3a5f", borderRadius: 4, background: "#0a1828" }}>
+            {capped.map(f => (
+              <div
+                key={`${f.dir}/${f.name}`}
+                onClick={() => setSelected(f)}
+                onDoubleClick={() => { setSelected(f); handleOpen(); }}
+                style={{
+                  display: "flex", justifyContent: "space-between", alignItems: "center",
+                  padding: "5px 10px", cursor: "pointer",
+                  background: selected?.name === f.name && selected?.dir === f.dir ? "#1a3a5c" : "transparent",
+                  borderLeft: `3px solid ${selected?.name === f.name && selected?.dir === f.dir ? "#4a90d9" : "transparent"}`,
+                  color: "#cce0ff", fontSize: 13,
+                }}
+                onMouseEnter={e => { if (selected?.name !== f.name || selected?.dir !== f.dir) (e.currentTarget as HTMLElement).style.background = "#12253a"; }}
+                onMouseLeave={e => { if (selected?.name !== f.name || selected?.dir !== f.dir) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+              >
+                <span style={{ fontFamily: "monospace", fontSize: 12 }}>{f.name}</span>
+                <span style={{ color: "#546e8a", fontSize: 11, fontFamily: "monospace", marginLeft: 12, flexShrink: 0 }}>{f.dir}</span>
+              </div>
+            ))}
+            {overflow && (
+              <div style={{ padding: "6px 10px", color: "#546e8a", fontSize: 11, fontStyle: "italic" }}>
+                Showing 100 of {filtered.length} — refine your search
+              </div>
+            )}
+            {filtered.length === 0 && (
+              <div style={{ padding: "12px 10px", color: "#546e8a", fontSize: 12 }}>No files match</div>
+            )}
+          </div>
+
+          {/* Macros */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ color: "#90caf9", fontSize: 12, flexShrink: 0 }}>Macros:</span>
+            <input
+              placeholder="P=fr:,M=m1"
+              value={macroStr}
+              onChange={e => setMacroStr(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") handleOpen(); }}
+              style={{ ...inputStyle, flex: 1 }}
+            />
+          </div>
+
+          {/* Footer */}
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, paddingTop: 2 }}>
+            <button onClick={onClose} style={btnStyle(false)}>Cancel</button>
+            <button onClick={handleOpen} disabled={!selected} style={btnStyle(true)}>Open</button>
+          </div>
+        </div>
+      </div>
+    </>,
+    document.body
+  );
+}
+
 // ── App ───────────────────────────────────────────────────────────────────────
 
 export default function App() {
   const [overlays, setOverlays] = useState<AppOverlay[]>([]);
   const counter = useRef(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [layoutKey, setLayoutKey] = useState(0);
   const [activeTab, setActiveTab] = useState(1);
+  const uiFiles = useUiFiles();
+
+  function openFromPicker(file: string, macros: Record<string, string>) {
+    window.dispatchEvent(new CustomEvent("open-ui", {
+      detail: { file, macros, label: file.split("/").pop() ?? file }
+    }));
+  }
 
   useEffect(() => {
     function handler(e: Event) {
@@ -420,7 +572,14 @@ export default function App() {
       {/* Page title (fixed, acts as header) */}
       <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, background: "#0a1520", borderBottom: "1px solid #1e3a5f", padding: "8px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <span style={{ color: "#90caf9", fontSize: 16, fontWeight: 700, letterSpacing: 0.5 }}>29ID Beamline</span>
-        <div style={{ position: "relative" }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }} onClick={e => e.stopPropagation()}>
+          <button
+            onClick={() => setPickerOpen(true)}
+            style={{ background: "none", border: "1px solid transparent", borderRadius: 4, color: "#90caf9", cursor: "pointer", fontSize: 13, padding: "3px 10px" }}
+          >
+            Open…
+          </button>
+        <div style={{ position: "relative" }}>
           <button
             onClick={() => setSettingsOpen(o => !o)}
             title="Settings"
@@ -435,7 +594,16 @@ export default function App() {
             />
           )}
         </div>
+        </div>
       </div>
+
+      {pickerOpen && (
+        <FilePickerDialog
+          files={uiFiles}
+          onClose={() => setPickerOpen(false)}
+          onOpen={openFromPicker}
+        />
+      )}
 
       {/* ── Tab 1: Main ── */}
       {activeTab === 1 && <>
@@ -494,6 +662,13 @@ export default function App() {
       {activeTab === 3 && (
         <DraggablePanel key={`29idc-arpes-${layoutKey}`} id="29idc-arpes" title="29ID-C ARPES">
           <UiRenderer file="/ui/29id/29idc_ARPES.ui" macros={{}} />
+        </DraggablePanel>
+      )}
+
+      {/* ── Tab 4: 29ID-D ── */}
+      {activeTab === 4 && (
+        <DraggablePanel key={`29idd-kappa-${layoutKey}`} id="29idd-kappa" title="29ID-D Kappa">
+          <UiRenderer file="/ui/29id/29idd_Kappa.ui" macros={{ P: "29idd:", M1: "m1", M2: "m2", M3: "m3", M4: "m7", M5: "m6" }} />
         </DraggablePanel>
       )}
 
