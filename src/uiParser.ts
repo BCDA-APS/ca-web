@@ -40,7 +40,8 @@ function parseColor(colorEl: Element | null): string {
   const r = colorEl.querySelector("red")?.textContent ?? "0";
   const g = colorEl.querySelector("green")?.textContent ?? "0";
   const b = colorEl.querySelector("blue")?.textContent ?? "0";
-  const a = colorEl.querySelector("alpha")?.textContent ?? "255";
+  // Alpha may be a child <alpha> element OR an attribute on the <color> tag.
+  const a = colorEl.querySelector("alpha")?.textContent ?? colorEl.getAttribute("alpha") ?? "255";
   return `rgba(${r},${g},${b},${(parseInt(a) / 255).toFixed(3)})`;
 }
 
@@ -98,14 +99,17 @@ export function parseUi(
   const doc = new DOMParser().parseFromString(xml, "application/xml");
   const m = (s: string) => applyMacros(s, macros);
 
-  // Native screen size from the QMainWindow geometry
+  // Native screen size — from QMainWindow geometry if present, else root widget.
+  // Some .ui files (e.g. E816.ui) use QWidget as the root form instead of QMainWindow.
   const mainWidget = doc.querySelector('widget[class="QMainWindow"]');
-  const rootGeom = mainWidget ? getGeometry(mainWidget) : null;
-  const nativeWidth = rootGeom?.width ?? 800;
+  const rootWidget = mainWidget ?? doc.querySelector('widget');
+  const rootGeom   = rootWidget ? getGeometry(rootWidget) : null;
+  const nativeWidth  = rootGeom?.width  ?? 800;
   const nativeHeight = rootGeom?.height ?? 600;
 
   const central = doc.querySelector('widget[name="centralWidget"]') ??
-                  doc.querySelector('widget[name="centralwidget"]');
+                  doc.querySelector('widget[name="centralwidget"]') ??
+                  (mainWidget ? null : rootWidget);  // QWidget-rooted files: use root as central
   if (!central) return { nativeWidth, nativeHeight, widgets: [] };
 
   // Build z-index map from <zorder> elements (rendering order = z-index).
@@ -120,8 +124,51 @@ export function parseUi(
   // Recursively collect widgets into `out`.
   // offsetX/Y accumulate parent container positions (absolute screen coords).
   // Tab widget children use offset 0,0 — they are positioned relative to the tab page.
-  function collectWidgets(parent: Element, out: ParsedWidget[], offsetX: number, offsetY: number, parentZ: number) {
+  // parentW/H: the containing area's pixel size, used to compute layout-managed geometry.
+  function collectWidgets(parent: Element, out: ParsedWidget[], offsetX: number, offsetY: number, parentZ: number, parentW = 0, parentH = 0) {
     for (const child of parent.children) {
+      // Qt layout elements (QHBoxLayout, QVBoxLayout, QGridLayout) contain widgets
+      // via <item> children. These widgets typically have no explicit geometry — their
+      // bounds are computed from the layout's margin/spacing and the container size.
+      if (child.tagName === "layout") {
+        const layoutClass = child.getAttribute("class") ?? "";
+        const isH = layoutClass.includes("HBox");
+        const margin = parseInt(child.querySelector(":scope > property[name='margin'] > number")?.textContent ?? "0");
+        const spacing = parseInt(child.querySelector(":scope > property[name='spacing'] > number")?.textContent ?? "0");
+        const items = Array.from(child.children).filter(c => c.tagName === "item");
+        const n = items.length || 1;
+        const totalW = parentW - 2 * margin;
+        const totalH = parentH - 2 * margin;
+        items.forEach((item, i) => {
+          for (const w of item.children) {
+            if (w.tagName !== "widget") continue;
+            const wCls = w.getAttribute("class") ?? "";
+            const wName = w.getAttribute("name") ?? "";
+            let geom = getGeometry(w);
+            if (!geom) {
+              // Compute geometry from layout rules.
+              if (isH) {
+                const ww = Math.floor((totalW - spacing * (n - 1)) / n);
+                geom = { x: margin + i * (ww + spacing), y: margin, width: ww, height: totalH };
+              } else {
+                const hh = Math.floor((totalH - spacing * (n - 1)) / n);
+                geom = { x: margin, y: margin + i * (hh + spacing), width: totalW, height: hh };
+              }
+            }
+            const props = collectProps(w, m);
+            const zIndex = zMap[wName] ?? parentZ;
+            out.push({
+              class: wCls, name: wName,
+              geometry: { ...geom, x: geom.x + offsetX, y: geom.y + offsetY },
+              props, zIndex,
+            });
+            // Recurse in case this layout-managed widget has its own children.
+            collectWidgets(w, out, offsetX + geom.x, offsetY + geom.y, zIndex, geom.width, geom.height);
+          }
+        });
+        continue;
+      }
+
       if (child.tagName !== "widget") continue;
 
       const cls = child.getAttribute("class") ?? "";
@@ -141,6 +188,11 @@ export function parseUi(
           );
           const title = titleAttr?.querySelector("string")?.textContent ?? "";
           const tabWidgets: ParsedWidget[] = [];
+          // Build local z-order map for this tab page's children.
+          const tabZorders = Array.from(tabEl.querySelectorAll(":scope > zorder"));
+          if (tabZorders.length > 0) {
+            tabZorders.forEach((lz, i) => { zMap[lz.textContent ?? ""] = zIndex + i; });
+          }
           // Tab-page children are positioned relative to the tab page (0,0).
           collectWidgets(tabEl, tabWidgets, 0, 0, zIndex);
           tabWidgets.sort((a, b) => a.zIndex - b.zIndex);
@@ -174,8 +226,28 @@ export function parseUi(
         continue;
       }
 
+      // QGroupBox — emit as a widget with relative-positioned children so the
+      // renderer can draw the border and title around them.
+      if (cls === "QGroupBox") {
+        if (!geometry) continue;
+        const zIndex = zMap[name] ?? parentZ;
+        const localZorders = Array.from(child.querySelectorAll(":scope > zorder"));
+        if (localZorders.length > 0) {
+          localZorders.forEach((lz, i) => { zMap[lz.textContent ?? ""] = zIndex + i; });
+        }
+        const children: ParsedWidget[] = [];
+        collectWidgets(child, children, 0, 0, zIndex, geometry.width, geometry.height);
+        children.sort((a, b) => a.zIndex - b.zIndex);
+        out.push({
+          class: cls, name,
+          geometry: { ...geometry, x: geometry.x + offsetX, y: geometry.y + offsetY },
+          props, zIndex, children,
+        });
+        continue;
+      }
+
       // Other known transparent containers (Qt internals) — recurse and flatten.
-      const isContainer = cls === "QGroupBox" || cls === "QWidget" || cls === "QFrame";
+      const isContainer = cls === "QWidget" || cls === "QFrame";
       if (isContainer) {
         const z = zMap[name] ?? parentZ;
         const dx = geometry ? geometry.x : 0;
@@ -198,7 +270,7 @@ export function parseUi(
   }
 
   const widgets: ParsedWidget[] = [];
-  collectWidgets(central, widgets, 0, 0, 0);
+  collectWidgets(central, widgets, 0, 0, 0, nativeWidth, nativeHeight);
 
   // Render back-to-front
   widgets.sort((a, b) => a.zIndex - b.zIndex);

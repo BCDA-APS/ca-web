@@ -99,16 +99,50 @@ const ALARM_COLORS: Record<string, string> = {
 };
 
 // ── calc normalization ────────────────────────────────────────────────────────
-// caQtDM visibility calcs use EPICS CALC syntax:
+// caQtDM visibility calcs use EPICS CALC syntax which differs from JavaScript:
 //   single =  → ==    AND/OR keywords → &&/||
+//   #  → !=   (not-equal)
+//   built-in functions: ABS, SQR/SQRT, SIN, COS, TAN, ASIN, ACOS, ATAN,
+//                       EXP, LOG (base-10), LN (natural), CEIL, FLOOR, NINT,
+//                       MAX, MIN, NOT
 function normalizeCalc(expr: string): string {
   return expr
+    // Protect already-valid two-char operators before single-char fixups.
     .replace(/==/g, "\x00EQ\x00").replace(/!=/g, "\x00NE\x00")
     .replace(/<=/g, "\x00LE\x00").replace(/>=/g, "\x00GE\x00")
+    // EPICS-specific operators
+    .replace(/#/g, "!=")           // # = not-equal
     .replace(/=/g, "==")
     .replace(/\x00EQ\x00/g, "==").replace(/\x00NE\x00/g, "!=")
     .replace(/\x00LE\x00/g, "<=").replace(/\x00GE\x00/g, ">=")
-    .replace(/\bAND\b/gi, "&&").replace(/\bOR\b/gi, "||");
+    .replace(/\bAND\b/gi, "&&").replace(/\bOR\b/gi, "||")
+    .replace(/\bXOR\b/gi, "^")
+    // EPICS CALC built-in functions → JavaScript equivalents.
+    // Multi-char names (ATAN2, SQRT, SINH…) must precede their prefixes (ATAN, SQR, SIN…).
+    .replace(/\bABS\b/g,   "Math.abs")
+    .replace(/\bSQRT\b/g,  "Math.sqrt")
+    .replace(/\bSQR\b/g,   "Math.sqrt")
+    .replace(/\bASIN\b/g,  "Math.asin")
+    .replace(/\bACOS\b/g,  "Math.acos")
+    .replace(/\bATAN2\b/g, "Math.atan2")
+    .replace(/\bATAN\b/g,  "Math.atan")
+    .replace(/\bSINH\b/g,  "Math.sinh")
+    .replace(/\bCOSH\b/g,  "Math.cosh")
+    .replace(/\bTANH\b/g,  "Math.tanh")
+    .replace(/\bSIN\b/g,   "Math.sin")
+    .replace(/\bCOS\b/g,   "Math.cos")
+    .replace(/\bTAN\b/g,   "Math.tan")
+    .replace(/\bEXP\b/g,   "Math.exp")
+    .replace(/\bLOGE\b/g,  "Math.log")
+    .replace(/\bLOG\b/g,   "Math.log10")
+    .replace(/\bLN\b/g,    "Math.log")
+    .replace(/\bCEIL\b/g,  "Math.ceil")
+    .replace(/\bFLOOR\b/g, "Math.floor")
+    .replace(/\bINT\b/g,   "Math.trunc")
+    .replace(/\bNINT\b/g,  "Math.round")
+    .replace(/\bMAX\b/g,   "Math.max")
+    .replace(/\bMIN\b/g,   "Math.min")
+    .replace(/\bNOT\b/g,   "~");
 }
 
 // Evaluate a normalised EPICS calc expression with up to 4 channel values (A–D).
@@ -559,7 +593,7 @@ function CaChoiceWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
 
 // ── caRelatedDisplay — opens another .ui file in a floating panel ─────────────
 
-function parseArgs(argsStr: string): Record<string, string> {
+export function parseArgs(argsStr: string): Record<string, string> {
   const result: Record<string, string> = {};
   // caQtDM uses ';' to separate macro sets; consume only the first set.
   // EPICS PV names cannot contain ';' so this is always safe.
@@ -1520,8 +1554,8 @@ function CaFrameWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
   const visCalc    = widget.props["visibilityCalc"] ?? "";
   let visible = true;
   if (channel && visibility) {
-    if      (visibility === "ifNotZero")  visible = a !== 0;
-    else if (visibility === "ifZero")     visible = a === 0;
+    if      (visibility.endsWith("IfNotZero"))  visible = a !== 0;
+    else if (visibility.endsWith("IfZero"))     visible = a === 0;
     else if (visibility.endsWith("Calc") && visCalc) visible = evalVisCalc(visCalc, a, b, c, d);
   }
   if (!visible) return null;
@@ -1560,8 +1594,8 @@ function CaIncludeWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
   const visCalc    = widget.props["visibilityCalc"] ?? "";
   let visible = true;
   if (channel && visibility) {
-    if      (visibility === "ifNotZero")  visible = a !== 0;
-    else if (visibility === "ifZero")     visible = a === 0;
+    if      (visibility.endsWith("IfNotZero"))  visible = a !== 0;
+    else if (visibility.endsWith("IfZero"))     visible = a === 0;
     else if (visibility.endsWith("Calc") && visCalc) visible = evalVisCalc(visCalc, a, b, c, d);
   }
   if (!visible) return null;
@@ -1633,21 +1667,60 @@ function CaLedWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
 
 function CaThermoWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
   const pv = widget.props["channel"] ?? "";
-  const [, connected, , raw] = useConnection(`${ns}-${widget.name}`, `ca://${pv}`);
-  const minVal = parseFloat(widget.props["minValue"] ?? "0");
-  const maxVal = parseFloat(widget.props["maxValue"] ?? "100");
+  const basePv = pv.replace(/\.[A-Za-z_]+$/, "");
+  const limitsMode = widget.props["limitsMode"] ?? "";
+  const useChannelLimits = limitsMode.includes("Channel");
+
+  const [, connected, , raw]  = useConnection(`${ns}-${widget.name}`,      `ca://${pv}`);
+  const [,,,loprRaw]          = useConnection(`${ns}-${widget.name}-lopr`, useChannelLimits ? `ca://${basePv}.LOPR` : "ca://");
+  const [,,,hoprRaw]          = useConnection(`${ns}-${widget.name}-hopr`, useChannelLimits ? `ca://${basePv}.HOPR` : "ca://");
+
+  const uiMin = parseFloat(widget.props["minValue"] ?? "0");
+  const uiMax = parseFloat(widget.props["maxValue"] ?? "100");
+  const lopr = extractDouble(loprRaw);
+  const hopr = extractDouble(hoprRaw);
+  const minVal = (useChannelLimits && lopr !== null && hopr !== null && lopr !== hopr) ? lopr : uiMin;
+  const maxVal = (useChannelLimits && lopr !== null && hopr !== null && lopr !== hopr) ? hopr : uiMax;
+
   const val = extractDouble(raw) ?? minVal;
   const frac = Math.max(0, Math.min(1, (val - minVal) / (maxVal - minVal)));
   const { width, height } = widget.geometry;
-  const vertical = height > width;
+
+  const direction  = widget.props["direction"]  ?? "";
+  const look       = widget.props["look"]       ?? "";
+  const fillColor  = widget.props["foreground"] ?? "#29b6f6";
+  const emptyColor = widget.props["background"] ?? "#0a1828";
+  const noDeco     = look.includes("noDeco");
+
+  // Determine orientation from the direction prop; fall back to aspect ratio.
+  const isHoriz  = direction.includes("Right") || direction.includes("Left")
+                || (!direction && width >= height);
+  const fromRight = direction.includes("Left");
+  const fromTop   = direction.includes("Down");
+
+  const fillStyle: CSSProperties = isHoriz ? {
+    position: "absolute", top: 0, bottom: 0,
+    ...(fromRight ? { right: 0 } : { left: 0 }),
+    width: `${frac * 100}%`,
+    background: connected ? fillColor : emptyColor,
+    transition: "width 0.3s",
+  } : {
+    position: "absolute", left: 0, right: 0,
+    ...(fromTop ? { top: 0 } : { bottom: 0 }),
+    height: `${frac * 100}%`,
+    background: connected ? fillColor : emptyColor,
+    transition: "height 0.3s",
+  };
+
   return (
-    <div style={{ ...geoStyle(widget.geometry, widget.zIndex), background: "#0a1828", border: "1px solid #1e3a5f", borderRadius: 2, overflow: "hidden", display: "flex", alignItems: vertical ? "flex-end" : "flex-start" }}>
-      <div style={{
-        background: connected ? "#29b6f6" : "#1e3a5f",
-        width:  vertical ? "100%" : `${frac * 100}%`,
-        height: vertical ? `${frac * 100}%` : "100%",
-        transition: "width 0.3s, height 0.3s",
-      }} />
+    <div style={{
+      ...geoStyle(widget.geometry, widget.zIndex),
+      background: emptyColor,
+      border: noDeco ? "none" : "1px solid #1e3a5f",
+      borderRadius: noDeco ? 0 : 2,
+      overflow: "hidden",
+    }}>
+      <div style={fillStyle} />
     </div>
   );
 }
@@ -1743,6 +1816,7 @@ function CaSliderWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
 function CaToggleButtonWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
   const pv = widget.props["channel"] ?? "";
   const label = widget.props["text"] ?? "";
+  const fg = widget.props["foreground"] ?? "rgb(0,0,0)";
   const [, connected, , raw] = useConnection(`${ns}-${widget.name}`, `ca://${pv}`);
   const val = extractDouble(raw);
   const checked = connected && val !== null && val !== 0;
@@ -1751,7 +1825,7 @@ function CaToggleButtonWidget({ widget, ns }: { widget: ParsedWidget; ns: string
       <input type="checkbox" checked={checked} disabled={!connected}
         onChange={e => pvwsWriter.write(pv, e.target.checked ? 1 : 0)}
         style={{ accentColor: "#4a90d9", width: 14, height: 14, cursor: connected ? "pointer" : "default" }} />
-      <span style={{ color: connected ? "#cce0ff" : "#555", fontSize: 12, fontFamily: "sans-serif" }}>{label}</span>
+      <span style={{ color: fg, fontSize: scaledFont(widget.geometry.height), fontFamily: "sans-serif" }}>{label}</span>
     </div>
   );
 }
@@ -2002,6 +2076,187 @@ class WidgetErrorBoundary extends Component<
   }
 }
 
+// ── QGroupBox — bordered container with a title label ─────────────────────────
+// Uses <fieldset>+<legend> so the browser natively handles the title cutting into
+// the top border. Children are absolutely positioned relative to the group box
+// top-left corner, matching Qt's coordinate system.
+
+function QGroupBoxWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
+  const title = widget.props["title"] ?? "";
+  const { x, y, width, height } = widget.geometry;
+  return (
+    <fieldset
+      style={{
+        position: "absolute",
+        left: x, top: y, width, height,
+        zIndex: widget.zIndex,
+        border: "1px solid #aaa",
+        borderRadius: 3,
+        margin: 0,
+        padding: 0,
+        boxSizing: "border-box",
+        overflow: "visible",
+      }}
+    >
+      {title && (
+        <legend style={{
+          marginLeft: 6,
+          padding: "0 4px",
+          fontSize: 11,
+          fontFamily: "sans-serif",
+          color: "#000",
+          fontWeight: "normal",
+          lineHeight: "14px",
+        }}>
+          {title}
+        </legend>
+      )}
+      {widget.children?.map(w => (
+        <WidgetErrorBoundary key={w.name} name={w.name}>
+          <WidgetRouter widget={w} ns={ns} />
+        </WidgetErrorBoundary>
+      ))}
+    </fieldset>
+  );
+}
+
+// ── caWaveTable — displays a waveform PV as a read-only grid ─────────────────
+// Each cell shows one element of the array PV, formatted with `precision`.
+// numberOfRows × numberOfColumns cells total; cells laid out left→right, top→bottom.
+
+function CaWaveTableWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
+  const channel = widget.props["channel"] ?? "";
+  const nRows   = Math.max(1, parseInt(widget.props["numberOfRows"]   ?? "1"));
+  const nCols   = Math.max(1, parseInt(widget.props["numberOfColumns"] ?? "1"));
+  const prec    = parseInt(widget.props["precision"] ?? "3");
+  const showGrid = widget.props["showGrid"] !== "false";
+
+  const [, connected, , rawValue] = useConnection(`${ns}-${widget.name}`, `ca://${channel}`);
+
+  // Extract array elements from the PV value.
+  const arr = (rawValue as { value?: { arrayValue?: { [i: number]: number; length: number } } })?.value?.arrayValue;
+  const nCells = nRows * nCols;
+
+  const cells: string[] = [];
+  for (let i = 0; i < nCells; i++) {
+    const v = arr ? (arr[i] ?? 0) : 0;
+    cells.push(connected && arr ? fmtDouble(v, isNaN(prec) ? 3 : prec) : "—");
+  }
+
+  const cellW = widget.geometry.width / nCols;
+  const cellH = widget.geometry.height / nRows;
+  const fs    = scaledFont(cellH);
+
+  return (
+    <div
+      title={channel}
+      style={{
+        ...geoStyle(widget.geometry, widget.zIndex),
+        display: "grid",
+        gridTemplateColumns: `repeat(${nCols}, 1fr)`,
+        gridTemplateRows: `repeat(${nRows}, 1fr)`,
+        background: connected && arr ? "rgb(200,200,200)" : "white",
+        boxSizing: "border-box",
+        overflow: "hidden",
+      }}
+    >
+      {cells.map((val, i) => (
+        <div
+          key={i}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontFamily: "monospace",
+            fontSize: fs,
+            color: "rgb(10,0,184)",
+            border: showGrid ? "1px solid #888" : undefined,
+            boxSizing: "border-box",
+            overflow: "hidden",
+            whiteSpace: "nowrap",
+            minWidth: 0,
+          }}
+        >
+          {val}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── caCalc — EPICS calc expression evaluated from PV inputs ──────────────────
+// Reads channel (A), channelB (B), channelC (C), channelD (D) PVs,
+// evaluates the `calc` property as an EPICS CALC expression, and displays
+// the numeric result formatted like caLineEdit.
+
+function CaCalcWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
+  const channel  = widget.props["channel"]  ?? "";
+  const channelB = widget.props["channelB"] ?? "";
+  const channelC = widget.props["channelC"] ?? "";
+  const channelD = widget.props["channelD"] ?? "";
+  const calc     = widget.props["calc"]     ?? "";
+
+  const [, connA, , rawA] = useConnection(`${ns}-${widget.name}-a`, channel  ? `ca://${channel}`  : "ca://");
+  const [, connB, , rawB] = useConnection(`${ns}-${widget.name}-b`, channelB ? `ca://${channelB}` : "ca://");
+  const [, connC, , rawC] = useConnection(`${ns}-${widget.name}-c`, channelC ? `ca://${channelC}` : "ca://");
+  const [, connD, , rawD] = useConnection(`${ns}-${widget.name}-d`, channelD ? `ca://${channelD}` : "ca://");
+
+  const a = extractDouble(rawA) ?? 0;
+  const b = extractDouble(rawB) ?? 0;
+  const c = extractDouble(rawC) ?? 0;
+  const d = extractDouble(rawD) ?? 0;
+
+  // Only show a value when at least one subscribed channel is live.
+  const anyLive = (channel && connA && extractDouble(rawA) !== null)
+               || (channelB && connB && extractDouble(rawB) !== null)
+               || (channelC && connC && extractDouble(rawC) !== null)
+               || (channelD && connD && extractDouble(rawD) !== null)
+               || (!channel && !channelB && !channelC && !channelD && calc !== "");
+
+  let result: number | null = null;
+  if (anyLive && calc) {
+    try {
+      const expr = normalizeCalc(calc)
+        .replace(/\bA\b/g, String(a)).replace(/\bB\b/g, String(b))
+        .replace(/\bC\b/g, String(c)).replace(/\bD\b/g, String(d));
+      const v = Function(`"use strict"; return (${expr})`)();
+      if (typeof v === "number" && isFinite(v)) result = v;
+    } catch { /* keep null */ }
+  }
+
+  const prec = widget.props["precision"] !== undefined && widget.props["precision"] !== ""
+    ? parseInt(widget.props["precision"])
+    : 4;
+
+  const str = result !== null ? fmtDouble(result, isNaN(prec) ? 4 : prec) : "—";
+
+  const fg = widget.props["foreground"] ?? "rgb(10,0,184)";
+  const bg = widget.props["background"] ?? "rgb(200,200,200)";
+  const alignment = widget.props["alignment"] ?? "";
+
+  return (
+    <div
+      title={`calc: ${calc}`}
+      style={{
+        ...geoStyle(widget.geometry, widget.zIndex),
+        color: fg,
+        background: anyLive ? bg : "white",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: alignment.includes("AlignLeft") ? "flex-start"
+          : alignment.includes("AlignRight") ? "flex-end"
+          : "center",
+        fontFamily: "monospace",
+        fontSize: scaledFont(widget.geometry.height),
+        overflow: "hidden",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {str}
+    </div>
+  );
+}
+
 function WidgetRouter({ widget, ns }: { widget: ParsedWidget; ns: string }) {
   switch (widget.class) {
     case "caLineEdit":       return <CaLineEditWidget widget={widget} ns={ns} />;
@@ -2027,6 +2282,9 @@ function WidgetRouter({ widget, ns }: { widget: ParsedWidget; ns: string }) {
     case "caToggleButton":   return <CaToggleButtonWidget widget={widget} ns={ns} />;
     case "caTable":          return <CaTableWidget widget={widget} ns={ns} />;
     case "caStripPlot":      return <CaStripPlotWidget widget={widget} ns={ns} />;
+    case "caCalc":           return <CaCalcWidget widget={widget} ns={ns} />;
+    case "caWaveTable":      return <CaWaveTableWidget widget={widget} ns={ns} />;
+    case "QGroupBox":        return <QGroupBoxWidget widget={widget} ns={ns} />;
     default:                 return null;
   }
 }

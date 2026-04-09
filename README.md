@@ -95,6 +95,8 @@ Three tabs in the left sidebar:
 | `caToggleButton` | Checkbox that writes 0/1 to a PV |
 | `caTable` | Multi-PV readback table (name · value · units); up to 16 PVs |
 | `caStripPlot` | Rolling time-series chart; SVG with grid, axes, ticks, legend; `period` × `units` (Second/Minute/Hour) sets time window; per-slot colors from `color_N` props; legend shows last two colon-separated PV name segments |
+| `caCalc` | Computed readback: evaluates an EPICS CALC expression (`calc` prop) using up to 4 PV inputs (A–D via `channel`/`channelB`/`channelC`/`channelD`); displays numeric result formatted like `caLineEdit` |
+| `caWaveTable` | Read-only waveform array grid; `numberOfRows` × `numberOfColumns` cells each showing one array element formatted with `precision` decimal places |
 
 ### caCartesianPlot
 
