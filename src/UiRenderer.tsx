@@ -1249,53 +1249,6 @@ function CaCartesianPlotWidget({ widget, ns }: { widget: ParsedWidget; ns: strin
   );
 }
 
-// ── Overlay panel — draggable floating window (portal) ───────────────────────
-// Self-contained: manages its own position so multiple can be open at once.
-
-interface OpenOverlay { id: number; state: OverlayState; initPos: { x: number; y: number } }
-
-function OverlayPanel({ ov, onClose }: { ov: OpenOverlay; onClose: () => void }) {
-  const [pos, setPos] = useState(ov.initPos);
-  const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
-
-  function onMouseDown(e: React.MouseEvent) {
-    e.preventDefault();
-    dragRef.current = { startX: e.clientX, startY: e.clientY, origX: pos.x, origY: pos.y };
-    function onMove(ev: MouseEvent) {
-      if (!dragRef.current) return;
-      setPos({ x: dragRef.current.origX + ev.clientX - dragRef.current.startX,
-               y: dragRef.current.origY + ev.clientY - dragRef.current.startY });
-    }
-    function onUp() {
-      dragRef.current = null;
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    }
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-  }
-
-  return createPortal(
-    <div style={{
-      position: "fixed", top: pos.y, left: pos.x, zIndex: 9999,
-      background: "#1a1a2e", borderRadius: 4,
-      boxShadow: "0 4px 20px rgba(0,0,0,0.6)", border: "1px solid #444",
-    }}>
-      <div onMouseDown={onMouseDown} style={{
-        display: "flex", justifyContent: "space-between", alignItems: "center",
-        padding: "4px 8px", background: "#0f2035", borderRadius: "4px 4px 0 0", cursor: "grab",
-      }}>
-        <span style={{ color: "#90caf9", fontSize: 11, fontFamily: "monospace" }}>{ov.state.label}</span>
-        <button onClick={onClose} style={{
-          background: "none", border: "none", color: "#90caf9", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: "0 2px",
-        }}>×</button>
-      </div>
-      <UiRenderer file={ov.state.file} macros={ov.state.macros} />
-    </div>,
-    document.body
-  );
-}
-
 // ── PV info panel (portal) ────────────────────────────────────────────────────
 
 interface PvInfoPanelProps {
@@ -2334,9 +2287,6 @@ export function UiRenderer({ file, macros = {}, scale }: UiRendererProps) {
   const ns = file.replace(/\W/g, "_");  // unique namespace for useConnection IDs
   const baseDir = file.substring(0, file.lastIndexOf("/")) || "/ui";
 
-  const [overlays, setOverlays] = useState<OpenOverlay[]>([]);
-  const overlayCounter = useRef(0);
-
   // Right-click context menu + PV info panel
   type CtxMenuState = { x: number; y: number; channel: string; widgetName: string; widgetClass: string };
   const [ctxMenu, setCtxMenu] = useState<CtxMenuState | null>(null);
@@ -2358,14 +2308,9 @@ export function UiRenderer({ file, macros = {}, scale }: UiRendererProps) {
   }
 
   function openOverlay(s: OverlayState) {
-    const id = ++overlayCounter.current;
-    const offset = ((id - 1) % 6) * 24;
-    if (s.replace) {
-      // removeParent=true: close all current child overlays and open the new one in their place.
-      setOverlays([{ id, state: s, initPos: { x: 120, y: 80 } }]);
-    } else {
-      setOverlays(prev => [...prev, { id, state: s, initPos: { x: 120 + offset, y: 80 + offset } }]);
-    }
+    window.dispatchEvent(new CustomEvent("open-ui", {
+      detail: { file: s.file, macros: s.macros, label: s.label, replace: s.replace, sourceFile: file },
+    }));
   }
 
   if (error) return <div style={{ color: "red", padding: 8 }}>Failed to load {file}: {error}</div>;
@@ -2447,14 +2392,6 @@ export function UiRenderer({ file, macros = {}, scale }: UiRendererProps) {
         />
       )}
 
-      {/* Related display overlays — one OverlayPanel per open window */}
-      {overlays.map(ov => (
-        <OverlayPanel
-          key={ov.id}
-          ov={ov}
-          onClose={() => setOverlays(prev => prev.filter(o => o.id !== ov.id))}
-        />
-      ))}
     </div>
   );
 }

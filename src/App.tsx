@@ -191,13 +191,32 @@ const AREA_DETECTOR = [
 
 // ── Open-ui overlay (from motor ⋯ menu) ──────────────────────────────────────
 
-interface AppOverlay { id: number; file: string; macros: Record<string, string>; label: string; pos: { x: number; y: number } }
+interface AppOverlay { id: number; file: string; macros: Record<string, string>; label: string; pos: { x: number; y: number }; sourceFile?: string; tabId?: number }
 
 function AppOverlayPanel({ ov, onClose }: { ov: AppOverlay; onClose: () => void }) {
-  const [pos, setPos] = useState(ov.pos);
+  const storageKey = `overlay:${ov.file}`;
+  const [pos, setPos] = useState<{ x: number; y: number }>(() => {
+    try {
+      const s = localStorage.getItem(storageKey);
+      if (s) { const p = JSON.parse(s); return { x: p.x, y: p.y }; }
+    } catch { /* ignore */ }
+    return ov.pos;
+  });
+  const [locked, setLocked] = useState<boolean>(() => {
+    try {
+      const s = localStorage.getItem(storageKey);
+      if (s) return JSON.parse(s).locked ?? false;
+    } catch { /* ignore */ }
+    return false;
+  });
   const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
 
+  useEffect(() => {
+    localStorage.setItem(storageKey, JSON.stringify({ x: pos.x, y: pos.y, locked }));
+  }, [storageKey, pos, locked]);
+
   function onMouseDown(e: React.MouseEvent) {
+    if (locked) return;
     e.preventDefault();
     dragRef.current = { startX: e.clientX, startY: e.clientY, origX: pos.x, origY: pos.y };
     function onMove(ev: MouseEvent) {
@@ -212,9 +231,22 @@ function AppOverlayPanel({ ov, onClose }: { ov: AppOverlay; onClose: () => void 
 
   return createPortal(
     <div style={{ position: "fixed", top: pos.y, left: pos.x, zIndex: 9999, background: "#1a1a2e", borderRadius: 4, boxShadow: "0 4px 20px rgba(0,0,0,0.6)", border: "1px solid #444" }}>
-      <div onMouseDown={onMouseDown} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 8px", background: "#0f2035", borderRadius: "4px 4px 0 0", cursor: "grab" }}>
+      <div onMouseDown={onMouseDown} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 8px", background: "#0f2035", borderRadius: "4px 4px 0 0", cursor: locked ? "default" : "grab" }}>
         <span style={{ color: "#90caf9", fontSize: 11, fontFamily: "monospace" }}>{ov.label}</span>
-        <button onClick={onClose} style={{ background: "none", border: "none", color: "#90caf9", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: "0 2px" }}>×</button>
+        <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+          <button
+            onMouseDown={e => e.stopPropagation()}
+            onClick={() => setLocked(l => !l)}
+            title={locked ? "Unlock panel" : "Lock panel"}
+            style={{ cursor: "pointer", background: "none", border: "none", padding: "2px 4px", lineHeight: 1, display: "flex", alignItems: "center", color: locked ? "#4a90d9" : "#546e8a" }}
+          >
+            {locked
+              ? <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+              : <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 1C9.24 1 7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2H9V6c0-1.66 1.34-3 3-3 1.66 0 3 1.34 3 3h2c0-2.76-2.24-5-5-5zm0 15c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>
+            }
+          </button>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "#90caf9", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: "0 2px" }}>×</button>
+        </div>
       </div>
       <UiRenderer file={ov.file} macros={ov.macros} />
     </div>,
@@ -228,7 +260,7 @@ const TABS = [
   { id: 1, icon: "⌂",  label: "Home" },
   { id: 2, icon: "🔬", label: "Test" },
   { id: 3, icon: "⚛",  label: "29ID-C" },
-  { id: 4, icon: "⚛",  label: "29ID-D" },
+  { id: 4, icon: "💠",  label: "29ID-D" },
 ];
 
 function Sidebar({ active, onSelect }: { active: number; onSelect: (id: number) => void }) {
@@ -561,6 +593,8 @@ export default function App() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [layoutKey, setLayoutKey] = useState(0);
   const [activeTab, setActiveTab] = useState(1);
+  const activeTabRef = useRef(activeTab);
+  activeTabRef.current = activeTab;   // always reflects the current tab, readable from any closure
   const uiFiles = useUiFiles();
 
   function openFromPicker(file: string, macros: Record<string, string>) {
@@ -571,10 +605,21 @@ export default function App() {
 
   useEffect(() => {
     function handler(e: Event) {
-      const { file, macros, label } = (e as CustomEvent).detail;
+      const { file, macros, label, replace, sourceFile } = (e as CustomEvent).detail;
+      // Read the active tab from the ref — always current, even though this handler
+      // is a stale closure (activeTabRef is a stable object, .current is always fresh).
+      const tabId = activeTabRef.current;
       const id = ++counter.current;
       const offset = ((id - 1) % 6) * 24;
-      setOverlays(prev => [...prev, { id, file, macros, label, pos: { x: 120 + offset, y: 80 + offset } }]);
+      if (replace && sourceFile) {
+        // Close all overlays from the same source, then open the replacement.
+        setOverlays(prev => [
+          ...prev.filter(o => o.sourceFile !== sourceFile),
+          { id, file, macros, label, pos: { x: 120, y: 80 }, sourceFile, tabId },
+        ]);
+      } else {
+        setOverlays(prev => [...prev, { id, file, macros, label, pos: { x: 120 + offset, y: 80 + offset }, sourceFile, tabId }]);
+      }
     }
     window.addEventListener("open-ui", handler);
     return () => window.removeEventListener("open-ui", handler);
@@ -587,8 +632,8 @@ export default function App() {
       onClick={() => settingsOpen && setSettingsOpen(false)}
     >
 
-      {/* App-level overlays from motor ⋯ menu */}
-      {overlays.map(ov => (
+      {/* App-level overlays — only show overlays belonging to the active tab (or tab-less ones) */}
+      {overlays.filter(ov => ov.tabId == null || ov.tabId === activeTab).map(ov => (
         <AppOverlayPanel key={ov.id} ov={ov} onClose={() => setOverlays(prev => prev.filter(o => o.id !== ov.id))} />
       ))}
 
@@ -639,48 +684,46 @@ export default function App() {
 
       {/* ── Tab 1: Main ── */}
       {activeTab === 1 && <>
-
-      <DraggablePanel key={`motors-${layoutKey}`} id="motors" title="Motors">
-        <table style={tableStyle}>
-          <thead>
-            <tr>
-              <th style={thStyle}>Name</th>
-              <th style={{ ...thStyle, textAlign: "right" }}>Position</th>
-              <th style={thStyle}>Setpoint</th>
-              <th style={thStyle}>Tweak</th>
-              <th style={thStyle}>Status</th>
-              <th style={thStyle} />
-              <th style={thStyle} />
-            </tr>
-          </thead>
-          <tbody>
-            {MOTORS.map(m => (
-              <MotorRow key={m.pv} label={m.label} pv={m.pv} displays={MOTOR_DISPLAYS} macros={m.macros} />
-            ))}
-          </tbody>
-        </table>
-      </DraggablePanel>
-
-      <DraggablePanel key={`lorentzian-${layoutKey}`} id="lorentzian" title="Detector — Simulated Lorentzian">
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 24 }}>
+        <DraggablePanel key={`motors-${layoutKey}`} id="motors" title="Motors">
           <table style={tableStyle}>
-            <thead><tr><th style={thStyle}>Name</th><th style={thStyle}>Value</th></tr></thead>
-            <tbody>{LORENTZIAN.map(r => <ReadbackRow key={r.pv} label={r.label} pv={r.pv} />)}</tbody>
+            <thead>
+              <tr>
+                <th style={thStyle}>Name</th>
+                <th style={{ ...thStyle, textAlign: "right" }}>Position</th>
+                <th style={thStyle}>Setpoint</th>
+                <th style={thStyle}>Tweak</th>
+                <th style={thStyle}>Status</th>
+                <th style={thStyle} />
+                <th style={thStyle} />
+              </tr>
+            </thead>
+            <tbody>
+              {MOTORS.map(m => (
+                <MotorRow key={m.pv} label={m.label} pv={m.pv} displays={MOTOR_DISPLAYS} macros={m.macros} />
+              ))}
+            </tbody>
           </table>
-          <StripChartWidget pv="fr:userCalc1.VAL" label="Noisy" />
-        </div>
-      </DraggablePanel>
+        </DraggablePanel>
 
-      <DraggablePanel key={`area-detector-${layoutKey}`} id="area-detector" title="Area Detector — myad:cam1">
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 24 }}>
-          <table style={tableStyle}>
-            <thead><tr><th style={thStyle}>Name</th><th style={thStyle}>Value</th></tr></thead>
-            <tbody>{AREA_DETECTOR.map(r => <ReadbackRow key={r.pv} label={r.label} pv={r.pv} />)}</tbody>
-          </table>
-          <UiRenderer file="/ui/29id/29id_cam.ui" macros={{ P: "myad:" }} />
-        </div>
-      </DraggablePanel>
+        <DraggablePanel key={`lorentzian-${layoutKey}`} id="lorentzian" title="Detector — Simulated Lorentzian">
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 24 }}>
+            <table style={tableStyle}>
+              <thead><tr><th style={thStyle}>Name</th><th style={thStyle}>Value</th></tr></thead>
+              <tbody>{LORENTZIAN.map(r => <ReadbackRow key={r.pv} label={r.label} pv={r.pv} />)}</tbody>
+            </table>
+            <StripChartWidget pv="fr:userCalc1.VAL" label="Noisy" />
+          </div>
+        </DraggablePanel>
 
+        <DraggablePanel key={`area-detector-${layoutKey}`} id="area-detector" title="Area Detector — myad:cam1">
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 24 }}>
+            <table style={tableStyle}>
+              <thead><tr><th style={thStyle}>Name</th><th style={thStyle}>Value</th></tr></thead>
+              <tbody>{AREA_DETECTOR.map(r => <ReadbackRow key={r.pv} label={r.label} pv={r.pv} />)}</tbody>
+            </table>
+            <UiRenderer file="/ui/29id/29id_cam.ui" macros={{ P: "myad:" }} />
+          </div>
+        </DraggablePanel>
       </>}
 
       {/* ── Tab 2: Test ── */}
