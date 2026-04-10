@@ -8,8 +8,6 @@ Open real `.ui` files and see what fails to render. Remaining candidates:
 - `caDoubleTabWidget` — specialised tab container
 - `caScriptButton` — button that runs a script
 
-A good test: open `ADBase.ui` and audit what renders vs. what shows nothing.
-
 ## 2. Macro inheritance in related displays
 
 `parseUi` already applies macro substitution to all property values at parse
@@ -20,11 +18,6 @@ but the grandchild still needs macros from the grandparent (never explicitly
 forwarded). Not yet observed in practice at 29-ID.
 
 ## 3. ~~Open arbitrary `.ui` files~~ ✓ Done
-
-An "Open…" button in the header opens a searchable file picker listing all
-`.ui` files from the NFS display search path. Selecting a file opens it as a
-floating overlay. A macro input with auto-detected hints (scanned from the
-`.ui` file) lets the user supply the correct macro set before opening.
 
 ## 4. caCamera polish
 
@@ -50,10 +43,8 @@ floating overlay. A macro input with auto-detected hints (scanned from the
 
 ## 8. ~~Distributed access across the beamline subnet~~ ✓ Done
 
-pvws runs on `mite` (beamline machine on the 29ID private subnet). Vite dev
-server binds to `0.0.0.0:4200`. Any browser on the subnet can open
-`http://mite:4200` and reach real 29ID PVs. See `DEPLOYMENT.md` for the
-full setup including known pitfalls (NFS overlay storage, `--no-hosts`, etc.).
+See `DEPLOYMENT.md` for the full setup including known pitfalls 
+(NFS overlay storage, `--no-hosts`, etc.).
 
 ## 9. Line profile on images
 
@@ -72,10 +63,6 @@ diagnostics.
   coordinates to motor PV pairs).
 
 ## 11. ~~QTabWidget support~~ ✓ Done
-
-Parser emits `QTabWidget` as a structured widget with per-tab widget lists.
-Renderer shows a clickable tab bar; active tab defaults to `currentIndex`.
-Child widget positions are relative to the tab page content area.
 
 ## 12. Per-deployment App configuration
 

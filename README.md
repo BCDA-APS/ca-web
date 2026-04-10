@@ -82,17 +82,12 @@ using `/APSshare/bin/adl2ui` and cached in `.ui-cache/` (git-ignored).
 
 See `docs/display-path-resolution.md` for full details.
 
-## Page Layout
+## Opening Displays
 
-Three tabs in the left sidebar:
-
-| Tab | Section | Description |
-|---|---|---|
-| ⌂ Home | **Motors** | Table of 8 simulated motors (`fr:m1`–`fr:m8`). Each row has a `⋯` button that opens `motorx_tiny.ui` for that motor in a draggable overlay. |
-| ⌂ Home | **Detector — Simulated Lorentzian** | Readback table + rolling strip chart for `fr:userCalc1.VAL`. |
-| ⌂ Home | **Area Detector — myad:cam1** | Readback table alongside the live camera `.ui` (`29id_cam.ui`). The green `!` button in the camera panel opens `ADBase.ui`. |
-| 🔬 Test | **Widget Test** | `test.ui` — exercises all implemented widget types against simulated PVs. |
-| ⚛ 29ID-C | **ARPES** | `29idc_ARPES.ui` — real 29ID-C beamline screen. Requires pvws running on `mite`. |
+An "Open…" button in the header opens a searchable file picker listing all
+`.ui` files from the NFS display search path. Selecting a file opens it as a
+floating overlay. A macro input with auto-detected hints (scanned from the
+`.ui` file) lets the user supply the correct macro set before opening.
 
 ## Implemented Widgets
 
@@ -128,7 +123,7 @@ Three tabs in the left sidebar:
 
 Connects to up to 4 curve pairs via `channels_1`…`channels_4` (format: `"xPv;yPv"` — X channel may be empty, in which case sample index is used as X). Features:
 - Auto-scaling axes
-- Dashed red grid (matches caQtDM style)
+- Dashed grid (matches caQtDM style)
 - Title and X/Y axis labels (`Title`, `TitleX`, `TitleY` props)
 - Per-curve color (`color_1`…) and style (`Style_N`: Lines or Dots)
 - Multiple overlays can be open simultaneously
@@ -155,13 +150,6 @@ caQtDM widgets can be conditionally hidden via four properties:
 | `visibilityCalc` | EPICS CALC expression using A–D; result `false`/`0` hides the widget |
 
 Supported widgets: `caGraphics`, `caLabel`, `caPolyLine`, `caImage`, `caFrame`, `caInclude`.
-
-### EPICS CALC syntax differences from JavaScript
-
-caQtDM uses EPICS CALC syntax which differs from JavaScript in two ways that are normalised automatically:
-
-- Single `=` means equality (`==`), not assignment — e.g. `A=1` means `A == 1`
-- `AND` / `OR` keywords instead of `&&` / `||` — e.g. `C=0 AND A=1 OR B=2`
 
 ### caFrame visibility
 
