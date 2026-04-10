@@ -76,3 +76,15 @@ diagnostics.
 Parser emits `QTabWidget` as a structured widget with per-tab widget lists.
 Renderer shows a clickable tab bar; active tab defaults to `currentIndex`.
 Child widget positions are relative to the tab page content area.
+
+## 12. Per-deployment App configuration
+
+Currently `App.tsx` hardcodes tabs for both the simulated IOC (nefarian) and
+29ID (mite). As deployments multiply, these should be separated.
+
+**Approach:** keep one repo on NFS; split tab/panel definitions into
+`src/deployments/29id.tsx`, `src/deployments/nefarian.tsx`, etc. `App.tsx`
+becomes a generic shell that imports the active deployment selected by a
+`VITE_DEPLOYMENT` env variable. `UiRenderer.tsx` and `uiParser.ts` remain
+fully shared. Each machine's `.env` sets `VITE_DEPLOYMENT` alongside
+`VITE_PVWS_SOCKET`.
