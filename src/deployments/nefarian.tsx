@@ -1,4 +1,7 @@
 import { MotorRow } from "../MotorRow";
+import { MotorGrid } from "../MotorGrid";
+import { MotorCardRow } from "../MotorCardRow";
+import { MotorCardFlat } from "../MotorCardFlat";
 import { ReadbackRow } from "../ReadbackRow";
 import { StripChartWidget } from "../StripChartWidget";
 import { UiRenderer } from "../UiRenderer";
@@ -92,6 +95,25 @@ function TestContent() {
   return <UiRenderer file="/ui/test.ui" macros={{}} />;
 }
 
+function MotorCardTestContent() {
+  return <MotorGrid prefix="fr:" motors={["m1","m2","m3","m4","m5","m6"]} columns={3} />;
+}
+
+function MotorCardRowTestContent() {
+  const col1 = ["m1","m2","m3"];
+  const col2 = ["m4","m5","m6"];
+  return (
+    <div style={{ display: "flex", gap: 8 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {col1.map(m => <MotorCardRow key={m} pv={`fr:${m}`} />)}
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {col2.map(m => <MotorCardRow key={m} pv={`fr:${m}`} />)}
+      </div>
+    </div>
+  );
+}
+
 export const config: DeploymentConfig = {
   title: "Nefarian",
   tabs: [
@@ -99,10 +121,13 @@ export const config: DeploymentConfig = {
     { id: 2, icon: "🔬", label: "Test" },
   ],
   panelDefaults: {
-    motors:          { x: 108, y:  56 },
-    lorentzian:      { x: 108, y: 460 },
-    "area-detector": { x: 108, y: 800 },
-    test:            { x: 108, y:  56 },
+    motors:            { x: 108, y:  56 },
+    lorentzian:        { x: 108, y: 460 },
+    "area-detector":   { x: 108, y: 800 },
+    test:                  { x: 108, y:  56 },
+    "motor-card-test":     { x: 108, y: 400 },
+    "motor-card-row-test":  { x: 500, y: 400 },
+    "motor-card-flat-test": { x: 108, y: 700 },
   },
   tabPanels: {
     1: [
@@ -111,7 +136,14 @@ export const config: DeploymentConfig = {
       { id: "area-detector", title: "Area Detector — myad:cam1",       Content: AreaDetectorContent },
     ],
     2: [
-      { id: "test", title: "Widget Test", Content: TestContent },
+      { id: "test",                  title: "Widget Test",      Content: TestContent },
+      { id: "motor-card-test",       title: "Motor Cards",      Content: MotorCardTestContent },
+      { id: "motor-card-row-test",   title: "Motor Cards (row)",  Content: MotorCardRowTestContent },
+      { id: "motor-card-flat-test",  title: "Motor Cards (flat)", Content: () => (
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          {["m1","m2","m3","m4","m5","m6"].map(m => <MotorCardFlat key={m} pv={`fr:${m}`} />)}
+        </div>
+      )},
     ],
   },
 };
