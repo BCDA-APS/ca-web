@@ -23,26 +23,40 @@ npm run dev
 
 Then open `http://localhost:4200` in a browser on the same machine.
 
-### Distributed mode (beamline access)
+### Deployment modes
 
-Run everything on a beamline subnet machine (e.g. `mite`) so any subnet browser can
-reach the app and its pvws. Because the workspace is NFS-mounted, no code duplication
-is needed — just override `VITE_PVWS_SOCKET` via a shell environment variable so the
-browser knows where to find pvws:
+Tab layouts and pvws addresses are configured per deployment using Vite's mode system.
+Two deployment env files are committed:
+
+| Mode | File | pvws | Tabs |
+|------|------|------|------|
+| `nefarian` (default) | `.env.nefarian` | `localhost:8080` | Motors, Lorentzian, Area Detector |
+| `29id` | `.env.29id` | `mite:8080` | 29ID-C ARPES, 29ID-D Kappa |
 
 ```bash
-VITE_PVWS_SOCKET=mite:8080 npm run dev
+npm run dev -- --mode nefarian   # simulated IOC (default)
+npm run dev -- --mode 29id       # 29ID beamline on mite
+```
+
+Running `npm run dev` without `--mode` uses the gitignored `.env` (localhost pvws,
+nefarian tabs). Deployment files contain no secrets and are committed.
+
+To add a new deployment, create `src/deployments/<name>.tsx` exporting a
+`DeploymentConfig`, add a `.env.<name>` file, and register it in
+`src/deployments/index.ts`.
+
+### Distributed mode (beamline access)
+
+Run the app on `mite` (beamline subnet machine) with the `29id` mode so any subnet
+browser can reach real 29ID PVs. Because the workspace is NFS-mounted, no code
+duplication is needed:
+
+```bash
+npm run dev -- --mode 29id
 ```
 
 Then open `http://mite:4200` from any machine on the subnet. pvws must also be running
-on `mite` (see pvws Setup below). The `.env` file is **not** edited — the shell variable
-takes precedence and the default `localhost:8080` remains correct for local mode on
-other machines sharing the same NFS workspace.
-
-> **Long-term plan:** once development stabilises, `.env` will default to
-> `VITE_PVWS_SOCKET=mite:8080` (distributed mode as the standard deployment) and will
-> be removed from version control so each machine can have its own copy. For now it
-> stays at `localhost:8080` and is kept in the repo to simplify the dev workflow.
+on `mite` (see pvws Setup below).
 
 ## pvws Setup
 

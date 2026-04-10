@@ -1,10 +1,9 @@
 import { useState, useEffect, useRef, Component } from "react";
 import type { ErrorInfo } from "react";
 import { createPortal } from "react-dom";
-import { MotorRow } from "./MotorRow";
-import { ReadbackRow } from "./ReadbackRow";
-import { StripChartWidget } from "./StripChartWidget";
 import { UiRenderer, parseArgs } from "./UiRenderer";
+import { config } from "./deployments";
+import type { Tab } from "./deployments";
 
 // ── Top-level error boundary ──────────────────────────────────────────────────
 // Catches crashes caused by unexpected PV data during IOC reconnection.
@@ -47,22 +46,13 @@ class AppErrorBoundary extends Component<
 
 // ── Draggable panel ───────────────────────────────────────────────────────────
 
-const PANEL_DEFAULTS: Record<string, { x: number; y: number }> = {
-  motors:          { x: 108, y:  56 },
-  lorentzian:      { x: 108, y: 460 },
-  "area-detector": { x: 108, y: 800 },
-  test:            { x: 108, y:  56 },
-  "29idc-arpes":   { x: 108, y:  56 },
-  "29idd-kappa":   { x: 108, y:  56 },
-};
-
 // Global z-index counter so clicking a panel brings it to the front.
 let gZ = 100;
 
 interface PanelState { x: number; y: number; locked: boolean }
 
-function DraggablePanel({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
-  const def = PANEL_DEFAULTS[id] ?? { x: 60, y: 60 };
+function DraggablePanel({ id, title, defaultPos, children }: { id: string; title: string; defaultPos?: { x: number; y: number }; children: React.ReactNode }) {
+  const def = defaultPos ?? { x: 60, y: 60 };
   const [ps, setPs] = useState<PanelState>(() => {
     try {
       const s = localStorage.getItem(`panel:${id}`);
@@ -158,37 +148,6 @@ function DraggablePanel({ id, title, children }: { id: string; title: string; ch
   );
 }
 
-// ── Motor panel ───────────────────────────────────────────────────────────────
-
-const MOTOR_DISPLAYS = [
-  { label: "Tiny",  file: "/ui/motors/motorx_tiny.ui" },
-  { label: "Small", file: "/ui/motors/motorx.ui" },
-  { label: "More",  file: "/ui/motors/motorx_more.ui" },
-  { label: "Setup", file: "/ui/motors/motorx_setup.ui" },
-  { label: "All",   file: "/ui/motors/motorx_all.ui" },
-];
-
-const MOTORS = [
-  { label: "Motor 1", pv: "fr:m1", macros: { P: "fr:", M: "m1" } },
-  { label: "Motor 2", pv: "fr:m2", macros: { P: "fr:", M: "m2" } },
-  { label: "Motor 3", pv: "fr:m3", macros: { P: "fr:", M: "m3" } },
-  { label: "Motor 4", pv: "fr:m4", macros: { P: "fr:", M: "m4" } },
-  { label: "Motor 5", pv: "fr:m5", macros: { P: "fr:", M: "m5" } },
-  { label: "Motor 6", pv: "fr:m6", macros: { P: "fr:", M: "m6" } },
-  { label: "Motor 7", pv: "fr:m7", macros: { P: "fr:", M: "m7" } },
-  { label: "Motor 8", pv: "fr:m8", macros: { P: "fr:", M: "m8" } },
-];
-
-const LORENTZIAN = [{ label: "Noisy", pv: "fr:userCalc1.VAL" }];
-
-const AREA_DETECTOR = [
-  { label: "Acquire",      pv: "myad:cam1:Acquire_RBV" },
-  { label: "Frame count",  pv: "myad:cam1:ArrayCounter_RBV" },
-  { label: "Exposure (s)", pv: "myad:cam1:AcquireTime_RBV" },
-  { label: "Image size X", pv: "myad:cam1:SizeX_RBV" },
-  { label: "Image size Y", pv: "myad:cam1:SizeY_RBV" },
-];
-
 // ── Open-ui overlay (from motor ⋯ menu) ──────────────────────────────────────
 
 interface AppOverlay { id: number; file: string; macros: Record<string, string>; label: string; pos: { x: number; y: number }; sourceFile?: string; tabId?: number }
@@ -256,17 +215,10 @@ function AppOverlayPanel({ ov, onClose }: { ov: AppOverlay; onClose: () => void 
 
 // ── Sidebar ───────────────────────────────────────────────────────────────────
 
-const TABS = [
-  { id: 1, icon: "⌂",  label: "Home" },
-  { id: 2, icon: "🔬", label: "Test" },
-  { id: 3, icon: "⚛",  label: "29ID-C" },
-  { id: 4, icon: "💠",  label: "29ID-D" },
-];
-
-function Sidebar({ active, onSelect }: { active: number; onSelect: (id: number) => void }) {
+function Sidebar({ tabs, active, onSelect }: { tabs: Tab[]; active: number; onSelect: (id: number) => void }) {
   return (
     <div style={{ position: "fixed", top: 40, left: 0, bottom: 0, width: 68, zIndex: 40, background: "#0a1520", borderRight: "1px solid #1e3a5f", display: "flex", flexDirection: "column", paddingTop: 8 }}>
-      {TABS.map(tab => (
+      {tabs.map(tab => (
         <button
           key={tab.id}
           onClick={() => onSelect(tab.id)}
@@ -291,15 +243,14 @@ function Sidebar({ active, onSelect }: { active: number; onSelect: (id: number) 
 
 // ── Settings panel ────────────────────────────────────────────────────────────
 
-const PANEL_IDS = Object.keys(PANEL_DEFAULTS);
-
 type SavedLayout = { name: string; positions: Record<string, { x: number; y: number; locked: boolean }> };
 
 function loadSavedLayouts(): SavedLayout[] {
   try { return JSON.parse(localStorage.getItem("panel:layouts") ?? "[]"); } catch { return []; }
 }
 
-function SettingsPanel({ onClose, onReset }: { onClose: () => void; onReset: () => void }) {
+function SettingsPanel({ panelDefaults, onClose, onReset }: { panelDefaults: Record<string, { x: number; y: number }>; onClose: () => void; onReset: () => void }) {
+  const panelIds = Object.keys(panelDefaults);
   const [naming, setNaming] = useState(false);
   const [nameInput, setNameInput] = useState("");
   const [layouts, setLayouts] = useState<SavedLayout[]>(loadSavedLayouts);
@@ -313,7 +264,7 @@ function SettingsPanel({ onClose, onReset }: { onClose: () => void; onReset: () 
     const name = nameInput.trim();
     if (!name) return;
     const positions: SavedLayout["positions"] = {};
-    PANEL_IDS.forEach(id => {
+    panelIds.forEach(id => {
       const s = localStorage.getItem(`panel:${id}`);
       if (s) try { positions[id] = JSON.parse(s); } catch { /* skip */ }
     });
@@ -323,7 +274,7 @@ function SettingsPanel({ onClose, onReset }: { onClose: () => void; onReset: () 
   }
 
   function restoreLayout(layout: SavedLayout) {
-    PANEL_IDS.forEach(id => {
+    panelIds.forEach(id => {
       if (layout.positions[id])
         localStorage.setItem(`panel:${id}`, JSON.stringify(layout.positions[id]));
     });
@@ -332,8 +283,8 @@ function SettingsPanel({ onClose, onReset }: { onClose: () => void; onReset: () 
   }
 
   function resetToDefault() {
-    PANEL_IDS.forEach(id => {
-      const def = PANEL_DEFAULTS[id] ?? { x: 60, y: 60 };
+    panelIds.forEach(id => {
+      const def = panelDefaults[id] ?? { x: 60, y: 60 };
       localStorage.setItem(`panel:${id}`, JSON.stringify({ ...def, locked: false }));
     });
     onReset();
@@ -592,7 +543,7 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [layoutKey, setLayoutKey] = useState(0);
-  const [activeTab, setActiveTab] = useState(1);
+  const [activeTab, setActiveTab] = useState(config.tabs[0].id);
   const activeTabRef = useRef(activeTab);
   activeTabRef.current = activeTab;   // always reflects the current tab, readable from any closure
   const uiFiles = useUiFiles();
@@ -638,7 +589,7 @@ export default function App() {
       ))}
 
       {/* Sidebar */}
-      <Sidebar active={activeTab} onSelect={setActiveTab} />
+      <Sidebar tabs={config.tabs} active={activeTab} onSelect={setActiveTab} />
 
       {/* Page title (fixed, acts as header) */}
       {/* APS logo — bottom right */}
@@ -648,7 +599,7 @@ export default function App() {
 
       {/* Page title (fixed, acts as header) */}
       <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, background: "#0a1520", borderBottom: "1px solid #1e3a5f", padding: "8px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span style={{ color: "#90caf9", fontSize: 16, fontWeight: 700, letterSpacing: 0.5 }}>29ID Beamline</span>
+        <span style={{ color: "#90caf9", fontSize: 16, fontWeight: 700, letterSpacing: 0.5 }}>{config.title}</span>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }} onClick={e => e.stopPropagation()}>
           <button
             onClick={() => setPickerOpen(true)}
@@ -666,6 +617,7 @@ export default function App() {
           </button>
           {settingsOpen && (
             <SettingsPanel
+              panelDefaults={config.panelDefaults}
               onClose={() => setSettingsOpen(false)}
               onReset={() => setLayoutKey(k => k + 1)}
             />
@@ -682,81 +634,19 @@ export default function App() {
         />
       )}
 
-      {/* ── Tab 1: Main ── */}
-      {activeTab === 1 && <>
-        <DraggablePanel key={`motors-${layoutKey}`} id="motors" title="Motors">
-          <table style={tableStyle}>
-            <thead>
-              <tr>
-                <th style={thStyle}>Name</th>
-                <th style={{ ...thStyle, textAlign: "right" }}>Position</th>
-                <th style={thStyle}>Setpoint</th>
-                <th style={thStyle}>Tweak</th>
-                <th style={thStyle}>Status</th>
-                <th style={thStyle} />
-                <th style={thStyle} />
-              </tr>
-            </thead>
-            <tbody>
-              {MOTORS.map(m => (
-                <MotorRow key={m.pv} label={m.label} pv={m.pv} displays={MOTOR_DISPLAYS} macros={m.macros} />
-              ))}
-            </tbody>
-          </table>
+      {/* ── Active tab panels ── */}
+      {(config.tabPanels[activeTab] ?? []).map(panel => (
+        <DraggablePanel
+          key={`${panel.id}-${layoutKey}`}
+          id={panel.id}
+          title={panel.title}
+          defaultPos={config.panelDefaults[panel.id]}
+        >
+          <panel.Content />
         </DraggablePanel>
-
-        <DraggablePanel key={`lorentzian-${layoutKey}`} id="lorentzian" title="Detector — Simulated Lorentzian">
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 24 }}>
-            <table style={tableStyle}>
-              <thead><tr><th style={thStyle}>Name</th><th style={thStyle}>Value</th></tr></thead>
-              <tbody>{LORENTZIAN.map(r => <ReadbackRow key={r.pv} label={r.label} pv={r.pv} />)}</tbody>
-            </table>
-            <StripChartWidget pv="fr:userCalc1.VAL" label="Noisy" />
-          </div>
-        </DraggablePanel>
-
-        <DraggablePanel key={`area-detector-${layoutKey}`} id="area-detector" title="Area Detector — myad:cam1">
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 24 }}>
-            <table style={tableStyle}>
-              <thead><tr><th style={thStyle}>Name</th><th style={thStyle}>Value</th></tr></thead>
-              <tbody>{AREA_DETECTOR.map(r => <ReadbackRow key={r.pv} label={r.label} pv={r.pv} />)}</tbody>
-            </table>
-            <UiRenderer file="/ui/29id/29id_cam.ui" macros={{ P: "myad:" }} />
-          </div>
-        </DraggablePanel>
-      </>}
-
-      {/* ── Tab 2: Test ── */}
-      {activeTab === 2 && (
-        <DraggablePanel key={`test-${layoutKey}`} id="test" title="Widget Test">
-          <UiRenderer file="/ui/test.ui" macros={{}} />
-        </DraggablePanel>
-      )}
-
-      {/* ── Tab 3: 29ID-C ── */}
-      {activeTab === 3 && (
-        <DraggablePanel key={`29idc-arpes-${layoutKey}`} id="29idc-arpes" title="29ID-C ARPES">
-          <UiRenderer file="/ui/29id/29idc_ARPES.ui" macros={{}} />
-        </DraggablePanel>
-      )}
-
-      {/* ── Tab 4: 29ID-D ── */}
-      {activeTab === 4 && (
-        <DraggablePanel key={`29idd-kappa-${layoutKey}`} id="29idd-kappa" title="29ID-D Kappa">
-          <UiRenderer file="/ui/29id/29idd_Kappa.ui" macros={{ P: "29idd:", M1: "m1", M2: "m2", M3: "m3", M4: "m7", M5: "m6" }} />
-        </DraggablePanel>
-      )}
+      ))}
 
     </div>
     </AppErrorBoundary>
   );
 }
-
-const tableStyle: React.CSSProperties = {
-  borderCollapse: "collapse", width: "auto",
-  background: "#0a1828", borderRadius: 4, overflow: "hidden",
-};
-const thStyle: React.CSSProperties = {
-  padding: "7px 12px", background: "#1a3a5c", color: "#90caf9",
-  fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.8, textAlign: "left",
-};

@@ -64,28 +64,8 @@ diagnostics.
 
 ## 11. ~~QTabWidget support~~ ✓ Done
 
-## 12. Per-deployment App configuration
+## 12. ~~Per-deployment App configuration~~ ✓ Done
 
-Currently `App.tsx` hardcodes tabs for both the simulated IOC (nefarian) and
-29ID (mite). As deployments multiply, these should be separated.
-
-**Approach:** keep one repo on NFS; split tab/panel definitions into
-`src/deployments/29id.tsx`, `src/deployments/nefarian.tsx`, etc. `App.tsx`
-becomes a generic shell that imports the active deployment selected by
-`VITE_DEPLOYMENT`. `UiRenderer.tsx` and `uiParser.ts` remain fully shared.
-
-Use Vite's native mode support for per-deployment config — no shell variable
-overrides needed:
-
-```
-.env.nefarian   VITE_PVWS_SOCKET=localhost:8080  VITE_DEPLOYMENT=nefarian
-.env.29id       VITE_PVWS_SOCKET=mite:8080       VITE_DEPLOYMENT=29id
-```
-
-```bash
-npm run dev -- --mode nefarian   # on nefarian
-npm run dev -- --mode 29id       # on mite
-```
-
-Both files can be committed (no secrets). The existing `.env` stays gitignored
-as a generic local fallback.
+`App.tsx` is now a generic shell. Deployment-specific tabs and panels live in
+`src/deployments/nefarian.tsx` and `src/deployments/29id.tsx`. Select with
+`npm run dev -- --mode <name>`. See README for details.
