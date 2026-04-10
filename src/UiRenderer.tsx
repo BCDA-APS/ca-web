@@ -678,7 +678,7 @@ function CaRelatedDisplayWidget({ widget, ns: _ns }: { widget: ParsedWidget; ns:
   return (
     <>
       <button ref={btnRef} onClick={openMenu} style={btnStyle} {...bevelHandlers}>
-        {label} ▾
+        {label}
       </button>
       {menuPos && createPortal(
         <>

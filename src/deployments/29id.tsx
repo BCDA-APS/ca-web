@@ -1,5 +1,6 @@
 import { UiRenderer } from "../UiRenderer";
 import { MotorGrid } from "../MotorGrid";
+import { ChamberDiagram } from "../ChamberDiagram";
 import type { DeploymentConfig } from "./types";
 
 const ARPES_MOTORS = ["m1", "m2", "m3", "m4", "m5", "m6"];
@@ -28,14 +29,16 @@ export const config: DeploymentConfig = {
     { id: 2, icon: "💠", label: "29ID-D" },
   ],
   panelDefaults: {
-    "29idc-motors": { x: 108, y:  56 },
-    "29idc-arpes":  { x: 108, y: 400 },
-    "29idd-kappa":  { x: 108, y:  56 },
+    "29idc-chamber": { x: 108, y:  56 },
+    "29idc-motors":  { x: 108, y: 340 },
+    "29idc-arpes":   { x: 600, y:  56 },
+    "29idd-kappa":   { x: 108, y:  56 },
   },
   tabPanels: {
     1: [
-      { id: "29idc-motors", title: "29ID-C Motors", Content: ArpesMotorsContent },
-      { id: "29idc-arpes",  title: "29ID-C ARPES",  Content: ArpesContent },
+      { id: "29idc-chamber", title: "29ID-C Chamber",  Content: ChamberDiagram },
+      { id: "29idc-motors",  title: "29ID-C Motors",   Content: ArpesMotorsContent },
+      { id: "29idc-arpes",   title: "29ID-C ARPES",    Content: ArpesContent },
     ],
     2: [{ id: "29idd-kappa", title: "29ID-D Kappa", Content: KappaContent }],
   },
