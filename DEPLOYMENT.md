@@ -37,26 +37,9 @@ If for some reason pvws runs on a different machine than the Vite server, set:
 VITE_PVWS_SOCKET=<pvws-hostname>:8080
 ```
 
-> **Long-term plan:** once development stabilises, `.env` will default to
-> `VITE_PVWS_SOCKET=mite:8080` (distributed mode as the standard deployment) and will
-> be removed from version control so each machine can keep its own copy.
-
-### Running two instances simultaneously (NFS workspace)
-
-Because `.env` is on the NFS-shared workspace, it is the **same file** on all machines.
-To run `npm run dev` on both `nefarian` (simulated IOC) and `mite` (beamline PVs) at
-the same time without editing `.env`, override `VITE_PVWS_SOCKET` via a shell variable —
-Vite does not override existing shell env vars with `.env` values:
-
-```bash
-# on mite — browser connects to mite's pvws
-VITE_PVWS_SOCKET=mite:8080 npm run dev
-
-# on nefarian — uses .env default (localhost:8080), no override needed
-npm run dev
-```
-
-Each browser then connects to the pvws on the machine it is running on.
+Deployment-specific pvws addresses and tab layouts are now configured via Vite
+modes — see README for usage. The `.env` file (gitignored) remains a local
+fallback for development without a mode flag.
 
 ### `vite.config.ts`
 
@@ -144,8 +127,8 @@ podman build --build-arg GIT_TAG=main --build-arg PORT_NUMBER=8080 -t pvws:lates
 **1c. Run pvws:**
 
 ```bash
-podman stop pvws; podman rm pvws
-podman run --network=host -d --name pvws \
+podman stop pvws-29id; podman rm pvws-29id
+podman run --network=host --no-hosts -d --name pvws-29id \
   -e PV_WRITE_SUPPORT=true \
   -e EPICS_CA_MAX_ARRAY_BYTES=8000000 \
   -e PV_ARRAY_THROTTLE_MS=1000 \
@@ -153,6 +136,7 @@ podman run --network=host -d --name pvws \
 ```
 
 - `--network=host` — lets the container reach EPICS IOCs on the subnet
+- `--no-hosts` — required on beamline machines where `/etc/hosts` is not writable
 - `PV_WRITE_SUPPORT=true` — enables setpoints, buttons, motor commands
 - `EPICS_CA_MAX_ARRAY_BYTES=8000000` — required for area detector waveform PVs
 - `PV_ARRAY_THROTTLE_MS=1000` — limits waveform update rate to ~1 Hz
@@ -164,7 +148,7 @@ Verify pvws is up: open `http://localhost:8080/pvws` in a browser on that machin
 ```bash
 cd /home/beams3/RODOLAKIS/workspace/caqtdm-web
 conda activate nodejs
-npm run dev
+npm run dev -- --mode 29id
 ```
 
 The server starts on port 4200 and binds to all interfaces.

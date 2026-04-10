@@ -60,7 +60,9 @@ on `mite` (see pvws Setup below).
 
 ## pvws Setup
 
-pvws runs as a Podman container. It must be started with the following environment variables:
+pvws runs as a Podman container.
+
+### On nefarian (simulated IOC)
 
 ```bash
 podman stop pvws && podman rm pvws
@@ -70,6 +72,23 @@ podman run --network=host -d --name pvws \
   -e PV_ARRAY_THROTTLE_MS=1000 \
   pvws:latest
 ```
+
+### On mite (29ID beamline)
+
+`/etc/hosts` is not writable by regular users on the beamline machines, so
+`--no-hosts` is required. A distinct container name avoids conflicts with other
+instances on the shared machine.
+
+```bash
+podman stop pvws-29id && podman rm pvws-29id
+podman run --network=host --no-hosts -d --name pvws-29id \
+  -e PV_WRITE_SUPPORT=true \
+  -e EPICS_CA_MAX_ARRAY_BYTES=8000000 \
+  -e PV_ARRAY_THROTTLE_MS=1000 \
+  pvws:latest
+```
+
+### Environment variables
 
 - **`PV_WRITE_SUPPORT=true`** — enables PV write support (required for caTextEntry, caMessageButton, etc.)
 - **`EPICS_CA_MAX_ARRAY_BYTES=8000000`** — required for area detector waveform PVs (e.g. `ArrayData`). The container does **not** inherit the host shell's environment. Without this, the default is 16 KB and image PVs will connect but return 0 elements.
