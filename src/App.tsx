@@ -556,7 +556,7 @@ export default function App() {
 
   useEffect(() => {
     function handler(e: Event) {
-      const { file, macros, label, replace, sourceFile } = (e as CustomEvent).detail;
+      const { file, macros, label, replace, sourceFile, singleton } = (e as CustomEvent).detail;
       // Read the active tab from the ref — always current, even though this handler
       // is a stale closure (activeTabRef is a stable object, .current is always fresh).
       const tabId = activeTabRef.current;
@@ -568,6 +568,13 @@ export default function App() {
           ...prev.filter(o => o.sourceFile !== sourceFile),
           { id, file, macros, label, pos: { x: 120, y: 80 }, sourceFile, tabId },
         ]);
+      } else if (singleton) {
+        // Only open if no overlay with the same file+macros is already present.
+        const macrosKey = JSON.stringify(macros);
+        setOverlays(prev => {
+          if (prev.some(o => o.file === file && JSON.stringify(o.macros) === macrosKey)) return prev;
+          return [...prev, { id, file, macros, label, pos: { x: 120 + offset, y: 80 + offset }, sourceFile, tabId }];
+        });
       } else {
         setOverlays(prev => [...prev, { id, file, macros, label, pos: { x: 120 + offset, y: 80 + offset }, sourceFile, tabId }]);
       }
