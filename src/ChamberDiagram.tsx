@@ -93,7 +93,7 @@ export function ChamberDiagram() {
 
   return (
     <div style={{ background: "#0e1a2e", borderRadius: 6, padding: 10, display: "inline-block" }}>
-      <svg width={420} height={305} viewBox="40 0 420 305" style={{ display: "block" }}>
+      <svg width={420} height={277} viewBox="40 0 420 277" style={{ display: "block" }}>
         <defs>
           <marker id="cd-w" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
             <polygon points="0,0 8,3 0,6" fill="#cce0ff" />
@@ -168,47 +168,46 @@ export function ChamberDiagram() {
           fontFamily="sans-serif">th = 0</text>
 
         {/* ── Right panel divider ── */}
-        <line x1="338" y1="0" x2="338" y2="300" stroke="#1e3a5c" strokeWidth="1" />
+        <line x1="338" y1="0" x2="338" y2="272" stroke="#1e3a5c" strokeWidth="1" />
 
         {/* ── Chi / Phi ── */}
         <text x="347" y="14" fill="#90caf9" fontSize="11" fontFamily="sans-serif" fontStyle="italic">chi:</text>
-        <text x="374" y="14" fill="#cce0ff" fontSize="11" fontFamily="sans-serif">flip</text>
-        <text x="347" y="29" fill="#cce0ff" fontSize="11" fontFamily="sans-serif">along slit</text>
+        <text x="374" y="14" fill="#cce0ff" fontSize="11" fontFamily="sans-serif">flip along slit</text>
 
-        <line x1="347" y1="40" x2="452" y2="40" stroke="#1e3a5c" strokeWidth="1" />
+        <line x1="347" y1="26" x2="452" y2="26" stroke="#1e3a5c" strokeWidth="1" />
 
-        <text x="347" y="55" fill="#90caf9" fontSize="11" fontFamily="sans-serif" fontStyle="italic">phi:</text>
-        <text x="374" y="55" fill="#cce0ff" fontSize="11" fontFamily="sans-serif">azimuth</text>
-        <text x="347" y="70" fill="#cce0ff" fontSize="11" fontFamily="sans-serif">about normal</text>
+        <text x="347" y="41" fill="#90caf9" fontSize="11" fontFamily="sans-serif" fontStyle="italic">phi:</text>
+        <text x="374" y="41" fill="#cce0ff" fontSize="11" fontFamily="sans-serif">azimuth</text>
+        <text x="347" y="56" fill="#cce0ff" fontSize="11" fontFamily="sans-serif">about normal</text>
 
         {/* ── Pressure ── */}
-        <line x1="338" y1="81" x2="458" y2="81" stroke="#1e3a5c" strokeWidth="1" />
-        <text x="347" y="96" fill="#90caf9" fontSize="11" fontFamily="sans-serif"
+        <line x1="338" y1="70" x2="458" y2="70" stroke="#1e3a5c" strokeWidth="1" />
+        <text x="347" y="84" fill="#90caf9" fontSize="11" fontFamily="sans-serif"
           fontWeight="600" letterSpacing="0.5">Pressure</text>
 
         <g onClick={() => openStripChart("29idc:VS11C.VAL", "VS11C trend")} style={{ cursor: "pointer" }}>
-          <rect x="344" y="103" width="48" height="15" rx="3"
+          <rect x="344" y="92" width="48" height="15" rx="3"
             fill="#0d2a4a" stroke="#2a5a9a" strokeWidth="1" />
-          <text x="368" y="113" textAnchor="middle" fill="#90caf9" fontSize="10"
-            fontFamily="sans-serif">VS11C</text>
+          <text x="368" y="102" textAnchor="middle" fill="#90caf9" fontSize="10"
+            fontFamily="sans-serif">Gauge</text>
         </g>
-        <text x="452" y="113" fill="#4caf50" fontSize="11" fontFamily="monospace"
+        <text x="452" y="102" fill="#4caf50" fontSize="11" fontFamily="monospace"
           textAnchor="end">{p1}</text>
-        <text x="456" y="113" fill="#7a9ab8" fontSize="9" fontFamily="sans-serif">T</text>
+        <text x="456" y="102" fill="#7a9ab8" fontSize="9" fontFamily="sans-serif">T</text>
 
         <g onClick={() => openStripChart("29idc:IP11C1.VAL", "IP11C1 trend")} style={{ cursor: "pointer" }}>
-          <rect x="344" y="120" width="48" height="15" rx="3"
+          <rect x="344" y="110" width="48" height="15" rx="3"
             fill="#0d2a4a" stroke="#2a5a9a" strokeWidth="1" />
-          <text x="368" y="130" textAnchor="middle" fill="#90caf9" fontSize="10"
-            fontFamily="sans-serif">IP11C1</text>
+          <text x="368" y="120" textAnchor="middle" fill="#90caf9" fontSize="10"
+            fontFamily="sans-serif">Pump</text>
         </g>
-        <text x="452" y="130" fill="#4caf50" fontSize="11" fontFamily="monospace"
+        <text x="452" y="120" fill="#4caf50" fontSize="11" fontFamily="monospace"
           textAnchor="end">{p2}</text>
-        <text x="456" y="130" fill="#7a9ab8" fontSize="9" fontFamily="sans-serif">T</text>
+        <text x="456" y="120" fill="#7a9ab8" fontSize="9" fontFamily="sans-serif">T</text>
 
         {/* ── Temperature ── */}
-        <line x1="338" y1="141" x2="458" y2="141" stroke="#1e3a5c" strokeWidth="1" />
-        <text x="347" y="156" fill="#90caf9" fontSize="11" fontFamily="sans-serif"
+        <line x1="338" y1="138" x2="458" y2="138" stroke="#1e3a5c" strokeWidth="1" />
+        <text x="347" y="152" fill="#90caf9" fontSize="11" fontFamily="sans-serif"
           fontWeight="600" letterSpacing="0.5">Temperature</text>
 
         {/* LS335 settings button */}
@@ -217,8 +216,8 @@ export function ChamberDiagram() {
             macros: { P: "29idARPES:", Q: "TC1" },
             label: "Lakeshore" }
         }))}>
-          <rect x="444" y="145" width="14" height="14" rx="2" fill="#0d2a4a" stroke="#2a5a9a" strokeWidth="1" />
-          <text x="451" y="155" textAnchor="middle" fill="#90caf9" fontSize="10" fontFamily="sans-serif">⚙</text>
+          <rect x="444" y="141" width="14" height="14" rx="2" fill="#0d2a4a" stroke="#2a5a9a" strokeWidth="1" />
+          <text x="451" y="151" textAnchor="middle" fill="#90caf9" fontSize="10" fontFamily="sans-serif">⚙</text>
         </g>
 
         <g style={{ cursor: "pointer" }} onClick={() => window.dispatchEvent(new CustomEvent("open-ui", {
@@ -226,12 +225,12 @@ export function ChamberDiagram() {
             macros: { Q: "29idARPES:LS335:TC1:INA", R: "29idARPES:LS335:TC1:INB" },
             label: "T chart", singleton: true }
         }))}>
-          <rect x="344" y="162" width="48" height="14" rx="3" fill="#0d2a4a" stroke="#2a5a9a" strokeWidth="1" />
-          <text x="368" y="172" textAnchor="middle" fill="#90caf9" fontSize="10" fontFamily="sans-serif">Sample</text>
+          <rect x="344" y="160" width="48" height="14" rx="3" fill="#0d2a4a" stroke="#2a5a9a" strokeWidth="1" />
+          <text x="368" y="170" textAnchor="middle" fill="#90caf9" fontSize="10" fontFamily="sans-serif">Sample</text>
         </g>
-        <text x="449" y="172" fill="#4caf50" fontSize="11" fontFamily="monospace"
+        <text x="449" y="170" fill="#4caf50" fontSize="11" fontFamily="monospace"
           textAnchor="end">{tempA}</text>
-        <text x="456" y="172" fill="#7a9ab8" fontSize="9" fontFamily="sans-serif">K</text>
+        <text x="456" y="170" fill="#7a9ab8" fontSize="9" fontFamily="sans-serif">K</text>
 
         <g style={{ cursor: "pointer" }} onClick={() => window.dispatchEvent(new CustomEvent("open-ui", {
           detail: { file: "/ui/29id/29id_stripChart_trend.ui",
@@ -245,13 +244,10 @@ export function ChamberDiagram() {
           textAnchor="end">{tempB}</text>
         <text x="456" y="188" fill="#7a9ab8" fontSize="9" fontFamily="sans-serif">K</text>
 
-        {/* ── Lakeshore controls ── */}
-        <line x1="338" y1="196" x2="458" y2="196" stroke="#1e3a5c" strokeWidth="1" />
-
         {/* Setpoint */}
-        <text x="347" y="211" fill="#5c9ecf" fontSize="10" fontFamily="sans-serif">Setpoint</text>
+        <text x="347" y="206" fill="#5c9ecf" fontSize="10" fontFamily="sans-serif">Setpoint</text>
         {editingSP ? (
-          <foreignObject x="396" y="201" width="55" height="16">
+          <foreignObject x="396" y="196" width="55" height="16">
             <input
               ref={spRef}
               style={{
@@ -271,21 +267,21 @@ export function ChamberDiagram() {
           </foreignObject>
         ) : (
           <g onClick={startSPEdit} style={{ cursor: "text" }}>
-            <text x="449" y="211" fill="#fff" fontSize="11" fontFamily="monospace"
+            <text x="449" y="206" fill="#fff" fontSize="11" fontFamily="monospace"
               textAnchor="end">{spVal !== null ? spVal.toFixed(1) : "—"}</text>
           </g>
         )}
-        <text x="456" y="211" fill="#7a9ab8" fontSize="9" fontFamily="sans-serif">K</text>
+        <text x="456" y="206" fill="#7a9ab8" fontSize="9" fontFamily="sans-serif">K</text>
 
         {/* Power */}
-        <text x="347" y="226" fill="#5c9ecf" fontSize="10" fontFamily="sans-serif">Power</text>
-        <text x="449" y="226" fill="#4caf50" fontSize="11" fontFamily="monospace"
+        <text x="347" y="222" fill="#5c9ecf" fontSize="10" fontFamily="sans-serif">Power</text>
+        <text x="449" y="222" fill="#4caf50" fontSize="11" fontFamily="monospace"
           textAnchor="end">{power}</text>
-        <text x="456" y="226" fill="#7a9ab8" fontSize="9" fontFamily="sans-serif">%</text>
+        <text x="456" y="222" fill="#7a9ab8" fontSize="9" fontFamily="sans-serif">%</text>
 
         {/* Heater range — dropdown */}
-        <text x="347" y="242" fill="#5c9ecf" fontSize="10" fontFamily="sans-serif">Heater</text>
-        <foreignObject x="390" y="232" width="68" height="17">
+        <text x="347" y="238" fill="#5c9ecf" fontSize="10" fontFamily="sans-serif">Heater</text>
+        <foreignObject x="390" y="228" width="68" height="17">
           <select
             value={["off","low","medium","high"].indexOf((htrRange ?? "").toLowerCase())}
             onChange={e => pvwsWriter.write("29idARPES:LS335:TC1:HTR1:Range", parseInt(e.target.value))}
@@ -305,8 +301,8 @@ export function ChamberDiagram() {
         </foreignObject>
 
         {/* Scan rate — dropdown */}
-        <text x="347" y="258" fill="#5c9ecf" fontSize="10" fontFamily="sans-serif">Scan</text>
-        <foreignObject x="390" y="248" width="68" height="17">
+        <text x="347" y="254" fill="#5c9ecf" fontSize="10" fontFamily="sans-serif">Scan</text>
+        <foreignObject x="390" y="244" width="68" height="17">
           <select
             value={["passive","event","i/o intr","10 second","5 second","2 second","1 second",".5 second",".2 second",".1 second"].indexOf((scanStr ?? "").toLowerCase())}
             onChange={e => pvwsWriter.write("29idARPES:LS335:TC1:read.SCAN", parseInt(e.target.value))}
