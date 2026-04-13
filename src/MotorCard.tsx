@@ -371,7 +371,7 @@ const styles: Record<string, React.CSSProperties> = {
   rbv: {
     fontFamily: "monospace",
     fontSize: 14,
-    color: "#90caf9",
+    color: "#80deea",
     background: "#1a2a3a",
     border: "1px solid #2a3a4a",
     borderRadius: 3,
