@@ -84,20 +84,15 @@ export EPICS_CA_ADDR_LIST=<your address>   # e.g. 164.54.112.168 for APS
 > (e.g. your workstation, or `nefarian` after `su 29iduser`), then transfer it via NFS.
 >
 > ```bash
-> # On a machine WITH internet access, as 29iduser:
-> podman --root=/var/tmp/pvws-build/storage \
->        --runroot=/var/tmp/pvws-build/run \
->        build --build-arg GIT_TAG=main --build-arg PORT_NUMBER=8080 -t pvws:latest docker/
+> # On a machine WITH internet access:
+> cd ~/workspace/pvws
+> podman build --build-arg GIT_TAG=main --build-arg PORT_NUMBER=8080 -t pvws:latest docker/
 >
 > # Save to NFS share (accessible from all machines):
-> podman --root=/var/tmp/pvws-build/storage \
->        --runroot=/var/tmp/pvws-build/run \
->        save pvws:latest | gzip > /home/beams3/RODOLAKIS/workspace/pvws.tar.gz
+> podman save pvws:latest -o ~/workspace/pvws/pvws-image.tar
 >
-> # On nerdy — load from NFS (no internet needed):
-> podman --root=/var/tmp/29iduser-containers/storage \
->        --runroot=/var/tmp/29iduser-containers/run \
->        load < /home/beams3/RODOLAKIS/workspace/pvws.tar.gz
+> # On the beamline machine — load from NFS (no internet needed):
+> podman load -i ~/workspace/pvws/pvws-image.tar
 > ```
 
 ```bash
@@ -142,6 +137,20 @@ podman run --network=host --no-hosts -d --name pvws-29id \
 - `PV_ARRAY_THROTTLE_MS=1000` — limits waveform update rate to ~1 Hz
 
 Verify pvws is up: open `http://localhost:8080/pvws` in a browser on that machine.
+
+### After a reboot
+
+The pvws image is stored in `/var/tmp` and does not survive reboots. To restart quickly without rebuilding:
+
+```bash
+podman load -i ~/workspace/pvws/pvws-image.tar
+podman stop pvws-29id; podman rm pvws-29id
+podman run --network=host --no-hosts -d --name pvws-29id \
+  -e PV_WRITE_SUPPORT=true \
+  -e EPICS_CA_MAX_ARRAY_BYTES=8000000 \
+  -e PV_ARRAY_THROTTLE_MS=1000 \
+  pvws:latest
+```
 
 ### Step 2 — Start the dev server
 
