@@ -164,13 +164,13 @@ export function ChamberDiagram() {
         {/* ── (−)y axis — right, green ── */}
         <line x1={sx + 11} y1={sy} x2={sx + 78} y2={sy}
           stroke="#66bb6a" strokeWidth="2" markerEnd="url(#cd-g)" />
-        <text x={sx + 48} y={sy - 8} fill="#66bb6a" fontSize="11"
+        <text x={sx + 36} y={sy - 8} fill="#66bb6a" fontSize="11"
           fontFamily="sans-serif" textAnchor="middle">(−)y</text>
 
         {/* ── x axis — down, red ── */}
         <line x1={sx} y1={sy + 7} x2={sx} y2={sy + 78}
           stroke="#ef5350" strokeWidth="2" markerEnd="url(#cd-r)" />
-        <text x={sx - 9} y={sy + 49} fill="#ef5350" fontSize="12"
+        <text x={sx - 9} y={sy + 40} fill="#ef5350" fontSize="12"
           fontFamily="sans-serif" fontWeight="600" textAnchor="end">x</text>
 
         {/* ── X-rays — orange, 55° from x-axis ── */}
