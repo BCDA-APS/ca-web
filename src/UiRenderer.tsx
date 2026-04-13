@@ -1081,11 +1081,16 @@ function CaCartesianPlotWidget({ widget, ns }: { widget: ParsedWidget; ns: strin
   const [,,, rawX3] = useConnection(`${ns}-${widget.name}-x3`, chPairs[3].x ? `ca://${chPairs[3].x}` : "ca://");
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const axisRef   = useRef({ xMin: 0, xMax: 1, yMin: 0, yMax: 1, ml: 44, mt: 8, pw: 1, ph: 1 });
+  const cursorRef = useRef<{ x: number; y: number } | null>(null);
+  const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
 
-  const title  = widget.props["Title"]  ?? "";
-  const titleX = widget.props["TitleX"] ?? "";
-  const titleY = widget.props["TitleY"] ?? "";
-  const bg     = widget.props["background"] ?? "rgb(115,223,255)";
+  const title      = widget.props["Title"]      ?? "";
+  const titleX     = widget.props["TitleX"]     ?? "";
+  const titleY     = widget.props["TitleY"]     ?? "";
+  const bg         = widget.props["background"] ?? "rgb(115,223,255)";
+  const scaleColor = widget.props["scaleColor"] ?? "black";
+  const fgColor    = widget.props["foreground"] ?? "black";
 
   type NumArr = { [i: number]: number; length: number };
   function toArr(raw: unknown): number[] | null {
@@ -1119,15 +1124,7 @@ function CaCartesianPlotWidget({ widget, ns }: { widget: ParsedWidget; ns: strin
     const pw = W - ml - mr;
     const ph = H - mt - mb;
 
-    ctx.clearRect(0, 0, W, H);
-    ctx.fillStyle = "rgb(187,187,187)";
-    ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = bg;
-    ctx.fillRect(ml, mt, pw, ph);
-
-    if (curves.length === 0) return;
-
-    // Auto-scale
+    // Axis limits — from data if available, else from widget props, else 0–1
     let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
     for (const c of curves) {
       const n = c.ys!.length;
@@ -1138,8 +1135,14 @@ function CaCartesianPlotWidget({ widget, ns }: { widget: ParsedWidget; ns: strin
         if (isFinite(y)) { yMin = Math.min(yMin, y); yMax = Math.max(yMax, y); }
       }
     }
-    if (!isFinite(xMin)) { xMin = 0; xMax = 1; }
-    if (!isFinite(yMin)) { yMin = 0; yMax = 1; }
+    if (!isFinite(xMin)) {
+      const lim = (widget.props["XaxisLimits"] ?? "0;1").split(";");
+      xMin = parseFloat(lim[0]) || 0; xMax = parseFloat(lim[1]) || 1;
+    }
+    if (!isFinite(yMin)) {
+      const lim = (widget.props["YaxisLimits"] ?? "0;1").split(";");
+      yMin = parseFloat(lim[0]) || 0; yMax = parseFloat(lim[1]) || 1;
+    }
     if (xMin === xMax) { xMin -= 0.5; xMax += 0.5; }
     if (yMin === yMax) { yMin -= 0.5; yMax += 0.5; }
 
@@ -1152,9 +1155,15 @@ function CaCartesianPlotWidget({ widget, ns }: { widget: ParsedWidget; ns: strin
       return s.includes(".") ? s.replace(/\.?0+$/, "") : s;
     };
 
-    // Grid (dashed red lines, like caQtDM)
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = "rgb(187,187,187)";
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = bg;
+    ctx.fillRect(ml, mt, pw, ph);
+
+    // Grid (dashed, using scaleColor)
     const NTICKS = 4;
-    ctx.strokeStyle = "rgba(200,0,0,0.45)";
+    ctx.strokeStyle = scaleColor;
     ctx.lineWidth = 0.5;
     ctx.setLineDash([3, 5]);
     for (let g = 1; g < NTICKS; g++) {
@@ -1166,12 +1175,12 @@ function CaCartesianPlotWidget({ widget, ns }: { widget: ParsedWidget; ns: strin
     ctx.setLineDash([]);
 
     // Axes border
-    ctx.strokeStyle = "black";
+    ctx.strokeStyle = fgColor;
     ctx.lineWidth = 1;
     ctx.strokeRect(ml, mt, pw, ph);
 
     // Tick labels
-    ctx.fillStyle = "black";
+    ctx.fillStyle = scaleColor;
     ctx.font = "9px sans-serif";
     ctx.textAlign = "center";
     for (let g = 0; g <= NTICKS; g++) {
@@ -1184,12 +1193,12 @@ function CaCartesianPlotWidget({ widget, ns }: { widget: ParsedWidget; ns: strin
 
     // Title
     if (title) {
-      ctx.fillStyle = "black"; ctx.font = "bold 11px sans-serif"; ctx.textAlign = "center";
+      ctx.fillStyle = scaleColor; ctx.font = "bold 11px sans-serif"; ctx.textAlign = "center";
       ctx.fillText(title, W / 2, 14);
     }
     // X label
     if (titleX) {
-      ctx.fillStyle = "black"; ctx.font = "10px sans-serif"; ctx.textAlign = "center";
+      ctx.fillStyle = scaleColor; ctx.font = "10px sans-serif"; ctx.textAlign = "center";
       ctx.fillText(titleX, ml + pw / 2, H - 5);
     }
     // Y label (rotated)
@@ -1197,10 +1206,31 @@ function CaCartesianPlotWidget({ widget, ns }: { widget: ParsedWidget; ns: strin
       ctx.save();
       ctx.translate(10, mt + ph / 2);
       ctx.rotate(-Math.PI / 2);
-      ctx.fillStyle = "black"; ctx.font = "10px sans-serif"; ctx.textAlign = "center";
+      ctx.fillStyle = scaleColor; ctx.font = "10px sans-serif"; ctx.textAlign = "center";
       ctx.fillText(titleY, 0, 0);
       ctx.restore();
     }
+
+    // Always update axis ref so mouse handler has correct bounds
+    axisRef.current = { xMin, xMax, yMin, yMax, ml, mt, pw, ph };
+
+    // Draw cursor position label (top-left of plot area) — drawn always, even with no data
+    {
+      const cur = cursorRef.current;
+      if (cur) {
+        const label = `x:${fmtTick(cur.x)}  y:${fmtTick(cur.y)}`;
+        ctx.font = "10px monospace";
+        const tw = ctx.measureText(label).width;
+        const cx = ml + 6, cy = mt + 14;
+        ctx.fillStyle = "rgba(0,0,0,0.6)";
+        ctx.fillRect(cx - 2, cy - 12, tw + 6, 15);
+        ctx.fillStyle = scaleColor;
+        ctx.textAlign = "left";
+        ctx.fillText(label, cx + 1, cy);
+      }
+    }
+
+    if (curves.length === 0) return;
 
     // Draw curves (clipped to plot area)
     ctx.save();
@@ -1227,10 +1257,10 @@ function CaCartesianPlotWidget({ widget, ns }: { widget: ParsedWidget; ns: strin
         for (let i = 0; i < n; i++) {
           const y = c.ys![i];
           if (!isFinite(y)) { started = false; continue; }
-          const px = toCanvasX(c.xs ? c.xs[i] : i);
-          const py = toCanvasY(y);
-          if (!started) { ctx.moveTo(px, py); started = true; }
-          else ctx.lineTo(px, py);
+          const cpx = toCanvasX(c.xs ? c.xs[i] : i);
+          const cpy = toCanvasY(y);
+          if (!started) { ctx.moveTo(cpx, cpy); started = true; }
+          else ctx.lineTo(cpx, cpy);
         }
         ctx.stroke();
       }
@@ -1239,12 +1269,28 @@ function CaCartesianPlotWidget({ widget, ns }: { widget: ParsedWidget; ns: strin
   });
 
   const { x, y, width, height } = widget.geometry;
+
+  function handleMouseMove(e: React.MouseEvent<HTMLCanvasElement>) {
+    const rect = canvasRef.current!.getBoundingClientRect();
+    const px = (e.clientX - rect.left) * (width / rect.width);
+    const py = (e.clientY - rect.top)  * (height / rect.height);
+    const { xMin, xMax, yMin, yMax, ml, mt, pw, ph } = axisRef.current;
+    if (px < ml || px > ml + pw || py < mt || py > mt + ph) {
+      cursorRef.current = null; setCursor(null); return;
+    }
+    const c = { x: xMin + (px - ml) / pw * (xMax - xMin), y: yMax - (py - mt) / ph * (yMax - yMin) };
+    cursorRef.current = c;
+    setCursor(c);
+  }
+
   return (
     <canvas
       ref={canvasRef}
       width={width}
       height={height}
       style={{ position: "absolute", left: x, top: y, width, height, zIndex: widget.zIndex }}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={() => { cursorRef.current = null; setCursor(null); }}
     />
   );
 }
