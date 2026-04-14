@@ -1,12 +1,89 @@
+import { useConnection } from "@diamondlightsource/cs-web-lib";
 import { UiRenderer } from "../UiRenderer";
 import { MotorGrid } from "../MotorGrid";
 import { ChamberDiagram } from "../ChamberDiagram";
+import { pvwsWriter } from "../pvwsWriter";
 import type { DeploymentConfig } from "./types";
 
 const ARPES_MOTORS = ["m1", "m2", "m3", "m4", "m5", "m6"];
 
+const BLINK_STYLE = `
+@keyframes cd-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+.cd-moving-active { animation: cd-blink 1s step-end infinite; }
+`;
+
+function MovingIndicator() {
+  const [, connected,, val] = useConnection("29idc-blink", "ca://29idc:alldoneBlink.VAL");
+  const v = (val as any)?.value;
+  const raw = v?.doubleValue ?? v?.floatValue ?? v?.intValue ?? v?.value ?? null;
+  const active = connected && raw !== null && raw !== 0;
+  return (
+    <>
+      <style>{BLINK_STYLE}</style>
+      <div className={active ? "cd-moving-active" : undefined}
+           style={{ position: "relative", width: 80, height: 26, visibility: active ? "visible" : "hidden" }}>
+        <span style={{
+          position: "absolute", left: 3, top: 3,
+          fontSize: 18, fontWeight: 700, fontFamily: "sans-serif",
+          color: "#006064", userSelect: "none",
+        }}>Moving</span>
+        <span style={{
+          position: "absolute", left: 1, top: 1,
+          fontSize: 18, fontWeight: 700, fontFamily: "sans-serif",
+          color: "#80deea", userSelect: "none",
+        }}>Moving</span>
+      </div>
+    </>
+  );
+}
+
 function ArpesMotorsContent() {
-  return <MotorGrid prefix="29idc:" motors={ARPES_MOTORS} columns={3} />;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <MotorGrid prefix="29idc:" motors={ARPES_MOTORS} columns={3} />
+      <div style={{ display: "flex", alignItems: "center" }}>
+        {/* Moving indicator — centered in remaining space */}
+        <div style={{ flex: 1, display: "flex", justifyContent: "center" }}>
+          <MovingIndicator />
+        </div>
+        {/* All Stop */}
+        <button
+          onClick={() => pvwsWriter.write("29idc:allstop.VAL", 1)}
+          style={{
+            padding: "5px 16px",
+            background: "#7f1d1d",
+            color: "#fecaca",
+            border: "1px solid #ef5350",
+            borderRadius: 4,
+            fontSize: 12,
+            fontFamily: "sans-serif",
+            cursor: "pointer",
+          }}
+        >
+          All Stop
+        </button>
+        {/* Gear — related display */}
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent("open-ui", { detail: { file: "/ui/29idc_motors_more.ui", macros: {}, label: "29ID-C Motors" } }))}
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "center",
+            width: 28, height: 28,
+            background: "#0d2a4a",
+            color: "#90caf9",
+            border: "1px solid #2a5a9a",
+            borderRadius: 4,
+            fontSize: 16,
+            cursor: "pointer",
+            padding: 0,
+            marginLeft: 4,
+          }}
+        ><span style={{ display: "block", lineHeight: 1, marginTop: -2 }}>⚙</span></button>
+      </div>
+    </div>
+  );
 }
 
 function ArpesContent() {
@@ -29,10 +106,10 @@ export const config: DeploymentConfig = {
     { id: 2, icon: "💠", label: "29ID-D" },
   ],
   panelDefaults: {
-    "29idc-chamber": { x: 108, y:  56 },
-    "29idc-motors":  { x: 108, y: 340 },
-    "29idc-arpes":   { x: 600, y:  56 },
-    "29idd-kappa":   { x: 108, y:  56 },
+    "29idc-chamber": { x: 100, y:  55 },
+    "29idc-motors":  { x: 640, y:  55 },
+    "29idc-arpes":   { x: 100, y: 1000 },
+    "29idd-kappa":   { x: 100, y:  55 },
   },
   tabPanels: {
     1: [

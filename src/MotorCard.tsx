@@ -53,12 +53,12 @@ function deriveStatus(
 }
 
 const STATUS_BORDER: Record<Status, string> = {
-  "ok":         "1px solid #3a3a3a",
+  "ok":         "2px solid #3a3a3a",
   "moving":     "2px solid #4caf50",
   "soft-limit": "2px solid #f9a825",
   "hw-limit":   "2px solid #e53935",
   "calibrate":  "2px solid #f9a825",
-  "disabled":   "1px dashed #e53935",
+  "disabled":   "2px dashed #e53935",
 };
 
 const STATUS_LABEL: Partial<Record<Status, string>> = {
@@ -262,7 +262,7 @@ export function MotorCard({ pv }: MotorCardProps) {
       borderRadius: 5,
       background: disabled ? "#111e30" : "#1e3a5c",
       padding: "6px 8px",
-      width: 150,
+      width: 125,
       boxSizing: "border-box",
       opacity,
       display: "flex",
@@ -285,7 +285,10 @@ export function MotorCard({ pv }: MotorCardProps) {
       </div>
 
       {/* RBV — read-only readback */}
-      <div style={{ ...styles.rbv, borderColor: calibrate ? "#f9a825" : "#2a3a4a" }}>
+      <div
+        style={{ ...styles.rbv, borderColor: calibrate ? "#f9a825" : "#2a3a4a", cursor: "context-menu" }}
+        onContextMenu={e => { e.preventDefault(); window.dispatchEvent(new CustomEvent("pv-context", { detail: { pvName: `${pv}.RBV`, rawData: rbvVal, x: e.clientX, y: e.clientY } })); }}
+      >
         {connected ? fmt(rbv) : "—"}
       </div>
 

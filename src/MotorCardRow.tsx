@@ -47,12 +47,12 @@ function deriveStatus(disabled: boolean, calibrate: boolean, hwLimit: boolean, s
 }
 
 const STATUS_BORDER: Record<Status, string> = {
-  "ok":         "1px solid #2a4a6a",
+  "ok":         "2px solid #2a4a6a",
   "moving":     "2px solid #4caf50",
   "soft-limit": "2px solid #f9a825",
   "hw-limit":   "2px solid #e53935",
   "calibrate":  "2px solid #f9a825",
-  "disabled":   "1px dashed #e53935",
+  "disabled":   "2px dashed #e53935",
 };
 
 const STATUS_LABEL: Partial<Record<Status, string>> = {

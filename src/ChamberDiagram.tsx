@@ -2,6 +2,11 @@ import { useState, useRef, useEffect } from "react";
 import { useConnection } from "@diamondlightsource/cs-web-lib";
 import { pvwsWriter } from "./pvwsWriter";
 
+function pvCtx(pvName: string, rawData: unknown, e: React.MouseEvent) {
+  e.preventDefault();
+  window.dispatchEvent(new CustomEvent("pv-context", { detail: { pvName, rawData, x: e.clientX, y: e.clientY } }));
+}
+
 function openStripChart(pv: string, label: string) {
   window.dispatchEvent(new CustomEvent("open-ui", {
     detail: { file: "/ui/29id/29id_stripChart_trend.ui", macros: { Q: pv }, label }
@@ -217,7 +222,7 @@ export function ChamberDiagram() {
             fontFamily="sans-serif">Gauge</text>
         </g>
         <text x="472" y="94" fill="#4caf50" fontSize="12" fontFamily="monospace"
-          textAnchor="end">{p1}</text>
+          textAnchor="end" style={{ cursor: "context-menu" }} onContextMenu={e => pvCtx("29idc:VS11C.VAL", v1, e)}>{p1}</text>
         <text x="476" y="94" fill="#7a9ab8" fontSize="10" fontFamily="sans-serif">T</text>
 
         <g onClick={() => openStripChart("29idc:IP11C1.VAL", "IP11C1 trend")} style={{ cursor: "pointer" }}>
@@ -227,7 +232,7 @@ export function ChamberDiagram() {
             fontFamily="sans-serif">Pump</text>
         </g>
         <text x="472" y="112" fill="#4caf50" fontSize="12" fontFamily="monospace"
-          textAnchor="end">{p2}</text>
+          textAnchor="end" style={{ cursor: "context-menu" }} onContextMenu={e => pvCtx("29idc:IP11C1.VAL", v2, e)}>{p2}</text>
         <text x="476" y="112" fill="#7a9ab8" fontSize="10" fontFamily="sans-serif">T</text>
 
         {/* ── Temperature ── */}
@@ -254,7 +259,7 @@ export function ChamberDiagram() {
           <text x="373" y="166" textAnchor="middle" fill="#90caf9" fontSize="11" fontFamily="sans-serif">Sample</text>
         </g>
         <text x="469" y="166" fill="#80deea" fontSize="12" fontFamily="monospace"
-          textAnchor="end">{tempA}</text>
+          textAnchor="end" style={{ cursor: "context-menu" }} onContextMenu={e => pvCtx("29idARPES:LS335:TC1:INA", vINA, e)}>{tempA}</text>
         <text x="476" y="166" fill="#7a9ab8" fontSize="10" fontFamily="sans-serif">K</text>
 
         <g style={{ cursor: "pointer" }} onClick={() => window.dispatchEvent(new CustomEvent("open-ui", {
@@ -266,7 +271,7 @@ export function ChamberDiagram() {
           <text x="373" y="184" textAnchor="middle" fill="#90caf9" fontSize="11" fontFamily="sans-serif">Cold fngr</text>
         </g>
         <text x="469" y="184" fill="#80deea" fontSize="12" fontFamily="monospace"
-          textAnchor="end">{tempB}</text>
+          textAnchor="end" style={{ cursor: "context-menu" }} onContextMenu={e => pvCtx("29idARPES:LS335:TC1:INB", vINB, e)}>{tempB}</text>
         <text x="476" y="184" fill="#7a9ab8" fontSize="10" fontFamily="sans-serif">K</text>
 
         {/* Setpoint */}
@@ -301,7 +306,7 @@ export function ChamberDiagram() {
         {/* Power */}
         <text x="347" y="222" fill="#5c9ecf" fontSize="11" fontFamily="sans-serif">Power</text>
         <text x="469" y="222" fill="#80deea" fontSize="12" fontFamily="monospace"
-          textAnchor="end">{power}</text>
+          textAnchor="end" style={{ cursor: "context-menu" }} onContextMenu={e => pvCtx("29idARPES:LS335:TC1:HTR1", vHTR, e)}>{power}</text>
         <text x="476" y="222" fill="#7a9ab8" fontSize="10" fontFamily="sans-serif">%</text>
 
         {/* Heater range — dropdown */}
@@ -361,7 +366,7 @@ export function ChamberDiagram() {
           <text x="61" y="307" textAnchor="middle" fill="#90caf9" fontSize="11" fontFamily="sans-serif">[D15]</text>
         </g>
         <text x="80" y="308" fill="#90caf9" fontSize="11" fontFamily="sans-serif">Diode</text>
-        <text x="190" y="308" fill="#80deea" fontSize="12" fontFamily="monospace" textAnchor="end">{d15}</text>
+        <text x="190" y="308" fill="#80deea" fontSize="12" fontFamily="monospace" textAnchor="end" style={{ cursor: "context-menu" }} onContextMenu={e => pvCtx("29idb:ca15:read", vD15, e)}>{d15}</text>
         <g style={{ cursor: "pointer" }} onClick={() => pvwsWriter.write("29idARPES:userStringSeq7.PROC", 1)}>
           <rect x="196" y="295" width="43" height="16" rx="3" fill="#7c4a00" stroke="#ffa726" strokeWidth="1" />
           <text x="217" y="307" textAnchor="middle" fill="#ffe0b2" fontSize="11" fontFamily="sans-serif">Live</text>
@@ -376,7 +381,7 @@ export function ChamberDiagram() {
           <text x="289" y="307" textAnchor="middle" fill="#90caf9" fontSize="11" fontFamily="sans-serif">[D16]</text>
         </g>
         <text x="308" y="308" fill="#90caf9" fontSize="11" fontFamily="sans-serif">TFY</text>
-        <text x="418" y="308" fill="#80deea" fontSize="12" fontFamily="monospace" textAnchor="end">{d16}</text>
+        <text x="418" y="308" fill="#80deea" fontSize="12" fontFamily="monospace" textAnchor="end" style={{ cursor: "context-menu" }} onContextMenu={e => pvCtx("29idc:ca2:read", vD16, e)}>{d16}</text>
         <foreignObject x="424" y="293" width="44" height="18">
           <select
             value={SCAN_OPTS.indexOf(d16scan.toLowerCase())}
@@ -402,7 +407,7 @@ export function ChamberDiagram() {
           <text x="61" y="334" textAnchor="middle" fill="#90caf9" fontSize="11" fontFamily="sans-serif">[D18]</text>
         </g>
         <text x="80" y="335" fill="#90caf9" fontSize="11" fontFamily="sans-serif">EA</text>
-        <text x="190" y="335" fill="#80deea" fontSize="12" fontFamily="monospace" textAnchor="end">{d18}</text>
+        <text x="190" y="335" fill="#80deea" fontSize="12" fontFamily="monospace" textAnchor="end" style={{ cursor: "context-menu" }} onContextMenu={e => pvCtx("29idcScienta:Stats4:Total_RBV", vD18, e)}>{d18}</text>
         <g style={{ cursor: "pointer" }} onClick={() => pvwsWriter.write("29idcScienta:HV:ZeroSuppliesSeq.PROC", 1)}>
           <rect x="196" y="322" width="43" height="16" rx="3" fill="#7f1d1d" stroke="#ef5350" strokeWidth="1" />
           <text x="217" y="334" textAnchor="middle" fill="#fecaca" fontSize="11" fontFamily="sans-serif">HV off</text>
@@ -417,7 +422,7 @@ export function ChamberDiagram() {
           <text x="289" y="334" textAnchor="middle" fill="#90caf9" fontSize="11" fontFamily="sans-serif">[D14]</text>
         </g>
         <text x="308" y="335" fill="#90caf9" fontSize="11" fontFamily="sans-serif">TEY</text>
-        <text x="418" y="335" fill="#80deea" fontSize="12" fontFamily="monospace" textAnchor="end">{d14}</text>
+        <text x="418" y="335" fill="#80deea" fontSize="12" fontFamily="monospace" textAnchor="end" style={{ cursor: "context-menu" }} onContextMenu={e => pvCtx("29idb:ca14:read", vD14, e)}>{d14}</text>
         <foreignObject x="424" y="320" width="44" height="18">
           <select
             value={SCAN_OPTS.indexOf(d14scan.toLowerCase())}
