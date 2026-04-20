@@ -1,9 +1,10 @@
 import { useConnection } from "@diamondlightsource/cs-web-lib";
-import { UiRenderer } from "../UiRenderer";
-import { MotorGrid } from "../MotorGrid";
-import { ChamberDiagram } from "../ChamberDiagram";
-import { pvwsWriter } from "../pvwsWriter";
-import type { DeploymentConfig } from "./types";
+import { UiRenderer } from "../../lib/UiRenderer";
+import { MotorGrid } from "../../widgets/MotorGrid";
+import { ChamberDiagram } from "./ChamberDiagram";
+import { BeamlineEnergy } from "./BeamlineEnergy";
+import { pvwsWriter } from "../../lib/pvwsWriter";
+import type { DeploymentConfig } from "../types";
 
 const ARPES_MOTORS = ["m1", "m2", "m3", "m4", "m5", "m6"];
 
@@ -102,13 +103,14 @@ function KappaContent() {
 export const config: DeploymentConfig = {
   title: "29ID Beamline",
   tabs: [
-    { id: 1, icon: "⚛",  label: "29ID-C" },
+    { id: 1, icon: "⚛",  label: "29ID-C", color: "#6a3fa0" },
     { id: 2, icon: "💠", label: "29ID-D" },
   ],
   panelDefaults: {
     "29idc-chamber": { x: 100, y:  55 },
     "29idc-motors":  { x: 640, y:  55 },
     "29idc-arpes":   { x: 100, y: 1000 },
+    "29idc-energy":  { x: 640, y: 350 },
     "29idd-kappa":   { x: 100, y:  55 },
   },
   tabPanels: {
@@ -116,6 +118,7 @@ export const config: DeploymentConfig = {
       { id: "29idc-chamber", title: "29ID-C Chamber",  Content: ChamberDiagram },
       { id: "29idc-motors",  title: "29ID-C Motors",   Content: ArpesMotorsContent },
       { id: "29idc-arpes",   title: "29ID-C ARPES",    Content: ArpesContent },
+      { id: "29idc-energy",  title: "Beamline Energy", Content: BeamlineEnergy },
     ],
     2: [{ id: "29idd-kappa", title: "29ID-D Kappa", Content: KappaContent }],
   },

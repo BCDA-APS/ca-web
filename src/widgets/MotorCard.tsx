@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useConnection } from "@diamondlightsource/cs-web-lib";
-import { pvwsWriter } from "./pvwsWriter";
+import { pvwsWriter } from "../lib/pvwsWriter";
 
 interface MotorCardProps {
   /** PV prefix + motor name, e.g. "29idc:m1" */

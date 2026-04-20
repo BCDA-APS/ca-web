@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, Component } from "react";
 import type { ErrorInfo } from "react";
 import { createPortal } from "react-dom";
-import { UiRenderer, parseArgs } from "./UiRenderer";
+import { UiRenderer, parseArgs } from "./lib/UiRenderer";
 import { config } from "./deployments";
 import type { Tab } from "./deployments";
 
@@ -575,14 +575,18 @@ function PvInfoDialog({ pvName, rawData, onClose }: { pvName: string; rawData: u
   const rawStr   = val?.stringValue ?? null;
   const dispVal  = rawStr ?? (rawNum !== null ? String(rawNum) : "—");
   const numVal   = rawNum !== null ? rawNum.toPrecision(16) : rawStr ?? "—";
-  const severity = alarm?.severity ?? "—";
-  const alarmSt  = alarm?.status   ?? "—";
+  // cs-web-lib stores alarm quality as alarm.quality, timestamp as time.datetime
+  const alarmQuality = alarm?.quality ?? "";
+  const severityMap: Record<string, string> = { valid: "NO_ALARM", warning: "MINOR", alarm: "MAJOR", invalid: "INVALID" };
+  const severity  = severityMap[alarmQuality] ?? (alarmQuality ? alarmQuality.toUpperCase() : "—");
+  const alarmSt   = alarmQuality ? "OK" : "—";
   const precision = disp?.precision ?? "—";
-  const count    = val?.arrayValue ? Object.keys(val.arrayValue).length - 1 : 1;
+  const units     = disp?.units ?? null;
+  const count     = val?.arrayValue ? Object.keys(val.arrayValue).length - 1 : 1;
 
   let tsStr = "—";
-  if (time?.seconds) {
-    tsStr = new Date(time.seconds * 1000).toLocaleString();
+  if (time?.datetime) {
+    tsStr = new Date(time.datetime).toLocaleString();
   }
 
   const row = (label: string, value: string) => (
@@ -598,7 +602,7 @@ function PvInfoDialog({ pvName, rawData, onClose }: { pvName: string; rawData: u
       <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 9101, background: "#0f2035", border: "1px solid #1e3a5f", borderRadius: 8, boxShadow: "0 8px 32px rgba(0,0,0,0.7)", minWidth: 380, padding: 0 }}>
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#1a3a5c", borderRadius: "8px 8px 0 0", padding: "8px 14px" }}>
-          <span style={{ color: "#bbdefb", fontWeight: 700, fontSize: 13 }}>caQtDM</span>
+          <span style={{ color: "#bbdefb", fontWeight: 700, fontSize: 13, fontFamily: "sans-serif" }}>PV Info</span>
           <button onClick={onClose} style={{ background: "none", border: "none", color: "#90caf9", cursor: "pointer", fontSize: 16, padding: "0 4px" }}>✕</button>
         </div>
         {/* Body */}
@@ -614,6 +618,7 @@ function PvInfoDialog({ pvName, rawData, onClose }: { pvName: string; rawData: u
           {row("Value (num):", numVal)}
           {row("Severity:", severity)}
           {row("Alarm status:", alarmSt)}
+          {units && row("Units:", units)}
           {row("Precision (channel):", String(precision))}
         </div>
       </div>
@@ -669,6 +674,7 @@ export default function App() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [layoutKey, setLayoutKey] = useState(0);
   const [activeTab, setActiveTab] = useState(config.tabs[0].id);
+  const activeTabColor = config.tabs.find(t => t.id === activeTab)?.color ?? "#0a1520";
   const [hiddenPanels, setHiddenPanels] = useState<Set<string>>(() => {
     try {
       const s = localStorage.getItem("panel-hidden");
@@ -741,7 +747,7 @@ export default function App() {
       </div>
 
       {/* Page title (fixed, acts as header) */}
-      <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, background: "#0a1520", borderBottom: "1px solid #1e3a5f", padding: "8px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, background: activeTabColor, borderBottom: "1px solid #1e3a5f", padding: "8px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", transition: "background 0.3s" }}>
         <span style={{ color: "#90caf9", fontSize: 16, fontWeight: 700, letterSpacing: 0.5 }}>{config.title}</span>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }} onClick={e => e.stopPropagation()}>
           <button

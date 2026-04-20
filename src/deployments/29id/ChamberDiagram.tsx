@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useConnection } from "@diamondlightsource/cs-web-lib";
-import { pvwsWriter } from "./pvwsWriter";
+import { pvwsWriter } from "../../lib/pvwsWriter";
 
 function pvCtx(pvName: string, rawData: unknown, e: React.MouseEvent) {
   e.preventDefault();

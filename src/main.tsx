@@ -1,7 +1,7 @@
 import { createRoot } from "react-dom/client";
 import { Provider } from "react-redux";
 import { OutlineProvider, store } from "@diamondlightsource/cs-web-lib";
-import { pvwsWriter } from "./pvwsWriter";
+import { pvwsWriter } from "./lib/pvwsWriter";
 import App from "./App";
 
 pvwsWriter.connect();

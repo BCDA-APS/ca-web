@@ -1,10 +1,10 @@
-import { MotorRow } from "../MotorRow";
-import { MotorGrid } from "../MotorGrid";
-import { MotorCardRow } from "../MotorCardRow";
-import { MotorCardFlat } from "../MotorCardFlat";
-import { ReadbackRow } from "../ReadbackRow";
-import { StripChartWidget } from "../StripChartWidget";
-import { UiRenderer } from "../UiRenderer";
+import { MotorRow } from "../widgets/MotorRow";
+import { MotorGrid } from "../widgets/MotorGrid";
+import { MotorCardRow } from "../widgets/MotorCardRow";
+import { MotorCardFlat } from "../widgets/MotorCardFlat";
+import { ReadbackRow } from "../widgets/ReadbackRow";
+import { StripChartWidget } from "../widgets/StripChartWidget";
+import { UiRenderer } from "../lib/UiRenderer";
 import type { DeploymentConfig } from "./types";
 
 const MOTOR_DISPLAYS = [

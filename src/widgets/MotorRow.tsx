@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useConnection } from "@diamondlightsource/cs-web-lib";
-import { pvwsWriter } from "./pvwsWriter";
+import { pvwsWriter } from "../lib/pvwsWriter";
 
 interface DisplayItem {
   label: string;

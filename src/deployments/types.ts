@@ -4,6 +4,7 @@ export interface Tab {
   id: number;
   icon: string;
   label: string;
+  color?: string;   // optional accent color for the top bar when this tab is active
 }
 
 export interface PanelConfig {

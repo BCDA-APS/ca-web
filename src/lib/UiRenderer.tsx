@@ -714,6 +714,96 @@ function CaRelatedDisplayWidget({ widget, ns: _ns }: { widget: ParsedWidget; ns:
   );
 }
 
+// ── caShellCommand — button that runs a shell script (web: shows a notice) ───
+
+function CaShellCommandWidget({ widget, ns: _ns }: { widget: ParsedWidget; ns: string }) {
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+  const [pressed, setPressed] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
+
+  const label = (widget.props["label"] ?? "CMD").replace(/^-/, "");
+  const fg = widget.props["foreground"] ?? "#000";
+  const bg = widget.props["background"] ?? "#c8c864";
+
+  const files  = (widget.props["files"]  ?? "").split(";").map(s => s.trim()).filter(Boolean);
+  const labels = (widget.props["labels"] ?? "").split(";").map(s => s.trim()).filter(Boolean);
+  const args   = (widget.props["args"]   ?? "").split(";").map(s => s.trim());
+
+  const items = files.map((f, i) => ({
+    label: labels[i] ?? f,
+    file: f,
+    args: args[i] ?? "",
+  }));
+
+  if (items.length === 0) return null;
+
+  const btnStyle: CSSProperties = {
+    ...geoStyle(widget.geometry, widget.zIndex),
+    color: fg, background: bg, border: "none", borderRadius: 2,
+    fontFamily: "sans-serif", fontSize: scaledFont(widget.geometry.height), cursor: "pointer", padding: 0,
+    boxShadow: pressed ? BTN_PRESSED : BTN_RAISED,
+    filter: pressed ? "brightness(0.85)" : "brightness(1.05)",
+  };
+  const bevelHandlers = {
+    onMouseDown: () => setPressed(true),
+    onMouseUp:   () => setPressed(false),
+    onMouseLeave: () => setPressed(false),
+  };
+
+  function handleItem(item: { file: string; args: string }) {
+    setMenuPos(null);
+    alert(`Shell command (cannot run in browser):\n${item.file}${item.args ? " " + item.args : ""}`);
+  }
+
+  function openMenu() {
+    const r = btnRef.current?.getBoundingClientRect();
+    setMenuPos(r ? { top: r.bottom + 2, left: r.left } : null);
+  }
+
+  if (items.length === 1) {
+    return (
+      <button ref={btnRef} onClick={() => handleItem(items[0])} style={btnStyle} {...bevelHandlers}
+        title={`Shell: ${items[0].file}${items[0].args ? " " + items[0].args : ""}`}>
+        {label}
+      </button>
+    );
+  }
+
+  return (
+    <>
+      <button ref={btnRef} onClick={openMenu} style={btnStyle} {...bevelHandlers}
+        title="Shell commands (cannot run in browser)">
+        {label}
+      </button>
+      {menuPos && createPortal(
+        <>
+          <div onClick={() => setMenuPos(null)} style={{ position: "fixed", inset: 0, zIndex: 9998 }} />
+          <div style={{
+            position: "fixed", top: menuPos.top, left: menuPos.left, zIndex: 9999,
+            background: "#fff", border: "1px solid #999", borderRadius: 2,
+            minWidth: 140, boxShadow: "2px 2px 6px rgba(0,0,0,0.3)",
+          }}>
+            {items.map((item, i) => (
+              <div key={i} onClick={() => handleItem(item)}
+                style={{
+                  padding: "4px 8px", fontSize: 11, fontFamily: "sans-serif",
+                  cursor: "pointer", whiteSpace: "nowrap",
+                  borderBottom: i < items.length - 1 ? "1px solid #eee" : "none",
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = "#e8f0fe")}
+                onMouseLeave={e => (e.currentTarget.style.background = "")}
+              >
+                {item.label}
+              </div>
+            ))}
+          </div>
+        </>,
+        document.body
+      )}
+    </>
+  );
+}
+
 // ── caMenu — enum dropdown selector ──────────────────────────────────────────
 
 function CaMenuWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
@@ -1371,7 +1461,7 @@ function PvInfoPanel({ channel, widgetName, widgetClass, onClose }: PvInfoPanelP
         display: "flex", justifyContent: "space-between", alignItems: "center",
         cursor: "grab", borderRadius: "1px 1px 0 0",
       }}>
-        <span style={{ fontWeight: 700 }}>caQtDM</span>
+        <span style={{ fontWeight: 700, fontFamily: "sans-serif" }}>PV Info</span>
         <button onClick={onClose} style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: "0 2px" }}>×</button>
       </div>
 
@@ -2265,6 +2355,7 @@ function WidgetRouter({ widget, ns }: { widget: ParsedWidget; ns: string }) {
     case "caChoice":         return <CaChoiceWidget widget={widget} ns={ns} />;
     case "caMessageButton":  return <CaMessageButtonWidget widget={widget} ns={ns} />;
     case "caRelatedDisplay": return <CaRelatedDisplayWidget widget={widget} ns={ns} />;
+    case "caShellCommand":   return <CaShellCommandWidget widget={widget} ns={ns} />;
     case "caMenu":           return <CaMenuWidget widget={widget} ns={ns} />;
     case "caPolyLine":       return <CaPolyLineWidget widget={widget} ns={ns} />;
     case "caCartesianPlot":  return <CaCartesianPlotWidget widget={widget} ns={ns} />;
