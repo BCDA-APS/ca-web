@@ -92,11 +92,11 @@ const sectionHeaderStyle: React.CSSProperties = {
 };
 
 const unitStyle: React.CSSProperties = {
-  fontSize: 11, color: "#546e8a", width: UW, flexShrink: 0,
+  fontSize: 11, color: "#7a9ab8", width: UW, flexShrink: 0,
 };
 
 const labelStyle: React.CSSProperties = {
-  fontSize: 11, color: "#546e8a", textAlign: "right", flexShrink: 0,
+  fontSize: 11, color: "#cce0ff", textAlign: "right", flexShrink: 0,
 };
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -260,7 +260,7 @@ function MonoSection() {
         <span style={unitStyle}>eV</span>
         <div style={{ minWidth: 40 }}>
           {gLabel
-            ? <Badge label={gLabel} />
+            ? <span style={{ fontSize: 12, fontWeight: 700, color: "#90caf9" }}>{gLabel}</span>
             : <span style={{ fontSize: 10, color: "#546e8a" }}>—</span>}
         </div>
       </Row>
@@ -276,7 +276,7 @@ function MonoSection() {
         </div>
         <span style={unitStyle}>eV</span>
         <div style={{ minWidth: 40 }}>
-          {mLabel ? <Badge label={mLabel} color="#a5d6a7" bg="#1a3a1a" border="#4caf50" /> : null}
+          {mLabel ? <span style={{ fontSize: 12, fontWeight: 700, color: "#ffa726" }}>{mLabel}</span> : null}
         </div>
       </Row>
 
@@ -290,12 +290,16 @@ function MonoSection() {
             width: FW, boxSizing: "border-box", flexShrink: 0,
           }}
         >STOP</button>
-        <div style={{ width: UW, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <button onClick={openEnergyMore} title="Energy settings"
-            style={{ background: "none", border: "none", color: "#90caf9", cursor: "pointer", fontSize: 14, padding: 0 }}>
-            ⚙
-          </button>
-        </div>
+        <button onClick={openEnergyMore} title="Energy settings"
+          style={{
+            width: 23, height: 23, flexShrink: 0,
+            background: "#0d2a4a", border: "1px solid #2a5a9a",
+            color: "#90caf9", cursor: "pointer", fontSize: 14,
+            borderRadius: 3, padding: 0,
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+          ⚙
+        </button>
         <div>
           {tempAlarm && (
             <span title="Temperature alarm!" style={{ fontSize: 11, color: "#ef5350", whiteSpace: "nowrap" }}>
@@ -312,9 +316,9 @@ function MonoSection() {
         <button
           onClick={openRingInfo}
           style={{
-            background: "none", border: "1px solid #2a5a9a", color: "#90caf9",
-            borderRadius: 3, fontSize: 10, padding: "1px 6px", cursor: "pointer",
-            whiteSpace: "nowrap",
+            background: "#0d2a4a", border: "1px solid #2a5a9a", color: "#90caf9",
+            borderRadius: 3, fontSize: 11, fontFamily: "sans-serif",
+            padding: "1px 6px", cursor: "pointer", whiteSpace: "nowrap",
           }}
         >Ring Info</button>
       </Row>
@@ -340,6 +344,7 @@ function IdSection() {
   const rbv    = toDouble(rbvRaw);
   const sp     = toDouble(spRaw);
   const mode   = toStr(modeRaw) ?? "—";
+  const modeIdx = toDouble(modeRaw);
   const des        = toDouble(desRaw);
   const desChoices = (desRaw as { display?: { choices?: string[] } })?.display?.choices;
   const qp     = toDouble(qpRaw);
@@ -351,8 +356,9 @@ function IdSection() {
 
   const desIdx = des !== null ? Math.round(des) : -1;
 
-  // coffee cup: visible when hyst=up AND polarization is circular/LA (not LH/LV)
-  const showCoffee = true; // DEBUG: always show // hystUp && (desIdx === 2 || desIdx === 3);
+  // coffee cup: C=0 AND A=1 AND (B=0 OR B=1 OR B=3 OR B=4)
+  // A=userCalcOut4 (hystUp), B=ActualModeM, C=BusyRecordM
+  const showCoffee = !busy && hystUp && modeIdx !== null && [0, 1, 3, 4].includes(Math.round(modeIdx));
 
   return (
     <div style={{ flex: 1, minWidth: 0 }}>
@@ -360,13 +366,8 @@ function IdSection() {
 
       {/* Row 1: On/Off | RBV keV | keV | Busy dot */}
       <Row onContextMenu={e => pvCtx("S29ID:EnergyM.VAL", rbvRaw, e)}>
-        <div style={{ width: ID_LABEL_W, flexShrink: 0 }}>
-          <span style={{
-            padding: "1px 6px", borderRadius: 3, fontSize: 10, fontWeight: 700,
-            background: on ? "#1a3a1a" : "#2a1a1a",
-            color: on ? "#4caf50" : "#ef5350",
-            border: `1px solid ${on ? "#4caf50" : "#ef5350"}`,
-          }}>
+        <div style={{ width: ID_LABEL_W, flexShrink: 0, textAlign: "center" }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: on ? "#4caf50" : "#ef5350" }}>
             {on ? "On" : "Off"}
           </span>
         </div>
@@ -379,14 +380,14 @@ function IdSection() {
 
       {/* Row 2: Ramp | SP keV | keV | Arrow + coffee */}
       <Row onContextMenu={e => pvCtx("S29ID:EnergySetC.VAL", spRaw, e)}>
-        <div style={{ width: ID_LABEL_W, flexShrink: 0 }}>
+        <div style={{ width: ID_LABEL_W, flexShrink: 0, alignSelf: "stretch" }}>
           <button
             onClick={() => pvwsWriter.write("S29ID:StartRampC.VAL", 1)}
             disabled={!conn}
             style={{
               background: "#1a4a1a", color: "#a5d6a7", border: "1px solid #4caf50",
-              borderRadius: 3, padding: "2px 0", fontSize: 11, cursor: "pointer",
-              width: "100%",
+              borderRadius: 3, fontSize: 11, cursor: "pointer",
+              width: "100%", height: "100%",
             }}
           >Ramp</button>
         </div>
@@ -427,14 +428,16 @@ function IdSection() {
         <div style={{ ...rbvStyle, textAlign: "right" }}>
           {qp !== null ? qp.toFixed(1) : "—"}
         </div>
-        <div style={{ flex: 1, minWidth: 0, fontSize: 9, color: "#546e8a", lineHeight: 1.3 }}>
+        <div style={{ flex: 1, minWidth: 0, fontSize: 9, color: "#cce0ff", lineHeight: 1.3 }}>
           Set energy after<br />changing polarization
         </div>
       </Row>
 
       {/* Row 5: Done label | feedbackM spanning rest */}
       <Row onContextMenu={e => pvCtx("S29ID:feedbackM.VAL", fbRaw, e)}>
-        <div style={{ ...labelStyle, width: ID_LABEL_W }}>Done</div>
+        <div style={{ ...rbvStyle, width: ID_LABEL_W, textAlign: "center", fontSize: 11, padding: "3px 6px" }}>
+          {toStr(busyRaw) ?? "—"}
+        </div>
         <div style={{
           flex: 1, minWidth: 0,
           fontFamily: "monospace", fontSize: 11, color: "#80deea",
