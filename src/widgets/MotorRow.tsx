@@ -2,6 +2,8 @@ import { useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useConnection } from "@diamondlightsource/cs-web-lib";
 import { pvwsWriter } from "../lib/pvwsWriter";
+import { toDouble, toStr } from "../lib/epics";
+import { colors } from "../lib/theme";
 
 interface DisplayItem {
   label: string;
@@ -10,25 +12,9 @@ interface DisplayItem {
 
 interface MotorRowProps {
   label: string;
-  pv: string; // e.g. "fr:m1"
+  pv: string;
   displays?: DisplayItem[];
   macros?: Record<string, string>;
-}
-
-function toDouble(d: unknown): number | null {
-  if (!d) return null;
-  const val = (d as { value?: { doubleValue?: number; stringValue?: string } }).value;
-  if (val?.doubleValue !== undefined) return val.doubleValue;
-  if (val?.stringValue !== undefined) return parseFloat(val.stringValue);
-  return null;
-}
-
-function toStr(d: unknown): string | null {
-  if (!d) return null;
-  const val = (d as { value?: { stringValue?: string; doubleValue?: number } }).value;
-  if (val?.stringValue !== undefined && val.stringValue !== "") return val.stringValue;
-  if (val?.doubleValue !== undefined) return String(val.doubleValue);
-  return null;
 }
 
 export function MotorRow({ label, pv, displays, macros }: MotorRowProps) {
@@ -65,10 +51,7 @@ export function MotorRow({ label, pv, displays, macros }: MotorRowProps) {
     setSetpointInput("");
   }
 
-  function sendStop() {
-    pvwsWriter.write(`${pv}.STOP`, 1);
-  }
-
+  function sendStop() { pvwsWriter.write(`${pv}.STOP`, 1); }
   function sendTweakForward()  { pvwsWriter.write(`${pv}.TWF`, 1); }
   function sendTweakBackward() { pvwsWriter.write(`${pv}.TWR`, 1); }
 
@@ -79,7 +62,7 @@ export function MotorRow({ label, pv, displays, macros }: MotorRowProps) {
     setTweakInput("");
   }
 
-  const statusColor = !connected ? "#888" : dmov ? "#4caf50" : "#ff9800";
+  const statusColor = !connected ? "#888" : dmov ? colors.statusOk : "#ff9800";
   const statusLabel = !connected ? "—" : dmov ? "Done" : "Moving";
 
   return (
@@ -165,7 +148,6 @@ export function MotorRow({ label, pv, displays, macros }: MotorRowProps) {
                 onMouseLeave={e => (e.currentTarget.style.background = "", e.currentTarget.style.color = "")}
                 onClick={() => {
                   setMenuPos(null);
-                  // open via UiRenderer overlay — dispatch a custom event picked up by App
                   window.dispatchEvent(new CustomEvent("open-ui", { detail: { file: d.file, macros: macros ?? {}, label: `${desc} — ${d.label}` } }));
                 }}
               >
@@ -181,18 +163,18 @@ export function MotorRow({ label, pv, displays, macros }: MotorRowProps) {
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  labelCell:    { padding: "6px 8px", color: "#cce0ff", fontWeight: 500, width: 120 },
-  valueCell:    { padding: "6px 4px", fontFamily: "monospace", textAlign: "right", width: 65, color: "#90caf9" },
+  labelCell:    { padding: "6px 8px", color: colors.label, fontWeight: 500, width: 120 },
+  valueCell:    { padding: "6px 4px", fontFamily: "monospace", textAlign: "right", width: 65, color: colors.relatedFg },
   setpointCell: { padding: "4px 4px", width: 90 },
-  input:        { background: "#1e2a3a", border: "1px solid #4a90d9", color: "#fff", padding: "4px 6px", fontFamily: "monospace", width: "100%", borderRadius: 3, boxSizing: "border-box" },
-  editBtn:      { background: "#1e2a3a", border: "1px solid #2a4a6a", color: "#90caf9", fontFamily: "monospace", padding: "4px 6px", borderRadius: 3, cursor: "text", width: "100%", textAlign: "right" },
+  input:        { background: "#1e2a3a", border: `1px solid ${colors.inputBorder}`, color: colors.spText, padding: "4px 6px", fontFamily: "monospace", width: "100%", borderRadius: 3, boxSizing: "border-box" },
+  editBtn:      { background: "#1e2a3a", border: `1px solid ${colors.cardBarBg}`, color: colors.relatedFg, fontFamily: "monospace", padding: "4px 6px", borderRadius: 3, cursor: "text", width: "100%", textAlign: "right" },
   tweakCell:    { padding: "4px 4px" },
-  tweakBtn:     { background: "#1e3a5c", color: "#90caf9", border: "1px solid #2a4a6a", borderRadius: 3, padding: "3px 6px", cursor: "pointer", fontWeight: 700, fontSize: 10 },
-  tweakValBtn:  { background: "#1e2a3a", border: "1px solid #2a4a6a", color: "#90caf9", fontFamily: "monospace", padding: "3px 5px", borderRadius: 3, cursor: "text", minWidth: 50, textAlign: "center", fontSize: 11 },
-  tweakInput:   { background: "#1e2a3a", border: "1px solid #4a90d9", color: "#fff", padding: "3px 5px", fontFamily: "monospace", width: 60, borderRadius: 3, fontSize: 11 },
+  tweakBtn:     { background: colors.cardBg, color: colors.relatedFg, border: `1px solid ${colors.cardBarBg}`, borderRadius: 3, padding: "3px 6px", cursor: "pointer", fontWeight: 700, fontSize: 10 },
+  tweakValBtn:  { background: "#1e2a3a", border: `1px solid ${colors.cardBarBg}`, color: colors.relatedFg, fontFamily: "monospace", padding: "3px 5px", borderRadius: 3, cursor: "text", minWidth: 50, textAlign: "center", fontSize: 11 },
+  tweakInput:   { background: "#1e2a3a", border: `1px solid ${colors.inputBorder}`, color: colors.spText, padding: "3px 5px", fontFamily: "monospace", width: 60, borderRadius: 3, fontSize: 11 },
   statusCell:   { padding: "6px 12px", textAlign: "center", width: 70, fontWeight: 600 },
   stopCell:     { padding: "4px 8px", width: 80 },
   stopBtn:      { background: "#c62828", color: "#fff", border: "none", borderRadius: 3, padding: "4px 12px", cursor: "pointer", fontWeight: 700, width: "100%" },
   detailCell:   { padding: "4px 4px", width: 36 },
-  detailBtn:    { background: "#1e3a5c", color: "#90caf9", border: "1px solid #2a4a6a", borderRadius: 3, padding: "4px 8px", cursor: "pointer", fontWeight: 700 },
+  detailBtn:    { background: colors.cardBg, color: colors.relatedFg, border: `1px solid ${colors.cardBarBg}`, borderRadius: 3, padding: "4px 8px", cursor: "pointer", fontWeight: 700 },
 };

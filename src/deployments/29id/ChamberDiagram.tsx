@@ -1,32 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { useConnection } from "@diamondlightsource/cs-web-lib";
 import { pvwsWriter } from "../../lib/pvwsWriter";
-
-function pvCtx(pvName: string, rawData: unknown, e: React.MouseEvent) {
-  e.preventDefault();
-  window.dispatchEvent(new CustomEvent("pv-context", { detail: { pvName, rawData, x: e.clientX, y: e.clientY } }));
-}
+import { toDouble, toStr, pvCtx } from "../../lib/epics";
 
 function openStripChart(pv: string, label: string) {
   window.dispatchEvent(new CustomEvent("open-ui", {
     detail: { file: "/ui/29id/29id_stripChart_trend.ui", macros: { Q: pv }, label }
   }));
-}
-
-function toDouble(d: unknown): number | null {
-  if (!d) return null;
-  const val = (d as { value?: { doubleValue?: number; stringValue?: string } }).value;
-  if (val?.doubleValue !== undefined) return val.doubleValue;
-  if (val?.stringValue !== undefined) { const n = parseFloat(val.stringValue); return isNaN(n) ? null : n; }
-  return null;
-}
-
-function toStr(d: unknown): string | null {
-  if (!d) return null;
-  const val = (d as { value?: { stringValue?: string; doubleValue?: number } }).value;
-  if (val?.stringValue !== undefined && val.stringValue !== "") return val.stringValue;
-  if (val?.doubleValue !== undefined) return String(val.doubleValue);
-  return null;
 }
 
 function fmtPressure(n: number | null): string {

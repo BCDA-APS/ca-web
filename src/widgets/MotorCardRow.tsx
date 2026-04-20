@@ -1,36 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { useConnection } from "@diamondlightsource/cs-web-lib";
 import { pvwsWriter } from "../lib/pvwsWriter";
+import { toDouble, toStr, fmt } from "../lib/epics";
+import { colors, fontSize } from "../lib/theme";
 
 interface MotorCardRowProps {
   /** PV prefix + motor name, e.g. "29idc:m1" */
   pv: string;
-}
-
-// ── PV value extractors (shared logic) ───────────────────────────────────────
-
-function toDouble(d: unknown): number | null {
-  if (!d) return null;
-  const val = (d as { value?: { doubleValue?: number; stringValue?: string } }).value;
-  if (val?.doubleValue !== undefined) return val.doubleValue;
-  if (val?.stringValue !== undefined) {
-    const n = parseFloat(val.stringValue);
-    return isNaN(n) ? null : n;
-  }
-  return null;
-}
-
-function toStr(d: unknown): string | null {
-  if (!d) return null;
-  const val = (d as { value?: { stringValue?: string; doubleValue?: number } }).value;
-  if (val?.stringValue !== undefined && val.stringValue !== "") return val.stringValue;
-  if (val?.doubleValue !== undefined) return String(val.doubleValue);
-  return null;
-}
-
-function fmt(n: number | null, prec = 4): string {
-  if (n === null) return "—";
-  return n.toFixed(prec);
 }
 
 // ── Status ────────────────────────────────────────────────────────────────────
@@ -47,12 +23,12 @@ function deriveStatus(disabled: boolean, calibrate: boolean, hwLimit: boolean, s
 }
 
 const STATUS_BORDER: Record<Status, string> = {
-  "ok":         "2px solid #2a4a6a",
-  "moving":     "2px solid #4caf50",
-  "soft-limit": "2px solid #f9a825",
-  "hw-limit":   "2px solid #e53935",
-  "calibrate":  "2px solid #f9a825",
-  "disabled":   "2px dashed #e53935",
+  "ok":         `2px solid ${colors.cardBarBg}`,
+  "moving":     `2px solid ${colors.statusOk}`,
+  "soft-limit": `2px solid ${colors.statusWarn}`,
+  "hw-limit":   `2px solid ${colors.statusError}`,
+  "calibrate":  `2px solid ${colors.statusWarn}`,
+  "disabled":   `2px dashed ${colors.statusError}`,
 };
 
 const STATUS_LABEL: Partial<Record<Status, string>> = {
@@ -65,11 +41,11 @@ const STATUS_LABEL: Partial<Record<Status, string>> = {
 
 const STATUS_LABEL_COLOR: Record<Status, string> = {
   "ok":         "transparent",
-  "moving":     "#4caf50",
-  "soft-limit": "#f9a825",
-  "hw-limit":   "#e53935",
-  "calibrate":  "#f9a825",
-  "disabled":   "#e53935",
+  "moving":     colors.statusOk,
+  "soft-limit": colors.statusWarn,
+  "hw-limit":   colors.statusError,
+  "calibrate":  colors.statusWarn,
+  "disabled":   colors.statusError,
 };
 
 // ── PositionBar ───────────────────────────────────────────────────────────────
@@ -85,9 +61,9 @@ function PositionBar({ rbv, llm, hlm, lls, hls }: {
     : null;
 
   return (
-    <div style={{ position: "relative", height: 5, background: "#2a4a6a", borderRadius: 3 }}>
-      {lls && <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: "#e53935", borderRadius: "3px 0 0 3px" }} />}
-      {hls && <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 3, background: "#e53935", borderRadius: "0 3px 3px 0" }} />}
+    <div style={{ position: "relative", height: 5, background: colors.cardBarBg, borderRadius: 3 }}>
+      {lls && <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: colors.statusError, borderRadius: "3px 0 0 3px" }} />}
+      {hls && <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 3, background: colors.statusError, borderRadius: "0 3px 3px 0" }} />}
       {pct !== null && (
         <div style={{
           position: "absolute",
@@ -95,7 +71,7 @@ function PositionBar({ rbv, llm, hlm, lls, hls }: {
           top: -2,
           width: 9,
           height: 9,
-          background: "#90caf9",
+          background: colors.cardBarThumb,
           borderRadius: "50%",
           boxShadow: "0 0 3px rgba(144,202,249,0.8)",
         }} />
@@ -123,18 +99,18 @@ export function MotorCardRow({ pv }: MotorCardRowProps) {
   useEffect(() => { ensurePulseStyle(); }, []);
   const id = `mcr-${pv}`;
 
-  const [, connected, , descVal]     = useConnection(`${id}-desc`, `ca://${pv}.DESC`);
-  const [, ,          , rbvVal]      = useConnection(`${id}-rbv`,  `ca://${pv}.RBV`);
-  const [, ,          , valVal]      = useConnection(`${id}-val`,  `ca://${pv}.VAL`);
-  const [, ,          , dmovVal]     = useConnection(`${id}-dmov`, `ca://${pv}.DMOV`);
-  const [, ,          , lvioVal]     = useConnection(`${id}-lvio`, `ca://${pv}.LVIO`);
-  const [, ,          , llsVal]      = useConnection(`${id}-lls`,  `ca://${pv}.LLS`);
-  const [, ,          , hlsVal]      = useConnection(`${id}-hls`,  `ca://${pv}.HLS`);
-  const [, ,          , setVal]      = useConnection(`${id}-set`,  `ca://${pv}.SET`);
-  const [, ableConn,  , ableVal]     = useConnection(`${id}-able`, `ca://${pv}_able.VAL`);
-  const [, ,          , llmVal]      = useConnection(`${id}-llm`,  `ca://${pv}.LLM`);
-  const [, ,          , hlmVal]      = useConnection(`${id}-hlm`,  `ca://${pv}.HLM`);
-  const [, ,          , twvVal]      = useConnection(`${id}-twv`,  `ca://${pv}.TWV`);
+  const [, connected, , descVal]  = useConnection(`${id}-desc`, `ca://${pv}.DESC`);
+  const [, ,          , rbvVal]   = useConnection(`${id}-rbv`,  `ca://${pv}.RBV`);
+  const [, ,          , valVal]   = useConnection(`${id}-val`,  `ca://${pv}.VAL`);
+  const [, ,          , dmovVal]  = useConnection(`${id}-dmov`, `ca://${pv}.DMOV`);
+  const [, ,          , lvioVal]  = useConnection(`${id}-lvio`, `ca://${pv}.LVIO`);
+  const [, ,          , llsVal]   = useConnection(`${id}-lls`,  `ca://${pv}.LLS`);
+  const [, ,          , hlsVal]   = useConnection(`${id}-hls`,  `ca://${pv}.HLS`);
+  const [, ,          , setVal]   = useConnection(`${id}-set`,  `ca://${pv}.SET`);
+  const [, ableConn,  , ableVal]  = useConnection(`${id}-able`, `ca://${pv}_able.VAL`);
+  const [, ,          , llmVal]   = useConnection(`${id}-llm`,  `ca://${pv}.LLM`);
+  const [, ,          , hlmVal]   = useConnection(`${id}-hlm`,  `ca://${pv}.HLM`);
+  const [, ,          , twvVal]   = useConnection(`${id}-twv`,  `ca://${pv}.TWV`);
 
   const desc     = toStr(descVal) || pv;
   const rbv      = toDouble(rbvVal);
@@ -156,7 +132,6 @@ export function MotorCardRow({ pv }: MotorCardRowProps) {
   const statusLabel = STATUS_LABEL[status];
   const statusColor = STATUS_LABEL_COLOR[status];
 
-  // VAL editing
   const [editingVal, setEditingVal] = useState(false);
   const [valInput, setValInput]     = useState("");
   const valRef = useRef<HTMLInputElement>(null);
@@ -175,7 +150,6 @@ export function MotorCardRow({ pv }: MotorCardRowProps) {
   }
   function cancelVal() { setEditingVal(false); setValInput(""); }
 
-  // TWV editing
   const [editingTwv, setEditingTwv] = useState(false);
   const [twvInput, setTwvInput]     = useState("");
   const twvRef = useRef<HTMLInputElement>(null);
@@ -213,7 +187,7 @@ export function MotorCardRow({ pv }: MotorCardRowProps) {
     <div style={{
       border: STATUS_BORDER[status],
       borderRadius: 5,
-      background: disabled ? "#111e30" : "#1e3a5c",
+      background: disabled ? colors.cardBgDisabled : colors.cardBg,
       padding: "5px 8px",
       boxSizing: "border-box",
       opacity: connected ? 1 : 0.5,
@@ -225,11 +199,11 @@ export function MotorCardRow({ pv }: MotorCardRowProps) {
 
       {/* Name row */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4, minWidth: 0 }}>
-        <div style={{ fontSize: 11, fontWeight: 600, color: "#cce0ff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flex: 1 }}>
+        <div style={{ fontSize: fontSize.label, fontWeight: 600, color: colors.label, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flex: 1 }}>
           {desc}
         </div>
         {statusLabel && (
-          <div style={{ fontSize: 10, color: statusColor, fontWeight: 600, whiteSpace: "nowrap", flexShrink: 0 }}>
+          <div style={{ fontSize: fontSize.small, color: statusColor, fontWeight: 600, whiteSpace: "nowrap", flexShrink: 0 }}>
             {statusLabel}
           </div>
         )}
@@ -240,11 +214,7 @@ export function MotorCardRow({ pv }: MotorCardRowProps) {
 
         {/* Left column: RBV + VAL */}
         <div style={{ display: "flex", flexDirection: "column", gap: 3, flex: "0 0 auto" }}>
-          {/* RBV */}
-          <div style={S.rbv}>
-            {connected ? fmt(rbv) : "—"}
-          </div>
-          {/* VAL */}
+          <div style={S.rbv}>{connected ? fmt(rbv) : "—"}</div>
           {editingVal ? (
             <input
               ref={valRef}
@@ -256,7 +226,7 @@ export function MotorCardRow({ pv }: MotorCardRowProps) {
             />
           ) : (
             <div
-              style={{ ...S.val, cursor: disabled ? "default" : "text", borderColor: calibrate ? "#f9a825" : "#2a5a9a" }}
+              style={{ ...S.val, cursor: disabled ? "default" : "text", borderColor: calibrate ? colors.statusWarn : colors.spBorder }}
               title={disabled ? "Motor disabled" : "Click to move"}
               onClick={startEdit}
             >
@@ -267,7 +237,6 @@ export function MotorCardRow({ pv }: MotorCardRowProps) {
 
         {/* Right column: tweaks + bar + limits */}
         <div style={{ display: "flex", flexDirection: "column", gap: 3, flex: 1, minWidth: 0 }}>
-          {/* Tweak row */}
           <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
             <button style={S.tweakBtn} onClick={() => !disabled && pvwsWriter.write(`${pv}.TWR`, 1)} disabled={disabled || !connected} title="Tweak backward">‹</button>
             {editingTwv ? (
@@ -287,10 +256,8 @@ export function MotorCardRow({ pv }: MotorCardRowProps) {
             <button style={S.tweakBtn} onClick={() => !disabled && pvwsWriter.write(`${pv}.TWF`, 1)} disabled={disabled || !connected} title="Tweak forward">›</button>
           </div>
 
-          {/* Position bar */}
           <PositionBar rbv={rbv} llm={llm} hlm={hlm} lls={lls} hls={hls} />
 
-          {/* Soft limits */}
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: "#d08030", fontFamily: "monospace" }}>
             <span>{llm !== null ? fmt(llm, 3) : "—"}</span>
             <span>{hlm !== null ? fmt(hlm, 3) : "—"}</span>
@@ -306,10 +273,10 @@ export function MotorCardRow({ pv }: MotorCardRowProps) {
 const S: Record<string, React.CSSProperties> = {
   rbv: {
     fontFamily: "monospace",
-    fontSize: 13,
-    color: "#90caf9",
-    background: "#1a2a3a",
-    border: "1px solid #2a3a4a",
+    fontSize: fontSize.mono,
+    color: colors.rbvText,
+    background: colors.rbvBg,
+    border: `1px solid ${colors.rbvBorder}`,
     borderRadius: 3,
     padding: "3px 6px",
     textAlign: "right",
@@ -318,10 +285,10 @@ const S: Record<string, React.CSSProperties> = {
   },
   val: {
     fontFamily: "monospace",
-    fontSize: 13,
-    color: "#fff",
-    background: "#1a3258",
-    border: "1px solid #2a5a9a",
+    fontSize: fontSize.mono,
+    color: colors.spText,
+    background: colors.spBg,
+    border: `1px solid ${colors.spBorder}`,
     borderRadius: 3,
     padding: "3px 6px",
     textAlign: "right",
@@ -331,9 +298,9 @@ const S: Record<string, React.CSSProperties> = {
     userSelect: "none",
   },
   input: {
-    background: "#1a3a4a",
-    border: "1px solid #4a90d9",
-    color: "#fff",
+    background: colors.inputBg,
+    border: `1px solid ${colors.inputBorder}`,
+    color: colors.spText,
     fontFamily: "monospace",
     fontSize: 12,
     padding: "3px 6px",
@@ -342,9 +309,9 @@ const S: Record<string, React.CSSProperties> = {
     boxSizing: "border-box",
   },
   tweakBtn: {
-    background: "#2060a0",
-    color: "#cce0ff",
-    border: "1px solid #1a4a7a",
+    background: colors.tweakBg,
+    color: colors.tweakFg,
+    border: `1px solid ${colors.tweakBorder}`,
     borderRadius: 3,
     width: 24,
     height: 24,
@@ -359,10 +326,10 @@ const S: Record<string, React.CSSProperties> = {
   },
   twvDisplay: {
     fontFamily: "monospace",
-    fontSize: 11,
-    color: "#90caf9",
-    background: "#1a2a3a",
-    border: "1px solid #2a3a4a",
+    fontSize: fontSize.label,
+    color: colors.relatedFg,
+    background: colors.rbvBg,
+    border: `1px solid ${colors.rbvBorder}`,
     borderRadius: 3,
     padding: "2px 4px",
     textAlign: "center",

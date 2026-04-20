@@ -1,16 +1,10 @@
 import { useConnection } from "@diamondlightsource/cs-web-lib";
+import { toStr } from "../lib/epics";
+import { colors } from "../lib/theme";
 
 interface ReadbackRowProps {
   label: string;
   pv: string;
-}
-
-function toStr(d: unknown): string | null {
-  if (!d) return null;
-  const val = (d as { value?: { stringValue?: string; doubleValue?: number } }).value;
-  if (val?.stringValue !== undefined) return val.stringValue;
-  if (val?.doubleValue !== undefined) return String(val.doubleValue);
-  return null;
 }
 
 export function ReadbackRow({ label, pv }: ReadbackRowProps) {
@@ -19,8 +13,8 @@ export function ReadbackRow({ label, pv }: ReadbackRowProps) {
 
   return (
     <tr>
-      <td style={{ padding: "6px 8px", color: "#cce0ff", fontWeight: 500, width: 120 }}>{label}</td>
-      <td style={{ padding: "6px 8px", fontFamily: "monospace", color: "#90caf9", width: 100 }}>{display}</td>
+      <td style={{ padding: "6px 8px", color: colors.label, fontWeight: 500, width: 120 }}>{label}</td>
+      <td style={{ padding: "6px 8px", fontFamily: "monospace", color: colors.relatedFg, width: 100 }}>{display}</td>
     </tr>
   );
 }

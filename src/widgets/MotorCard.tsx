@@ -1,36 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { useConnection } from "@diamondlightsource/cs-web-lib";
 import { pvwsWriter } from "../lib/pvwsWriter";
+import { toDouble, toStr, fmt, pvCtx } from "../lib/epics";
+import { colors, fontSize } from "../lib/theme";
 
 interface MotorCardProps {
   /** PV prefix + motor name, e.g. "29idc:m1" */
   pv: string;
-}
-
-// ── PV value extractors ───────────────────────────────────────────────────────
-
-function toDouble(d: unknown): number | null {
-  if (!d) return null;
-  const val = (d as { value?: { doubleValue?: number; stringValue?: string } }).value;
-  if (val?.doubleValue !== undefined) return val.doubleValue;
-  if (val?.stringValue !== undefined) {
-    const n = parseFloat(val.stringValue);
-    return isNaN(n) ? null : n;
-  }
-  return null;
-}
-
-function toStr(d: unknown): string | null {
-  if (!d) return null;
-  const val = (d as { value?: { stringValue?: string; doubleValue?: number } }).value;
-  if (val?.stringValue !== undefined && val.stringValue !== "") return val.stringValue;
-  if (val?.doubleValue !== undefined) return String(val.doubleValue);
-  return null;
-}
-
-function fmt(n: number | null, prec = 4): string {
-  if (n === null) return "—";
-  return n.toFixed(prec);
 }
 
 // ── Status derivation ─────────────────────────────────────────────────────────
@@ -54,11 +30,11 @@ function deriveStatus(
 
 const STATUS_BORDER: Record<Status, string> = {
   "ok":         "2px solid #3a3a3a",
-  "moving":     "2px solid #4caf50",
-  "soft-limit": "2px solid #f9a825",
-  "hw-limit":   "2px solid #e53935",
-  "calibrate":  "2px solid #f9a825",
-  "disabled":   "2px dashed #e53935",
+  "moving":     `2px solid ${colors.statusOk}`,
+  "soft-limit": `2px solid ${colors.statusWarn}`,
+  "hw-limit":   `2px solid ${colors.statusError}`,
+  "calibrate":  `2px solid ${colors.statusWarn}`,
+  "disabled":   `2px dashed ${colors.statusError}`,
 };
 
 const STATUS_LABEL: Partial<Record<Status, string>> = {
@@ -71,11 +47,11 @@ const STATUS_LABEL: Partial<Record<Status, string>> = {
 
 const STATUS_LABEL_COLOR: Record<Status, string> = {
   "ok":         "transparent",
-  "moving":     "#4caf50",
-  "soft-limit": "#f9a825",
-  "hw-limit":   "#e53935",
-  "calibrate":  "#f9a825",
-  "disabled":   "#e53935",
+  "moving":     colors.statusOk,
+  "soft-limit": colors.statusWarn,
+  "hw-limit":   colors.statusError,
+  "calibrate":  colors.statusWarn,
+  "disabled":   colors.statusError,
 };
 
 // ── PositionBar ───────────────────────────────────────────────────────────────
@@ -95,16 +71,13 @@ function PositionBar({ rbv, llm, hlm, lls, hls }: {
     : null;
 
   return (
-    <div style={{ position: "relative", height: 6, background: "#2a4a6a", borderRadius: 3, margin: "4px 0" }}>
-      {/* left HW limit red cap */}
+    <div style={{ position: "relative", height: 6, background: colors.cardBarBg, borderRadius: 3, margin: "4px 0" }}>
       {lls && (
-        <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 4, background: "#e53935", borderRadius: "3px 0 0 3px" }} />
+        <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 4, background: colors.statusError, borderRadius: "3px 0 0 3px" }} />
       )}
-      {/* right HW limit red cap */}
       {hls && (
-        <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 4, background: "#e53935", borderRadius: "0 3px 3px 0" }} />
+        <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 4, background: colors.statusError, borderRadius: "0 3px 3px 0" }} />
       )}
-      {/* position thumb */}
       {pct !== null && (
         <div style={{
           position: "absolute",
@@ -112,9 +85,9 @@ function PositionBar({ rbv, llm, hlm, lls, hls }: {
           top: -1,
           width: 8,
           height: 8,
-          background: "#90caf9",
+          background: colors.cardBarThumb,
           borderRadius: "50%",
-          boxShadow: "0 0 3px rgba(144,202,249,0.8)",
+          boxShadow: `0 0 3px rgba(144,202,249,0.8)`,
         }} />
       )}
     </div>
@@ -144,7 +117,6 @@ export function MotorCard({ pv }: MotorCardProps) {
   useEffect(() => { ensurePulseStyle(); }, []);
   const id = `mc-${pv}`;
 
-  // Subscriptions
   const [, connected, , descVal]  = useConnection(`${id}-desc`,  `ca://${pv}.DESC`);
   const [, ,         , rbvVal]    = useConnection(`${id}-rbv`,   `ca://${pv}.RBV`);
   const [, ,         , dmovVal]   = useConnection(`${id}-dmov`,  `ca://${pv}.DMOV`);
@@ -158,16 +130,13 @@ export function MotorCard({ pv }: MotorCardProps) {
   const [, ,         , valVal]    = useConnection(`${id}-val`,   `ca://${pv}.VAL`);
   const [, ,         , twvVal]    = useConnection(`${id}-twv`,   `ca://${pv}.TWV`);
 
-  // Derived values
   const desc     = toStr(descVal) || pv;
   const rbv      = toDouble(rbvVal);
-  const dmov     = (toDouble(dmovVal) ?? 1) !== 0; // 1 = done, 0 = moving
+  const dmov     = (toDouble(dmovVal) ?? 1) !== 0;
   const lvio     = (toDouble(lvioVal) ?? 0) !== 0;
   const lls      = (toDouble(llsVal)  ?? 0) !== 0;
   const hls      = (toDouble(hlsVal)  ?? 0) !== 0;
   const calibrate = (toDouble(setVal) ?? 0) !== 0;
-  // _able is a BO enum: "Enable"=0 (motor ok), "Disable"=1 (motor disabled)
-  // Use the string label so we're not sensitive to the numeric encoding.
   const ableStr  = toStr(ableVal);
   const disabled = ableConnected && ableStr === "Disable";
   const val      = toDouble(valVal);
@@ -179,41 +148,29 @@ export function MotorCard({ pv }: MotorCardProps) {
   const hwLimit  = lls || hls;
   const status   = deriveStatus(disabled, calibrate, hwLimit, lvio, moving);
 
-  // Setpoint editing
   const [editingVal, setEditingVal] = useState(false);
   const [valInput, setValInput]     = useState("");
   const valRef = useRef<HTMLInputElement>(null);
 
-  // Tweak step editing
   const [editingTwv, setEditingTwv] = useState(false);
   const [twvInput, setTwvInput]     = useState("");
   const twvRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (editingVal && valRef.current) valRef.current.focus();
-  }, [editingVal]);
-
-  useEffect(() => {
-    if (editingTwv && twvRef.current) twvRef.current.focus();
-  }, [editingTwv]);
+  useEffect(() => { if (editingVal && valRef.current) valRef.current.focus(); }, [editingVal]);
+  useEffect(() => { if (editingTwv && twvRef.current) twvRef.current.focus(); }, [editingTwv]);
 
   function startEdit() {
     if (disabled) return;
     setValInput(val !== null ? fmt(val) : "");
     setEditingVal(true);
   }
-
   function commitVal() {
     const n = parseFloat(valInput);
     if (!isNaN(n)) pvwsWriter.write(`${pv}.VAL`, n);
     setEditingVal(false);
     setValInput("");
   }
-
-  function cancelVal() {
-    setEditingVal(false);
-    setValInput("");
-  }
+  function cancelVal() { setEditingVal(false); setValInput(""); }
 
   function commitTwv() {
     const n = parseFloat(twvInput);
@@ -221,11 +178,7 @@ export function MotorCard({ pv }: MotorCardProps) {
     setEditingTwv(false);
     setTwvInput("");
   }
-
-  function cancelTwv() {
-    setEditingTwv(false);
-    setTwvInput("");
-  }
+  function cancelTwv() { setEditingTwv(false); setTwvInput(""); }
 
   function startTwvEdit() {
     if (disabled) return;
@@ -233,10 +186,6 @@ export function MotorCard({ pv }: MotorCardProps) {
     setEditingTwv(true);
   }
 
-  function tweakBack()    { if (!disabled) pvwsWriter.write(`${pv}.TWR`, 1); }
-  function tweakForward() { if (!disabled) pvwsWriter.write(`${pv}.TWF`, 1); }
-
-  // Arrow keys on TWV: ↑ × 10, ↓ ÷ 10
   function handleTwvKey(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter")  { commitTwv(); return; }
     if (e.key === "Escape") { cancelTwv(); return; }
@@ -250,6 +199,9 @@ export function MotorCard({ pv }: MotorCardProps) {
     }
   }
 
+  function tweakBack()    { if (!disabled) pvwsWriter.write(`${pv}.TWR`, 1); }
+  function tweakForward() { if (!disabled) pvwsWriter.write(`${pv}.TWF`, 1); }
+
   const twvDisplay = twv !== null ? String(twv) : "—";
   const opacity = connected ? 1 : 0.5;
   const cardBorder = STATUS_BORDER[status];
@@ -260,7 +212,7 @@ export function MotorCard({ pv }: MotorCardProps) {
     <div style={{
       border: cardBorder,
       borderRadius: 5,
-      background: disabled ? "#111e30" : "#1e3a5c",
+      background: disabled ? colors.cardBgDisabled : colors.cardBg,
       padding: "6px 8px",
       width: 125,
       boxSizing: "border-box",
@@ -272,27 +224,27 @@ export function MotorCard({ pv }: MotorCardProps) {
       animation: moving ? "pulse-border 1.2s ease-in-out infinite" : undefined,
     }}>
 
-      {/* Motor name + status on same line */}
+      {/* Motor name + status */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4, minWidth: 0 }}>
-        <div style={{ fontSize: 11, fontWeight: 600, color: "#cce0ff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flex: 1 }}>
+        <div style={{ fontSize: fontSize.label, fontWeight: 600, color: colors.label, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flex: 1 }}>
           {desc}
         </div>
         {statusLabel && (
-          <div style={{ fontSize: 10, color: statusColor, fontWeight: 600, whiteSpace: "nowrap", flexShrink: 0 }}>
+          <div style={{ fontSize: fontSize.small, color: statusColor, fontWeight: 600, whiteSpace: "nowrap", flexShrink: 0 }}>
             {statusLabel}
           </div>
         )}
       </div>
 
-      {/* RBV — read-only readback */}
+      {/* RBV */}
       <div
-        style={{ ...styles.rbv, borderColor: calibrate ? "#f9a825" : "#2a3a4a", cursor: "context-menu" }}
-        onContextMenu={e => { e.preventDefault(); window.dispatchEvent(new CustomEvent("pv-context", { detail: { pvName: `${pv}.RBV`, rawData: rbvVal, x: e.clientX, y: e.clientY } })); }}
+        style={{ ...styles.rbv, borderColor: calibrate ? colors.statusWarn : colors.rbvBorder, cursor: "context-menu" }}
+        onContextMenu={e => pvCtx(`${pv}.RBV`, rbvVal, e)}
       >
         {connected ? fmt(rbv) : "—"}
       </div>
 
-      {/* VAL — editable setpoint */}
+      {/* VAL */}
       {editingVal ? (
         <input
           ref={valRef}
@@ -324,7 +276,6 @@ export function MotorCard({ pv }: MotorCardProps) {
         <span>{hlm !== null ? fmt(hlm, 3) : "—"}</span>
       </div>
 
-
       {/* Tweak row */}
       <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
         <button
@@ -332,9 +283,7 @@ export function MotorCard({ pv }: MotorCardProps) {
           onClick={tweakBack}
           disabled={disabled || !connected}
           title="Tweak backward"
-        >
-          ‹
-        </button>
+        >‹</button>
 
         {editingTwv ? (
           <input
@@ -360,9 +309,7 @@ export function MotorCard({ pv }: MotorCardProps) {
           onClick={tweakForward}
           disabled={disabled || !connected}
           title="Tweak forward"
-        >
-          ›
-        </button>
+        >›</button>
       </div>
     </div>
   );
@@ -373,10 +320,10 @@ export function MotorCard({ pv }: MotorCardProps) {
 const styles: Record<string, React.CSSProperties> = {
   rbv: {
     fontFamily: "monospace",
-    fontSize: 14,
-    color: "#80deea",
-    background: "#1a2a3a",
-    border: "1px solid #2a3a4a",
+    fontSize: fontSize.mono,
+    color: colors.rbvText,
+    background: colors.rbvBg,
+    border: `1px solid ${colors.rbvBorder}`,
     borderRadius: 3,
     padding: "4px 6px",
     textAlign: "right",
@@ -385,19 +332,19 @@ const styles: Record<string, React.CSSProperties> = {
   },
   val: {
     fontFamily: "monospace",
-    fontSize: 14,
-    color: "#fff",
-    background: "#1a3258",
-    border: "1px solid #2a5a9a",
+    fontSize: fontSize.mono,
+    color: colors.spText,
+    background: colors.spBg,
+    border: `1px solid ${colors.spBorder}`,
     borderRadius: 3,
     padding: "4px 6px",
     textAlign: "right",
     userSelect: "none",
   },
   input: {
-    background: "#1a3a4a",
-    border: "1px solid #4a90d9",
-    color: "#fff",
+    background: colors.inputBg,
+    border: `1px solid ${colors.inputBorder}`,
+    color: colors.spText,
     fontFamily: "monospace",
     fontSize: 13,
     padding: "4px 6px",
@@ -406,9 +353,9 @@ const styles: Record<string, React.CSSProperties> = {
     boxSizing: "border-box",
   },
   tweakBtn: {
-    background: "#2060a0",
-    color: "#cce0ff",
-    border: "1px solid #1a4a7a",
+    background: colors.tweakBg,
+    color: colors.tweakFg,
+    border: `1px solid ${colors.tweakBorder}`,
     borderRadius: 3,
     width: 28,
     height: 28,
@@ -422,10 +369,10 @@ const styles: Record<string, React.CSSProperties> = {
   },
   twvDisplay: {
     fontFamily: "monospace",
-    fontSize: 11,
-    color: "#90caf9",
-    background: "#1a2a3a",
-    border: "1px solid #2a3a4a",
+    fontSize: fontSize.label,
+    color: colors.relatedFg,
+    background: colors.rbvBg,
+    border: `1px solid ${colors.rbvBorder}`,
     borderRadius: 3,
     padding: "3px 6px",
     textAlign: "center",

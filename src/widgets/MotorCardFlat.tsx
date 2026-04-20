@@ -1,40 +1,21 @@
 import { useState, useRef, useEffect } from "react";
 import { useConnection } from "@diamondlightsource/cs-web-lib";
 import { pvwsWriter } from "../lib/pvwsWriter";
+import { toDouble, toStr, fmt } from "../lib/epics";
+import { colors, fontSize } from "../lib/theme";
 
 interface MotorCardFlatProps {
   pv: string;
 }
 
-function toDouble(d: unknown): number | null {
-  if (!d) return null;
-  const val = (d as { value?: { doubleValue?: number; stringValue?: string } }).value;
-  if (val?.doubleValue !== undefined) return val.doubleValue;
-  if (val?.stringValue !== undefined) { const n = parseFloat(val.stringValue); return isNaN(n) ? null : n; }
-  return null;
-}
-
-function toStr(d: unknown): string | null {
-  if (!d) return null;
-  const val = (d as { value?: { stringValue?: string; doubleValue?: number } }).value;
-  if (val?.stringValue !== undefined && val.stringValue !== "") return val.stringValue;
-  if (val?.doubleValue !== undefined) return String(val.doubleValue);
-  return null;
-}
-
-function fmt(n: number | null): string {
-  if (n === null) return "—";
-  return n.toFixed(4);
-}
-
 type Status = "ok" | "moving" | "soft-limit" | "hw-limit" | "disabled";
 
 const STATUS_BORDER: Record<Status, string> = {
-  "ok":         "2px solid #2a4a6a",
-  "moving":     "2px solid #4caf50",
-  "soft-limit": "2px solid #f9a825",
-  "hw-limit":   "2px solid #e53935",
-  "disabled":   "2px dashed #e53935",
+  "ok":         `2px solid ${colors.cardBarBg}`,
+  "moving":     `2px solid ${colors.statusOk}`,
+  "soft-limit": `2px solid ${colors.statusWarn}`,
+  "hw-limit":   `2px solid ${colors.statusError}`,
+  "disabled":   `2px dashed ${colors.statusError}`,
 };
 
 let pulseInjected = false;
@@ -74,7 +55,6 @@ export function MotorCardFlat({ pv }: MotorCardFlatProps) {
 
   const status: Status = disabled ? "disabled" : hwLim ? "hw-limit" : softLim ? "soft-limit" : moving ? "moving" : "ok";
 
-  // VAL editing
   const [editingVal, setEditingVal] = useState(false);
   const [valInput, setValInput]     = useState("");
   const valRef = useRef<HTMLInputElement>(null);
@@ -92,7 +72,6 @@ export function MotorCardFlat({ pv }: MotorCardFlatProps) {
   }
   function cancelVal() { setEditingVal(false); setValInput(""); }
 
-  // TWV editing
   const [editingTwv, setEditingTwv] = useState(false);
   const [twvInput, setTwvInput]     = useState("");
   const twvRef = useRef<HTMLInputElement>(null);
@@ -126,14 +105,14 @@ export function MotorCardFlat({ pv }: MotorCardFlatProps) {
       gap: 4,
       border: STATUS_BORDER[status],
       borderRadius: 4,
-      background: disabled ? "#111e30" : "#1e3a5c",
+      background: disabled ? colors.cardBgDisabled : colors.cardBg,
       padding: "3px 6px",
       opacity: connected ? 1 : 0.5,
       animation: moving ? "pulse-border 1.2s ease-in-out infinite" : undefined,
     }}>
 
       {/* Name */}
-      <div style={{ fontSize: 11, fontWeight: 600, color: "#cce0ff", width: 70, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flexShrink: 0 }}>
+      <div style={{ fontSize: fontSize.label, fontWeight: 600, color: colors.label, width: 70, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flexShrink: 0 }}>
         {desc}
       </div>
 
@@ -177,15 +156,15 @@ const S: Record<string, React.CSSProperties> = {
     fontSize: 12,
     borderRadius: 3,
     padding: "2px 6px",
-    border: "1px solid #2a4a6a",
-    background: "#1a2a3a",
-    color: "#90caf9",
+    border: `1px solid ${colors.rbvBorder}`,
+    background: colors.rbvBg,
+    color: colors.rbvText,
     boxSizing: "border-box",
   },
   valField: {
-    background: "#1a3258",
-    border: "1px solid #2a5a9a",
-    color: "#fff",
+    background: colors.spBg,
+    border: `1px solid ${colors.spBorder}`,
+    color: colors.spText,
     width: 80,
     textAlign: "right",
     cursor: "text",
@@ -202,9 +181,9 @@ const S: Record<string, React.CSSProperties> = {
     userSelect: "none",
   },
   tweakBtn: {
-    background: "#2060a0",
-    color: "#cce0ff",
-    border: "1px solid #1a4a7a",
+    background: colors.tweakBg,
+    color: colors.tweakFg,
+    border: `1px solid ${colors.tweakBorder}`,
     borderRadius: 3,
     width: 22,
     height: 22,
