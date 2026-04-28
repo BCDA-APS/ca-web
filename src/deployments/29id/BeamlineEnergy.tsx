@@ -100,8 +100,8 @@ function MonoSection() {
       <div style={sectionHeaderStyle}>Mono</div>
 
       {/* Row 1: RBV | eV | Ready/Moving */}
-      <Row onContextMenu={e => pvCtx("29idmono:ENERGY_MON", rbvRaw, e)}>
-        <RbvBox value={rbv} prec={2} width={FW} />
+      <Row>
+        <RbvBox value={rbv} prec={2} width={FW} onContextMenu={e => pvCtx("29idmono:ENERGY_MON", rbvRaw, e)} />
         <span style={unitStyle}>eV</span>
         <span style={{ fontSize: fontSize.small, color: ready ? colors.statusOk : colors.statusWarn, whiteSpace: "nowrap" }}>
           ● {ready ? "Ready" : "Moving"}
@@ -109,8 +109,8 @@ function MonoSection() {
       </Row>
 
       {/* Row 2: SP | eV | Grating label */}
-      <Row onContextMenu={e => pvCtx("29idmono:ENERGY_SP", spRaw, e)}>
-        <SpBox value={sp} prec={3} width={FW} onCommit={n => pvwsWriter.write("29idmono:ENERGY_SP", n)} />
+      <Row>
+        <SpBox value={sp} prec={3} width={FW} onCommit={n => pvwsWriter.write("29idmono:ENERGY_SP", n)} onContextMenu={e => pvCtx("29idmono:ENERGY_SP", spRaw, e)} />
         <span style={unitStyle}>eV</span>
         <div style={{ minWidth: 40 }}>
           {gLabel
@@ -120,11 +120,11 @@ function MonoSection() {
       </Row>
 
       {/* Row 3: Tweak ‹›  | eV | Mirror label */}
-      <Row onContextMenu={e => pvCtx("29id:MonoEnergyTweakValue", twvRaw, e)}>
+      <Row>
         <div style={{ display: "flex", alignItems: "center", gap: 4, width: FW, flexShrink: 0 }}>
           <button onClick={() => pvwsWriter.write("29id:MonoEnergyTweakDec.PROC", 1)}
             style={tweakBtnStyle} disabled={!conn}>‹</button>
-          <TweakValue value={twv} onCommit={n => pvwsWriter.write("29id:MonoEnergyTweakValue", n)} style={{ width: TWV_W }} />
+          <TweakValue value={twv} onCommit={n => pvwsWriter.write("29id:MonoEnergyTweakValue", n)} style={{ width: TWV_W }} onContextMenu={e => pvCtx("29id:MonoEnergyTweakValue", twvRaw, e)} />
           <button onClick={() => pvwsWriter.write("29id:MonoEnergyTweakInc.PROC", 1)}
             style={tweakBtnStyle} disabled={!conn}>›</button>
         </div>
@@ -164,8 +164,8 @@ function MonoSection() {
       </Row>
 
       {/* Row 5: Ring current | mA | Ring Info button */}
-      <Row mt={2} onContextMenu={e => pvCtx("S-DCCT:CurrentM", rngRaw, e)}>
-        <RbvBox value={ring} prec={1} width={FW} />
+      <Row mt={2}>
+        <RbvBox value={ring} prec={1} width={FW} onContextMenu={e => pvCtx("S-DCCT:CurrentM", rngRaw, e)} />
         <span style={unitStyle}>mA</span>
         <button
           onClick={openRingInfo}
@@ -194,6 +194,8 @@ function IdSection() {
   const [,,,       fbRaw]   = useConnection("bl-id-fb",    "ca://S29ID:feedbackM.VAL");
   const [,,,       busyRaw] = useConnection("bl-id-busy",  "ca://S29ID:BusyRecordM");
   const [,,,       hystRaw] = useConnection("bl-id-hyst",  "ca://29idb:userCalcOut4.VAL");
+  const [,,,       corrRaw] = useConnection("bl-id-corr",  "ca://S29ID:CorrRdbkEarth_.VAL");
+  const [,,,       accRaw]  = useConnection("bl-id-acc",   "ca://S29ID:AccessSecurityC.VAL");
 
   const rbv     = toDouble(rbvRaw);
   const sp      = toDouble(spRaw);
@@ -214,26 +216,30 @@ function IdSection() {
   // A=userCalcOut4 (hystUp), B=ActualModeM, C=BusyRecordM
   const showCoffee = !busy && hystUp && modeIdx !== null && [0, 1, 3, 4].includes(Math.round(modeIdx));
 
+  const corr = toDouble(corrRaw);
+  const malfunction = corr !== null && (corr < 0.4 || corr > 0.8);
+  const noAccess = (toDouble(accRaw) ?? 0) !== 0;
+
   return (
     <div style={{ flex: 1, minWidth: 0 }}>
       <div style={sectionHeaderStyle}>ID</div>
 
       {/* Row 1: On/Off | RBV keV | keV | Busy dot */}
-      <Row onContextMenu={e => pvCtx("S29ID:EnergyM.VAL", rbvRaw, e)}>
+      <Row>
         <div style={{ width: ID_LABEL_W, flexShrink: 0, textAlign: "center" }}>
           <span style={{ fontSize: fontSize.badge, fontWeight: 700, color: on ? colors.statusOk : colors.statusError }}>
             {on ? "On" : "Off"}
           </span>
         </div>
-        <RbvBox value={rbv} prec={4} width={FW} />
+        <RbvBox value={rbv} prec={4} width={FW} onContextMenu={e => pvCtx("S29ID:EnergyM.VAL", rbvRaw, e)} />
         <span style={unitStyle}>keV</span>
-        <span style={{ fontSize: fontSize.small, color: busy ? colors.statusWarn : colors.statusOk, whiteSpace: "nowrap" }}>
-          ● {busy ? "Busy" : "Done"}
+        <span style={{ fontSize: fontSize.small, whiteSpace: "nowrap", color: noAccess ? colors.statusError : busy ? colors.statusWarn : colors.statusOk }}>
+          ● {noAccess ? "No access" : busy ? "Busy" : "Done"}
         </span>
       </Row>
 
       {/* Row 2: Ramp | SP keV | keV | Arrow + coffee */}
-      <Row onContextMenu={e => pvCtx("S29ID:EnergySetC.VAL", spRaw, e)}>
+      <Row>
         <div style={{ width: ID_LABEL_W, flexShrink: 0, alignSelf: "stretch" }}>
           <button
             onClick={() => pvwsWriter.write("S29ID:StartRampC.VAL", 1)}
@@ -245,22 +251,37 @@ function IdSection() {
             }}
           >Ramp</button>
         </div>
-        <SpBox value={sp} prec={4} width={FW} onCommit={n => pvwsWriter.write("S29ID:EnergySetC.VAL", n)} />
+        <SpBox value={sp} prec={4} width={FW} onCommit={n => pvwsWriter.write("S29ID:EnergySetC.VAL", n)} onContextMenu={e => pvCtx("S29ID:EnergySetC.VAL", spRaw, e)} />
         <span style={unitStyle}>keV</span>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: 4 }}>
-          <span style={{ fontSize: 22, color: colors.relatedFg, lineHeight: 1 }} title={`ID hysteresis: ${hystUp ? "up" : "down"}`}>
-            {hystUp ? "↑" : "↓"}
-          </span>
-          {showCoffee && (
-            <span title="Hysteresis cycling in progress" style={{ fontSize: 20 }}>☕</span>
-          )}
-        </div>
+        {malfunction ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+            <div style={{
+              width: 0, height: 0,
+              borderLeft: "7px solid transparent",
+              borderRight: "7px solid transparent",
+              borderBottom: "13px solid #ff6b35",
+              flexShrink: 0,
+            }} />
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#ff6b35", whiteSpace: "nowrap", letterSpacing: 0.5 }}>
+              Call Staff
+            </span>
+          </div>
+        ) : (
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: 4 }}>
+            <span style={{ fontSize: 22, color: colors.relatedFg, lineHeight: 1 }} title={`ID hysteresis: ${hystUp ? "up" : "down"}`}>
+              {hystUp ? "↑" : "↓"}
+            </span>
+            {showCoffee && (
+              <span title="Hysteresis cycling in progress" style={{ fontSize: 20 }}>☕</span>
+            )}
+          </div>
+        )}
       </Row>
 
       {/* Row 3: Mode label | ActualModeM RBV | DesiredModeC menu */}
-      <Row onContextMenu={e => pvCtx("S29ID:ActualModeM", modeRaw, e)}>
+      <Row>
         <div style={{ ...labelStyle, width: ID_LABEL_W }}>Mode</div>
-        <div style={{ ...rbvStyle, textAlign: "left", fontSize: fontSize.badge, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <div onContextMenu={e => pvCtx("S29ID:ActualModeM", modeRaw, e)} style={{ ...rbvStyle, textAlign: "left", fontSize: fontSize.badge, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "context-menu" }}>
           {mode}
         </div>
         <select
@@ -277,9 +298,9 @@ function IdSection() {
       </Row>
 
       {/* Row 4: QP% label | QP RBV | hint */}
-      <Row onContextMenu={e => pvCtx("S29ID:QuasiRatioM.RVAL", qpRaw, e)}>
+      <Row>
         <div style={{ ...labelStyle, width: ID_LABEL_W }}>QP %</div>
-        <div style={{ ...rbvStyle, textAlign: "right" }}>
+        <div onContextMenu={e => pvCtx("S29ID:QuasiRatioM.RVAL", qpRaw, e)} style={{ ...rbvStyle, textAlign: "right", cursor: "context-menu" }}>
           {qp !== null ? qp.toFixed(1) : "—"}
         </div>
         <div style={{ flex: 1, minWidth: 0, fontSize: 9, color: colors.label, lineHeight: 1.3 }}>
@@ -288,19 +309,32 @@ function IdSection() {
       </Row>
 
       {/* Row 5: BusyRecord RBV | feedbackM RBV */}
-      <Row onContextMenu={e => pvCtx("S29ID:feedbackM.VAL", fbRaw, e)}>
+      <Row>
         <div style={{ ...rbvStyle, width: ID_LABEL_W, textAlign: "center", fontSize: fontSize.label, padding: "3px 6px" }}>
           {toStr(busyRaw) ?? "—"}
         </div>
-        <div style={{
+        <div onContextMenu={e => pvCtx("S29ID:feedbackM.VAL", fbRaw, e)} style={{
           flex: 1, minWidth: 0,
           fontFamily: "monospace", fontSize: fontSize.label, color: colors.rbvText,
           background: colors.rbvBg, border: `1px solid ${colors.rbvBorder}`, borderRadius: 3,
           padding: "3px 6px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-          boxSizing: "border-box",
+          boxSizing: "border-box", cursor: "context-menu",
         }}>
           {fb}
         </div>
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent("open-ui", {
+            detail: { file: "/APSshare/adlsys/screens/adl/iocs/idctl/adl_Legacy/IEXMachinePhysics.adl", macros: { P: "S29ID:" }, label: "ID Machine Physics" },
+          }))}
+          title="ID Machine Physics"
+          style={{
+            width: 23, height: 23, flexShrink: 0,
+            background: colors.relatedBg, border: `1px solid ${colors.relatedBorder}`,
+            color: colors.relatedFg, cursor: "pointer", fontSize: 14,
+            borderRadius: 3, padding: 0,
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}
+        >⚙</button>
       </Row>
     </div>
   );

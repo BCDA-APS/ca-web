@@ -25,6 +25,7 @@ export function RbvBox({ value, prec = 3, width, style, onContextMenu }: {
         textAlign: "right",
         boxSizing: "border-box",
         flexShrink: 0,
+        ...(onContextMenu ? { cursor: "context-menu" } : {}),
         ...(width !== undefined ? { width } : {}),
         ...style,
       }}
@@ -37,12 +38,13 @@ export function RbvBox({ value, prec = 3, width, style, onContextMenu }: {
 // ── SpBox ─────────────────────────────────────────────────────────────────────
 
 /** Click-to-edit setpoint box. */
-export function SpBox({ value, prec = 3, width, onCommit, disabled = false }: {
+export function SpBox({ value, prec = 3, width, onCommit, disabled = false, onContextMenu }: {
   value: number | null;
   prec?: number;
   width?: number;
   onCommit: (n: number) => void;
   disabled?: boolean;
+  onContextMenu?: (e: React.MouseEvent) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [input, setInput] = useState("");
@@ -74,6 +76,7 @@ export function SpBox({ value, prec = 3, width, onCommit, disabled = false }: {
           if (e.key === "Escape") setEditing(false);
         }}
         onBlur={() => setEditing(false)}
+        onContextMenu={onContextMenu}
         style={{ ...base, background: colors.inputBg, border: `1px solid ${colors.inputBorder}`, color: colors.spText }}
       />
     );
@@ -87,6 +90,7 @@ export function SpBox({ value, prec = 3, width, onCommit, disabled = false }: {
           setEditing(true);
         }
       }}
+      onContextMenu={onContextMenu}
       title={disabled ? undefined : "Click to set"}
       style={{
         ...base,
@@ -106,10 +110,11 @@ export function SpBox({ value, prec = 3, width, onCommit, disabled = false }: {
 // ── TweakValue ────────────────────────────────────────────────────────────────
 
 /** Click-to-edit step size with ↑ ×10 / ↓ ÷10 keyboard scaling. */
-export function TweakValue({ value, onCommit, style }: {
+export function TweakValue({ value, onCommit, style, onContextMenu }: {
   value: number | null;
   onCommit: (n: number) => void;
   style?: React.CSSProperties;
+  onContextMenu?: (e: React.MouseEvent) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [input, setInput] = useState("");
@@ -156,6 +161,7 @@ export function TweakValue({ value, onCommit, style }: {
   return (
     <div
       onClick={() => { setInput(value !== null ? String(value) : ""); setEditing(true); }}
+      onContextMenu={onContextMenu}
       title="Click to change step (↑ ×10, ↓ ÷10)"
       style={{
         ...base,
