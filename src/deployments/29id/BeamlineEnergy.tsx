@@ -324,7 +324,7 @@ function IdSection() {
         </div>
         <button
           onClick={() => window.dispatchEvent(new CustomEvent("open-ui", {
-            detail: { file: "/APSshare/adlsys/screens/adl/iocs/idctl/adl_Legacy/IEXMachinePhysics.adl", macros: { P: "S29ID:" }, label: "ID Machine Physics" },
+            detail: { file: "/ui//APSshare/adlsys/screens/adl/iocs/idctl/adl_Legacy/IEXMachinePhysics.ui", macros: { P: "S29ID:" }, label: "ID Machine Physics" },
           }))}
           title="ID Machine Physics"
           style={{
