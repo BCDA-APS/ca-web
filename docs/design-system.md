@@ -101,7 +101,7 @@ import { RbvBox, SpBox, TweakValue, TweakButton, UnitLabel, RelatedDisplay, Row 
 | Prop | Type | Default | Description |
 |---|---|---|---|
 | `value` | `number \| null` | — | Numeric value to display |
-| `prec` | `number` | `3` | Decimal places |
+| `prec` | `number` | `3` | Decimal places — should come from the PV channel (see note below) |
 | `width` | `number` | (fills container) | Fixed width in px |
 | `onContextMenu` | `(e) => void` | — | Right-click handler |
 | `style` | `CSSProperties` | — | Style overrides |
@@ -115,11 +115,18 @@ import { RbvBox, SpBox, TweakValue, TweakButton, UnitLabel, RelatedDisplay, Row 
 | Prop | Type | Default | Description |
 |---|---|---|---|
 | `value` | `number \| null` | — | Current setpoint value |
-| `prec` | `number` | `3` | Decimal places |
+| `prec` | `number` | `3` | Decimal places — should come from the PV channel (see note below) |
 | `width` | `number` | (fills container) | Fixed width in px |
 | `onCommit` | `(n: number) => void` | — | Called when user presses Enter |
 | `disabled` | `boolean` | `false` | Prevents editing |
 | `onContextMenu` | `(e) => void` | — | Right-click handler |
+
+> **Precision note:** The `prec` default of `3` is a fallback only. Precision should be read from the PV channel's PREC field, which is available in the raw data returned by `useConnection`:
+> ```ts
+> const [,,, rbvRaw] = useConnection("my-rbv", "ca://29id:motor.RBV");
+> const prec = (rbvRaw as any)?.display?.precision ?? 3;
+> ```
+> `UiRenderer.tsx` does this automatically via `extractPrecision()` for `.ui` file widgets. Custom panels should do the same rather than hardcoding precision.
 
 ### `TweakValue` — step size editor
 
