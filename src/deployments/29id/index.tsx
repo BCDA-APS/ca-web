@@ -1,4 +1,5 @@
 import { useConnection } from "@diamondlightsource/cs-web-lib";
+import { toDouble } from "../../lib/epics";
 import { colors } from "../../lib/theme";
 import { UiRenderer } from "../../lib/UiRenderer";
 import { MotorGrid } from "../../widgets/MotorGrid";
@@ -9,48 +10,52 @@ import type { DeploymentConfig } from "../types";
 
 const ARPES_MOTORS = ["m1", "m2", "m3", "m4", "m5", "m6"];
 
-const BLINK_STYLE = `
-@keyframes cd-blink {
-  0%, 49% { opacity: 1; }
-  50%, 100% { opacity: 0; }
-}
-.cd-moving-active { animation: cd-blink 1s step-end infinite; }
-`;
+const SYNC_MOTORS = [
+  { motor: "m1", syncPv: "29idc:m1.SYNC", statPv: "29idc:m1.STAT", label: "X" },
+  { motor: "m2", syncPv: "29idc:m2.SYNC", statPv: "29idc:m2.STAT", label: "Y" },
+  { motor: "m3", syncPv: "29idc:m3.SYNC", statPv: "29idc:m3.STAT", label: "Z" },
+  { motor: "m4", syncPv: "29idc:m4.SYNC", statPv: "29idc:m4.STAT", label: "TH" },
+];
 
-function MovingIndicator() {
-  const [, connected,, val] = useConnection("29idc-blink", "ca://29idc:alldoneBlink.VAL");
-  const v = (val as any)?.value;
-  const raw = v?.doubleValue ?? v?.floatValue ?? v?.intValue ?? v?.value ?? null;
-  const active = connected && raw !== null && raw !== 0;
+function SyncButtons() {
+  const [,,, s1] = useConnection("sync-stat-m1", "ca://29idc:m1.STAT");
+  const [,,, s2] = useConnection("sync-stat-m2", "ca://29idc:m2.STAT");
+  const [,,, s3] = useConnection("sync-stat-m3", "ca://29idc:m3.STAT");
+  const [,,, s4] = useConnection("sync-stat-m4", "ca://29idc:m4.STAT");
+  const stats = [toDouble(s1), toDouble(s2), toDouble(s3), toDouble(s4)];
+  const active = SYNC_MOTORS.filter((_, i) => stats[i] === 14);
+  if (active.length === 0) return null;
   return (
-    <>
-      <style>{BLINK_STYLE}</style>
-      <div className={active ? "cd-moving-active" : undefined}
-           style={{ position: "relative", width: 80, height: 26, visibility: active ? "visible" : "hidden" }}>
-        <span style={{
-          position: "absolute", left: 3, top: 3,
-          fontSize: 18, fontWeight: 700, fontFamily: "sans-serif",
-          color: "#006064", userSelect: "none",
-        }}>Moving</span>
-        <span style={{
-          position: "absolute", left: 1, top: 1,
-          fontSize: 18, fontWeight: 700, fontFamily: "sans-serif",
-          color: "#80deea", userSelect: "none",
-        }}>Moving</span>
-      </div>
-    </>
+    <div style={{ display: "flex", alignItems: "center", gap: 4, marginRight: 8 }}>
+      <span style={{ fontSize: 12, fontFamily: "sans-serif", color: colors.label }}>Sync encoders:</span>
+      {active.map(m => (
+        <button
+          key={m.motor}
+          onClick={() => pvwsWriter.write(m.syncPv, 1)}
+          style={{
+            padding: "3px 7px",
+            background: colors.relatedBg,
+            color: colors.relatedFg,
+            border: `1px solid ${colors.relatedBorder}`,
+            borderRadius: 4,
+            fontSize: 12,
+            fontFamily: "sans-serif",
+            cursor: "pointer",
+          }}
+        >{m.label}</button>
+      ))}
+    </div>
   );
 }
 
 function ArpesMotorsContent() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <MotorGrid prefix="29idc:" motors={ARPES_MOTORS} columns={3} />
+      <MotorGrid prefix="29idc:" motors={ARPES_MOTORS} columns={3} softLimitPrec={3} />
       <div style={{ display: "flex", alignItems: "center" }}>
-        {/* Moving indicator — centered in remaining space */}
-        <div style={{ flex: 1, display: "flex", justifyContent: "center" }}>
-          <MovingIndicator />
-        </div>
+        {/* SYNC buttons — visible only when motor has LINK alarm (STAT=14) */}
+        <SyncButtons />
+        <div style={{ flex: 1 }} />
         {/* All Stop */}
         <button
           onClick={() => pvwsWriter.write("29idc:allstop.VAL", 1)}

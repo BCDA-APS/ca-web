@@ -7,6 +7,8 @@ import { colors, fontSize } from "../lib/theme";
 interface MotorCardProps {
   /** PV prefix + motor name, e.g. "29idc:m1" */
   pv: string;
+  /** Override precision for soft limit display (defaults to PV channel precision) */
+  softLimitPrec?: number;
 }
 
 // ── Status derivation ─────────────────────────────────────────────────────────
@@ -113,7 +115,7 @@ function ensurePulseStyle() {
   document.head.appendChild(el);
 }
 
-export function MotorCard({ pv }: MotorCardProps) {
+export function MotorCard({ pv, softLimitPrec }: MotorCardProps) {
   useEffect(() => { ensurePulseStyle(); }, []);
   const id = `mc-${pv}`;
 
@@ -273,8 +275,8 @@ export function MotorCard({ pv }: MotorCardProps) {
 
       {/* Soft limits */}
       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: "#d08030", fontFamily: "monospace" }}>
-        <span>{llm !== null ? fmt(llm, prec) : "—"}</span>
-        <span>{hlm !== null ? fmt(hlm, prec) : "—"}</span>
+        <span>{llm !== null ? fmt(llm, softLimitPrec ?? prec) : "—"}</span>
+        <span>{hlm !== null ? fmt(hlm, softLimitPrec ?? prec) : "—"}</span>
       </div>
 
       {/* Tweak row */}
@@ -284,7 +286,7 @@ export function MotorCard({ pv }: MotorCardProps) {
           onClick={tweakBack}
           disabled={disabled || !connected}
           title="Tweak backward"
-        >‹</button>
+        ><span style={{ marginTop: -4 }}>‹</span></button>
 
         {editingTwv ? (
           <input
@@ -310,7 +312,7 @@ export function MotorCard({ pv }: MotorCardProps) {
           onClick={tweakForward}
           disabled={disabled || !connected}
           title="Tweak forward"
-        >›</button>
+        ><span style={{ marginTop: -4 }}>›</span></button>
       </div>
     </div>
   );
@@ -358,9 +360,9 @@ const styles: Record<string, React.CSSProperties> = {
     color: colors.tweakFg,
     border: `1px solid ${colors.tweakBorder}`,
     borderRadius: 3,
-    width: 28,
-    height: 28,
-    fontSize: 18,
+    width: 22,
+    height: 22,
+    fontSize: 16,
     lineHeight: "1",
     cursor: "pointer",
     display: "flex",
