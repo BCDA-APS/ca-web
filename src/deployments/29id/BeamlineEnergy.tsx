@@ -405,7 +405,7 @@ function IdSection() {
         <div onContextMenu={e => pvCtx("S29ID:QuasiRatioM.RVAL", qpRaw, e)} style={{ ...rbvStyle, textAlign: "right", cursor: "context-menu" }}>
           {qp !== null ? qp.toFixed(1) : "—"}
         </div>
-        <div style={{ flex: 1, minWidth: 0, fontSize: 9, color: colors.label, lineHeight: 1.3 }}>
+        <div style={{ flex: 1, minWidth: 0, fontSize: 9, color: colors.dim, lineHeight: 1.3 }}>
           Set energy after<br />changing polarization
         </div>
       </Row>
