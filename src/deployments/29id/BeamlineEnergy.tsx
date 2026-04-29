@@ -220,7 +220,7 @@ function MonoSection() {
 
       {/* Row 1: RBV | eV | Done/Busy */}
       <Row>
-        <RbvBox value={rbv} prec={2} width={FW} onContextMenu={e => pvCtx("29idmono:ENERGY_MON", rbvRaw, e)} />
+        <RbvBox value={rbv} prec={(rbvRaw as any)?.display?.precision ?? 2} width={FW} onContextMenu={e => pvCtx("29idmono:ENERGY_MON", rbvRaw, e)} />
         <span style={unitStyle}>eV</span>
         <span style={{ fontSize: fontSize.small, color: ready ? colors.statusOk : colors.statusWarn, whiteSpace: "nowrap" }}>
           ● {ready ? "Done" : "Busy"}
@@ -229,7 +229,7 @@ function MonoSection() {
 
       {/* Row 2: SP | eV | Grating label */}
       <Row>
-        <SpBox value={sp} prec={3} width={FW} onCommit={n => pvwsWriter.write("29idmono:ENERGY_SP", n)} onContextMenu={e => pvCtx("29idmono:ENERGY_SP", spRaw, e)} />
+        <SpBox value={sp} prec={(spRaw as any)?.display?.precision ?? 3} width={FW} onCommit={n => pvwsWriter.write("29idmono:ENERGY_SP", n)} onContextMenu={e => pvCtx("29idmono:ENERGY_SP", spRaw, e)} />
         <span style={unitStyle}>eV</span>
         <div style={{ minWidth: 40 }}>
           {gLabel
@@ -274,7 +274,7 @@ function MonoSection() {
 
       {/* Row 5: Ring current | mA | Ring Info button */}
       <Row mt={2}>
-        <RbvBox value={ring} prec={1} width={FW} onContextMenu={e => pvCtx("S-DCCT:CurrentM", rngRaw, e)} />
+        <RbvBox value={ring} prec={(rngRaw as any)?.display?.precision ?? 1} width={FW} onContextMenu={e => pvCtx("S-DCCT:CurrentM", rngRaw, e)} />
         <span style={unitStyle}>mA</span>
         <RingInfoButton />
       </Row>
@@ -333,7 +333,7 @@ function IdSection() {
             {on ? "On" : "Off"}
           </span>
         </div>
-        <RbvBox value={rbv} prec={4} width={FW} onContextMenu={e => pvCtx("S29ID:EnergyM.VAL", rbvRaw, e)} />
+        <RbvBox value={rbv} prec={(rbvRaw as any)?.display?.precision ?? 4} width={FW} onContextMenu={e => pvCtx("S29ID:EnergyM.VAL", rbvRaw, e)} />
         <span style={unitStyle}>keV</span>
         <span style={{ fontSize: fontSize.small, whiteSpace: "nowrap", color: noAccess ? colors.statusError : busy ? colors.statusWarn : colors.statusOk }}>
           ● {noAccess ? "No access" : busy ? "Busy" : "Done"}
@@ -353,7 +353,7 @@ function IdSection() {
             }}
           >Ramp</button>
         </div>
-        <SpBox value={sp} prec={4} width={FW} onCommit={n => pvwsWriter.write("S29ID:EnergySetC.VAL", n)} onContextMenu={e => pvCtx("S29ID:EnergySetC.VAL", spRaw, e)} />
+        <SpBox value={sp} prec={(spRaw as any)?.display?.precision ?? 4} width={FW} onCommit={n => pvwsWriter.write("S29ID:EnergySetC.VAL", n)} onContextMenu={e => pvCtx("S29ID:EnergySetC.VAL", spRaw, e)} />
         <span style={unitStyle}>keV</span>
         {malfunction ? (
           <div style={{ display: "flex", alignItems: "center", gap: 5, marginLeft: -6 }}>

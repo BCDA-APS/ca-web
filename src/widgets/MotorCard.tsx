@@ -130,6 +130,7 @@ export function MotorCard({ pv }: MotorCardProps) {
   const [, ,         , valVal]    = useConnection(`${id}-val`,   `ca://${pv}.VAL`);
   const [, ,         , twvVal]    = useConnection(`${id}-twv`,   `ca://${pv}.TWV`);
 
+  const prec     = (rbvVal as any)?.display?.precision ?? 3;
   const desc     = toStr(descVal) || pv;
   const rbv      = toDouble(rbvVal);
   const dmov     = (toDouble(dmovVal) ?? 1) !== 0;
@@ -161,7 +162,7 @@ export function MotorCard({ pv }: MotorCardProps) {
 
   function startEdit() {
     if (disabled) return;
-    setValInput(val !== null ? fmt(val) : "");
+    setValInput(val !== null ? fmt(val, prec) : "");
     setEditingVal(true);
   }
   function commitVal() {
@@ -241,7 +242,7 @@ export function MotorCard({ pv }: MotorCardProps) {
         style={{ ...styles.rbv, borderColor: calibrate ? colors.statusWarn : colors.rbvBorder, cursor: "context-menu" }}
         onContextMenu={e => pvCtx(`${pv}.RBV`, rbvVal, e)}
       >
-        {connected ? fmt(rbv) : "—"}
+        {connected ? fmt(rbv, prec) : "—"}
       </div>
 
       {/* VAL */}
@@ -263,7 +264,7 @@ export function MotorCard({ pv }: MotorCardProps) {
           title={disabled ? "Motor disabled" : "Click to move"}
           onClick={startEdit}
         >
-          {connected ? fmt(val) : "—"}
+          {connected ? fmt(val, prec) : "—"}
         </div>
       )}
 
@@ -272,8 +273,8 @@ export function MotorCard({ pv }: MotorCardProps) {
 
       {/* Soft limits */}
       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: "#d08030", fontFamily: "monospace" }}>
-        <span>{llm !== null ? fmt(llm, 3) : "—"}</span>
-        <span>{hlm !== null ? fmt(hlm, 3) : "—"}</span>
+        <span>{llm !== null ? fmt(llm, prec) : "—"}</span>
+        <span>{hlm !== null ? fmt(hlm, prec) : "—"}</span>
       </div>
 
       {/* Tweak row */}
