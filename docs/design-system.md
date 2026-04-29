@@ -1,6 +1,7 @@
 # EPICS UI Design System
 
 Conventions for building consistent panels in caqtdm-web.
+The app uses a **light theme** — background `rgb(222,222,227)`, with blue readbacks and dark-blue setpoints.
 
 ---
 
@@ -31,12 +32,10 @@ import { toDouble, toStr, fmt, toBool, pvCtx } from "../../lib/epics";
 ### `pvCtx` usage
 
 ```tsx
-<Row onContextMenu={e => pvCtx("29idmono:ENERGY_MON", rbvRaw, e)}>
-  ...
-</Row>
+<RbvBox value={rbv} prec={2} width={110} onContextMenu={e => pvCtx("29idmono:ENERGY_MON", rbvRaw, e)} />
 ```
 
-Attach to a `Row` (or any element) to make right-click show the PV info popup with value, timestamp, alarm severity, and units.
+Attach directly to the value box (not the whole row) so right-click only triggers on the specific PV element. Shows a popup with value, timestamp, alarm severity, and units. `RbvBox`, `SpBox`, and `TweakValue` all accept `onContextMenu` as a prop.
 
 ---
 
@@ -48,31 +47,33 @@ import { colors, fontSize } from "../../lib/theme";
 
 ### Colors
 
-| Token | Hex | Use for |
+| Token | Value | Use for |
 |---|---|---|
-| `colors.rbvText` | `#80deea` | RBV readback text (cyan) |
-| `colors.rbvBg` | `#1a2a3a` | RBV background |
-| `colors.rbvBorder` | `#2a3a4a` | RBV border |
-| `colors.spText` | `#ffffff` | Setpoint text |
-| `colors.spBg` | `#1a3258` | Setpoint background |
-| `colors.spBorder` | `#2a5a9a` | Setpoint border |
-| `colors.inputBg` | `#1a3a4a` | Active text input background |
-| `colors.inputBorder` | `#4a90d9` | Active text input border |
+| `colors.rbvText` | `rgb(10,37,159)` | RBV readback text (dark blue) |
+| `colors.rbvBg` | `rgb(236,236,236)` | RBV background (light gray) |
+| `colors.rbvBorder` | `rgb(160,168,215)` | RBV border |
+| `colors.spText` | `rgb(228,228,228)` | Setpoint text (light) |
+| `colors.spBg` | `rgb(0,53,132)` | Setpoint background (dark blue) |
+| `colors.spBorder` | `rgb(0,35,90)` | Setpoint border |
+| `colors.inputBg` | `rgb(0,53,132)` | Active text input background |
+| `colors.inputBorder` | `rgb(0,35,90)` | Active text input border |
 | `colors.tweakBg` | `#2060a0` | Tweak ‹ › button background |
 | `colors.tweakFg` | `#cce0ff` | Tweak ‹ › button text |
 | `colors.tweakBorder` | `#1a4a7a` | Tweak ‹ › button border |
-| `colors.relatedBg` | `#0d2a4a` | Related display button background |
-| `colors.relatedBorder` | `#2a5a9a` | Related display button border |
-| `colors.relatedFg` | `#90caf9` | Related display button text / secondary values |
-| `colors.unit` | `#7a9ab8` | Unit labels (eV, mA, Torr…) |
-| `colors.label` | `#cce0ff` | Row labels, motor names |
-| `colors.dim` | `#546e8a` | Dimmed / secondary text |
+| `colors.relatedBg` | `rgb(210,220,240)` | Related display button background |
+| `colors.relatedBorder` | `rgb(160,180,220)` | Related display button border |
+| `colors.relatedFg` | `rgb(0,53,132)` | Related display button text |
+| `colors.unit` | `#444444` | Unit labels (eV, mA, Torr…) |
+| `colors.label` | `#333333` | Row labels, motor names |
+| `colors.dim` | `#666666` | Dimmed / secondary text |
 | `colors.sectionHdr` | `#7c6fa0` | Section header text |
-| `colors.cardBg` | `#1e3a5c` | Motor card background |
-| `colors.cardBgDisabled` | `#111e30` | Disabled motor card background |
-| `colors.statusOk` | `#4caf50` | OK / done / moving green |
-| `colors.statusWarn` | `#f9a825` | Warning / soft limit amber |
-| `colors.statusError` | `#e53935` | Error / hard limit red |
+| `colors.cardBg` | `rgb(200,200,205)` | Motor card background |
+| `colors.cardBgDisabled` | `rgb(185,185,190)` | Disabled motor card background |
+| `colors.cardBarBg` | `rgb(175,175,180)` | Motor position bar track |
+| `colors.cardBarThumb` | `rgb(0,53,132)` | Motor position bar thumb |
+| `colors.statusOk` | `#4caf50` | OK / done / green |
+| `colors.statusWarn` | `#f9a825` | Warning / busy / amber |
+| `colors.statusError` | `#e53935` | Error / hard limit / red |
 
 ### Font sizes
 
@@ -118,14 +119,15 @@ import { RbvBox, SpBox, TweakValue, TweakButton, UnitLabel, RelatedDisplay, Row 
 | `width` | `number` | (fills container) | Fixed width in px |
 | `onCommit` | `(n: number) => void` | — | Called when user presses Enter |
 | `disabled` | `boolean` | `false` | Prevents editing |
+| `onContextMenu` | `(e) => void` | — | Right-click handler |
 
 ### `TweakValue` — step size editor
 
 ```tsx
-<TweakValue value={twv} onCommit={n => pvwsWriter.write("pv:TWV", n)} style={{ width: 54 }} />
+<TweakValue value={twv} onCommit={n => pvwsWriter.write("pv:TWV", n)} style={{ width: 54 }} onContextMenu={e => pvCtx("pv:TWV", raw, e)} />
 ```
 
-Click to edit. `↑` multiplies by 10, `↓` divides by 10.
+Click to edit. `↑` multiplies by 10, `↓` divides by 10. Styled to match `SpBox` (dark blue background, light text).
 
 ### `TweakButton` — ‹ / › tweak button
 
@@ -146,7 +148,7 @@ Click to edit. `↑` multiplies by 10, `↓` divides by 10.
 <RelatedDisplay label="Ring Info" onClick={openRingInfo} />
 ```
 
-Renders with the canonical dark-blue button style (same as Gauge/Pump in the chamber panel).
+Renders with the canonical related display button style (`relatedBg/Fg/Border` tokens): light blue-gray background with dark blue text.
 
 ### `Row` — flex layout row
 
@@ -161,7 +163,7 @@ Renders with the canonical dark-blue button style (same as Gauge/Pump in the cha
 |---|---|---|---|
 | `children` | `ReactNode` | — | Row contents |
 | `mt` | `number` | `0` | Top margin in px |
-| `onContextMenu` | `(e) => void` | — | Right-click on the whole row |
+| `onContextMenu` | `(e) => void` | — | Right-click on the whole row (prefer attaching to the specific value box instead) |
 
 ---
 
@@ -187,13 +189,13 @@ function MySection() {
         My Motor
       </div>
 
-      <Row onContextMenu={e => pvCtx("29id:myMotor.RBV", rbvRaw, e)}>
-        <RbvBox value={rbv} prec={4} width={110} />
+      <Row>
+        <RbvBox value={rbv} prec={4} width={110} onContextMenu={e => pvCtx("29id:myMotor.RBV", rbvRaw, e)} />
         <UnitLabel width={32}>mm</UnitLabel>
       </Row>
 
-      <Row onContextMenu={e => pvCtx("29id:myMotor.VAL", spRaw, e)}>
-        <SpBox value={sp} prec={4} width={110} onCommit={n => pvwsWriter.write("29id:myMotor.VAL", n)} />
+      <Row>
+        <SpBox value={sp} prec={4} width={110} onCommit={n => pvwsWriter.write("29id:myMotor.VAL", n)} onContextMenu={e => pvCtx("29id:myMotor.VAL", spRaw, e)} />
         <UnitLabel width={32}>mm</UnitLabel>
       </Row>
     </div>
@@ -207,4 +209,5 @@ function MySection() {
 
 - **ChamberDiagram** is SVG-based so it cannot use the HTML widget components, but it does import `toDouble`, `toStr`, and `pvCtx` from `epics.ts`. Use `colors.*` tokens for SVG `fill` and `stroke` attributes.
 - **Import paths** depend on where your panel lives. Panels in `src/deployments/29id/` use `../../lib/...` and `../../widgets/...`.
-- **Right-click PV info** is handled globally by `App.tsx`. Any element that dispatches a `"pv-context"` custom event (via `pvCtx`) will show the dark-themed PV info dialog automatically.
+- **Right-click PV info** is handled globally by `App.tsx`. Any element that dispatches a `"pv-context"` custom event (via `pvCtx`) will show the PV info dialog automatically.
+- **TweakValue and SpBox share the same colors** (`spBg/spText/spBorder`) to signal they are both editable inputs. If you ever need to differentiate them, add dedicated tokens to `theme.ts`.

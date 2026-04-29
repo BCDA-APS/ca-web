@@ -1,18 +1,18 @@
 /** Canonical color tokens for the EPICS dark UI theme. */
 export const colors = {
-  // Readback (RBV) — cyan value display
-  rbvText:   "#80deea",
-  rbvBg:     "#1a2a3a",
-  rbvBorder: "#2a3a4a",
+  // Readback (RBV) — blue text on light gray
+  rbvText:   "rgb(10,37,159)",
+  rbvBg:     "rgb(236,236,236)",
+  rbvBorder: "rgb(160,168,215)",
 
-  // Setpoint (SP / VAL) — white value on dark blue
-  spText:    "#ffffff",
-  spBg:      "#1a3258",
-  spBorder:  "#2a5a9a",
+  // Setpoint (SP / VAL) — light text on dark blue
+  spText:    "rgb(228,228,228)",
+  spBg:      "rgb(0,53,132)",
+  spBorder:  "rgb(0,35,90)",
 
   // Active text input
-  inputBg:     "#1a3a4a",
-  inputBorder: "#4a90d9",
+  inputBg:     "rgb(0,53,132)",
+  inputBorder: "rgb(0,35,90)",
 
   // Tweak buttons (‹ ›)
   tweakBg:     "#2060a0",
@@ -20,24 +20,24 @@ export const colors = {
   tweakBorder: "#1a4a7a",
 
   // Related display buttons (Gauge, Pump, Ring Info…)
-  relatedBg:     "#0d2a4a",
-  relatedBorder: "#2a5a9a",
-  relatedFg:     "#90caf9",
+  relatedBg:     "rgb(210,220,240)",
+  relatedBorder: "rgb(160,180,220)",
+  relatedFg:     "rgb(0,53,132)",
 
   // Text roles
-  unit:      "#7a9ab8",  // unit labels: eV, mA, Torr…
-  label:     "#cce0ff",  // row labels, motor name, section text
-  dim:       "#546e8a",  // dimmed / secondary text
+  unit:      "#444444",  // unit labels: eV, mA, Torr…
+  label:     "#333333",  // row labels, motor name, section text
+  dim:       "#666666",  // dimmed / secondary text
 
   // Section headers
   sectionHdr:       "#7c6fa0",
   sectionHdrBorder: "#2a1a4a",
 
   // Motor card backgrounds
-  cardBg:         "#1e3a5c",
-  cardBgDisabled: "#111e30",
-  cardBarBg:      "#2a4a6a",  // position bar track
-  cardBarThumb:   "#90caf9",  // position bar thumb
+  cardBg:         "rgb(200,200,205)",
+  cardBgDisabled: "rgb(185,185,190)",
+  cardBarBg:      "rgb(175,175,180)",  // position bar track
+  cardBarThumb:   "rgb(0,53,132)",     // position bar thumb
 
   // Status / alarm
   statusOk:    "#4caf50",

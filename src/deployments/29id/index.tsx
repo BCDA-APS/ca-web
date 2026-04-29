@@ -1,4 +1,5 @@
 import { useConnection } from "@diamondlightsource/cs-web-lib";
+import { colors } from "../../lib/theme";
 import { UiRenderer } from "../../lib/UiRenderer";
 import { MotorGrid } from "../../widgets/MotorGrid";
 import { ChamberDiagram } from "./ChamberDiagram";
@@ -72,9 +73,9 @@ function ArpesMotorsContent() {
           style={{
             display: "flex", alignItems: "center", justifyContent: "center",
             width: 28, height: 28,
-            background: "#0d2a4a",
-            color: "#90caf9",
-            border: "1px solid #2a5a9a",
+            background: colors.relatedBg,
+            color: colors.relatedFg,
+            border: `1px solid ${colors.relatedBorder}`,
             borderRadius: 4,
             fontSize: 16,
             cursor: "pointer",
@@ -103,7 +104,7 @@ function KappaContent() {
 export const config: DeploymentConfig = {
   title: "29ID Beamline",
   tabs: [
-    { id: 1, icon: "⚛",  label: "29ID-C", color: "#6a3fa0" },
+    { id: 1, icon: "⚛",  label: "29ID-C", color: "rgb(170,170,255)" },
     { id: 2, icon: "💠", label: "29ID-D" },
   ],
   panelDefaults: {

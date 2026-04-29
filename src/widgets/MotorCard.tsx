@@ -370,9 +370,9 @@ const styles: Record<string, React.CSSProperties> = {
   twvDisplay: {
     fontFamily: "monospace",
     fontSize: fontSize.label,
-    color: colors.relatedFg,
-    background: colors.rbvBg,
-    border: `1px solid ${colors.rbvBorder}`,
+    color: colors.spText,
+    background: colors.spBg,
+    border: `1px solid ${colors.spBorder}`,
     borderRadius: 3,
     padding: "3px 6px",
     textAlign: "center",

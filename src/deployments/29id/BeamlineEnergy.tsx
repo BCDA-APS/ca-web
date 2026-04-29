@@ -1,3 +1,5 @@
+import { useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useConnection } from "@diamondlightsource/cs-web-lib";
 import { pvwsWriter } from "../../lib/pvwsWriter";
 import { toDouble, toStr, toBool, pvCtx } from "../../lib/epics";
@@ -58,6 +60,134 @@ function mirLabel(mir: number | null): string | null {
   return null;
 }
 
+// ── RingInfoButton ────────────────────────────────────────────────────────────
+
+const ringInfoItems = [
+  { label: "24h Beam History",    file: "/ui/beamHistory.ui",                                    macros: {} },
+  { label: "Storage Ring Status", file: "/ui//APSshare/adlsys/sr/fe/SR_Status.ui",               macros: {} },
+  { label: "RF BPM",              file: "/ui/29id_BPM.ui",                                        macros: {} },
+  { label: "X-Ray BPM",          file: "/ui/IDxbpm.ui",                                           macros: { sector: "29", sectorPlusOne: "30", sector0: "29" } },
+  { label: "Steering",           file: "/ui/BLSteering.ui",                                        macros: { BL: "ID", S: "29", SEC: "29" } },
+];
+
+function RingInfoButton() {
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+
+  function openMenu() {
+    const r = btnRef.current?.getBoundingClientRect();
+    setMenuPos(r ? { top: r.bottom + 2, left: r.left } : null);
+  }
+
+  function openScreen(item: typeof ringInfoItems[0]) {
+    window.dispatchEvent(new CustomEvent("open-ui", { detail: { ...item, label: item.label } }));
+    setMenuPos(null);
+  }
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        onClick={openMenu}
+        style={{
+          background: colors.relatedBg, border: `1px solid ${colors.relatedBorder}`, color: colors.relatedFg,
+          borderRadius: 3, fontSize: fontSize.label, fontFamily: "sans-serif",
+          padding: "4px 6px", cursor: "pointer", whiteSpace: "nowrap", alignSelf: "stretch",
+        }}
+      >Ring Info ▾</button>
+      {menuPos && createPortal(
+        <>
+          <div onClick={() => setMenuPos(null)} style={{ position: "fixed", inset: 0, zIndex: 9998 }} />
+          <div style={{
+            position: "fixed", top: menuPos.top, left: menuPos.left, zIndex: 9999,
+            background: "#fff", border: "1px solid #999", borderRadius: 2,
+            minWidth: 160, boxShadow: "2px 2px 6px rgba(0,0,0,0.3)",
+          }}>
+            {ringInfoItems.map((item, i) => (
+              <div
+                key={i}
+                onClick={() => openScreen(item)}
+                style={{
+                  padding: "4px 8px", fontSize: 11, fontFamily: "sans-serif",
+                  cursor: "pointer", whiteSpace: "nowrap",
+                  borderBottom: i < ringInfoItems.length - 1 ? "1px solid #eee" : "none",
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = "#e8f0fe")}
+                onMouseLeave={e => (e.currentTarget.style.background = "")}
+              >{item.label}</div>
+            ))}
+          </div>
+        </>,
+        document.body
+      )}
+    </>
+  );
+}
+
+// ── IdGearButton ──────────────────────────────────────────────────────────────
+
+const idGearItems = [
+  { label: "ID more",   file: "/ui/29id/29id_BL_Energy_more.ui",                                                        macros: { P: "S29ID:" } },
+  { label: "ID Expert", file: "/ui//APSshare/adlsys/screens/adl/iocs/idctl/adl_Legacy/IEXMachinePhysics.ui",            macros: { P: "S29ID:" } },
+];
+
+function IdGearButton() {
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+
+  function openMenu() {
+    const r = btnRef.current?.getBoundingClientRect();
+    setMenuPos(r ? { top: r.bottom + 2, left: r.left } : null);
+  }
+
+  function openScreen(item: typeof idGearItems[0]) {
+    window.dispatchEvent(new CustomEvent("open-ui", { detail: { ...item, label: item.label } }));
+    setMenuPos(null);
+  }
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        onClick={openMenu}
+        title="ID screens"
+        style={{
+          width: 23, height: 23, flexShrink: 0,
+          background: colors.relatedBg, border: `1px solid ${colors.relatedBorder}`,
+          color: colors.relatedFg, cursor: "pointer", fontSize: 14,
+          borderRadius: 3, padding: 0,
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}
+      ><span style={{ display: "block", lineHeight: 1, marginTop: -1 }}>⚙</span></button>
+      {menuPos && createPortal(
+        <>
+          <div onClick={() => setMenuPos(null)} style={{ position: "fixed", inset: 0, zIndex: 9998 }} />
+          <div style={{
+            position: "fixed", top: menuPos.top, left: menuPos.left, zIndex: 9999,
+            background: "#fff", border: "1px solid #999", borderRadius: 2,
+            minWidth: 140, boxShadow: "2px 2px 6px rgba(0,0,0,0.3)",
+          }}>
+            {idGearItems.map((item, i) => (
+              <div
+                key={i}
+                onClick={() => openScreen(item)}
+                style={{
+                  padding: "4px 8px", fontSize: 11, fontFamily: "sans-serif",
+                  cursor: "pointer", whiteSpace: "nowrap",
+                  borderBottom: i < idGearItems.length - 1 ? "1px solid #eee" : "none",
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = "#e8f0fe")}
+                onMouseLeave={e => (e.currentTarget.style.background = "")}
+              >{item.label}</div>
+            ))}
+          </div>
+        </>,
+        document.body
+      )}
+    </>
+  );
+}
+
 // ── MonoSection ───────────────────────────────────────────────────────────────
 
 function MonoSection() {
@@ -83,28 +213,17 @@ function MonoSection() {
   const mLabel = mirLabel(mir);
   const tempAlarm = tmp !== null && tmp !== 0;
 
-  function openRingInfo() {
-    window.dispatchEvent(new CustomEvent("open-ui", {
-      detail: { file: "/ui/29id/29id_BL_ring_info.ui", macros: {}, label: "Ring Info" },
-    }));
-  }
-
-  function openEnergyMore() {
-    window.dispatchEvent(new CustomEvent("open-ui", {
-      detail: { file: "/ui/29id/29id_BL_Energy_more.ui", macros: { P: "S29ID:" }, label: "Energy More" },
-    }));
-  }
 
   return (
     <div style={{ flexShrink: 0 }}>
       <div style={sectionHeaderStyle}>Mono</div>
 
-      {/* Row 1: RBV | eV | Ready/Moving */}
+      {/* Row 1: RBV | eV | Done/Busy */}
       <Row>
         <RbvBox value={rbv} prec={2} width={FW} onContextMenu={e => pvCtx("29idmono:ENERGY_MON", rbvRaw, e)} />
         <span style={unitStyle}>eV</span>
         <span style={{ fontSize: fontSize.small, color: ready ? colors.statusOk : colors.statusWarn, whiteSpace: "nowrap" }}>
-          ● {ready ? "Ready" : "Moving"}
+          ● {ready ? "Done" : "Busy"}
         </span>
       </Row>
 
@@ -134,7 +253,7 @@ function MonoSection() {
         </div>
       </Row>
 
-      {/* Row 4: STOP | ⚙ | Temp alarm */}
+      {/* Row 4: STOP | Temp alarm */}
       <Row mt={2}>
         <button
           onClick={() => pvwsWriter.write("29idmono:STOP_CMD.PROC", 1)}
@@ -144,16 +263,6 @@ function MonoSection() {
             width: FW, boxSizing: "border-box", flexShrink: 0,
           }}
         >STOP</button>
-        <button onClick={openEnergyMore} title="Energy settings"
-          style={{
-            width: 23, height: 23, flexShrink: 0,
-            background: colors.relatedBg, border: `1px solid ${colors.relatedBorder}`,
-            color: colors.relatedFg, cursor: "pointer", fontSize: 14,
-            borderRadius: 3, padding: 0,
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
-          ⚙
-        </button>
         <div>
           {tempAlarm && (
             <span title="Temperature alarm!" style={{ fontSize: fontSize.label, color: colors.statusError, whiteSpace: "nowrap" }}>
@@ -167,14 +276,7 @@ function MonoSection() {
       <Row mt={2}>
         <RbvBox value={ring} prec={1} width={FW} onContextMenu={e => pvCtx("S-DCCT:CurrentM", rngRaw, e)} />
         <span style={unitStyle}>mA</span>
-        <button
-          onClick={openRingInfo}
-          style={{
-            background: colors.relatedBg, border: `1px solid ${colors.relatedBorder}`, color: colors.relatedFg,
-            borderRadius: 3, fontSize: fontSize.label, fontFamily: "sans-serif",
-            padding: "1px 6px", cursor: "pointer", whiteSpace: "nowrap",
-          }}
-        >Ring Info</button>
+        <RingInfoButton />
       </Row>
     </div>
   );
@@ -254,7 +356,7 @@ function IdSection() {
         <SpBox value={sp} prec={4} width={FW} onCommit={n => pvwsWriter.write("S29ID:EnergySetC.VAL", n)} onContextMenu={e => pvCtx("S29ID:EnergySetC.VAL", spRaw, e)} />
         <span style={unitStyle}>keV</span>
         {malfunction ? (
-          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 5, marginLeft: -6 }}>
             <div style={{
               width: 0, height: 0,
               borderLeft: "7px solid transparent",
@@ -268,7 +370,7 @@ function IdSection() {
           </div>
         ) : (
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: 4 }}>
-            <span style={{ fontSize: 22, color: colors.relatedFg, lineHeight: 1 }} title={`ID hysteresis: ${hystUp ? "up" : "down"}`}>
+            <span style={{ fontSize: 22, color: "rgb(0,53,132)", lineHeight: 1 }} title={`ID hysteresis: ${hystUp ? "up" : "down"}`}>
               {hystUp ? "↑" : "↓"}
             </span>
             {showCoffee && (
@@ -322,19 +424,7 @@ function IdSection() {
         }}>
           {fb}
         </div>
-        <button
-          onClick={() => window.dispatchEvent(new CustomEvent("open-ui", {
-            detail: { file: "/ui//APSshare/adlsys/screens/adl/iocs/idctl/adl_Legacy/IEXMachinePhysics.ui", macros: { P: "S29ID:" }, label: "ID Machine Physics" },
-          }))}
-          title="ID Machine Physics"
-          style={{
-            width: 23, height: 23, flexShrink: 0,
-            background: colors.relatedBg, border: `1px solid ${colors.relatedBorder}`,
-            color: colors.relatedFg, cursor: "pointer", fontSize: 14,
-            borderRadius: 3, padding: 0,
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}
-        >⚙</button>
+        <IdGearButton />
       </Row>
     </div>
   );

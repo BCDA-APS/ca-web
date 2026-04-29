@@ -165,9 +165,9 @@ export function TweakValue({ value, onCommit, style, onContextMenu }: {
       title="Click to change step (↑ ×10, ↓ ÷10)"
       style={{
         ...base,
-        color: colors.relatedFg,
-        background: colors.rbvBg,
-        border: `1px solid ${colors.rbvBorder}`,
+        color: colors.spText,
+        background: colors.spBg,
+        border: `1px solid ${colors.spBorder}`,
         cursor: "text",
         userSelect: "none",
       }}

@@ -100,8 +100,8 @@ function DraggablePanel({ id, title, defaultPos, onClose, children }: { id: stri
       onMouseDown={bringToFront}
       style={{
         position: "fixed", left: ps.x, top: ps.y, zIndex: zIdx,
-        background: "#0f2035", borderRadius: 6,
-        boxShadow: "0 4px 16px rgba(0,0,0,0.6)", border: "1px solid #1e3a5f",
+        background: "rgb(222,222,227)", borderRadius: 6,
+        boxShadow: "0 4px 16px rgba(0,0,0,0.25)", border: "1px solid #b0b0b8",
         fontFamily: "Liberation Sans, Arial, sans-serif",
       }}
     >
@@ -110,11 +110,11 @@ function DraggablePanel({ id, title, defaultPos, onClose, children }: { id: stri
         onMouseDown={onHandleMouseDown}
         style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "5px 8px", background: "#1a3a5c", borderRadius: "6px 6px 0 0",
+          padding: "5px 8px", background: "rgb(200,200,207)", borderRadius: "6px 6px 0 0",
           cursor: ps.locked ? "default" : "grab", userSelect: "none",
         }}
       >
-        <span style={{ color: "#bbdefb", fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>
+        <span style={{ color: "#546e8a", fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>
           {title}
         </span>
         <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
@@ -207,9 +207,9 @@ function AppOverlayPanel({ ov, onClose }: { ov: AppOverlay; onClose: () => void 
   }
 
   return createPortal(
-    <div style={{ position: "fixed", top: pos.y, left: pos.x, zIndex: 9999, background: "#1a1a2e", borderRadius: 4, boxShadow: "0 4px 20px rgba(0,0,0,0.6)", border: "1px solid #444" }}>
-      <div onMouseDown={onMouseDown} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 8px", background: "#0f2035", borderRadius: "4px 4px 0 0", cursor: locked ? "default" : "grab" }}>
-        <span style={{ color: "#90caf9", fontSize: 11, fontFamily: "monospace" }}>{ov.label}</span>
+    <div style={{ position: "fixed", top: pos.y, left: pos.x, zIndex: 9999, background: "rgb(222,222,227)", borderRadius: 4, boxShadow: "0 4px 20px rgba(0,0,0,0.25)", border: "1px solid #b0b0b8" }}>
+      <div onMouseDown={onMouseDown} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 8px", background: "rgb(200,200,207)", borderRadius: "4px 4px 0 0", cursor: locked ? "default" : "grab" }}>
+        <span style={{ color: "#546e8a", fontSize: 11, fontFamily: "monospace" }}>{ov.label}</span>
         <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
           <button
             onMouseDown={e => e.stopPropagation()}
@@ -222,7 +222,7 @@ function AppOverlayPanel({ ov, onClose }: { ov: AppOverlay; onClose: () => void 
               : <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 1C9.24 1 7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2H9V6c0-1.66 1.34-3 3-3 1.66 0 3 1.34 3 3h2c0-2.76-2.24-5-5-5zm0 15c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>
             }
           </button>
-          <button onClick={onClose} style={{ background: "none", border: "none", color: "#90caf9", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: "0 2px" }}>×</button>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "#546e8a", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: "0 2px" }}>×</button>
         </div>
       </div>
       <UiRenderer file={ov.file} macros={ov.macros} />
@@ -728,7 +728,7 @@ export default function App() {
   return (
     <AppErrorBoundary>
     <div
-      style={{ background: "#0d1b2a", minHeight: "100vh", fontFamily: "Liberation Sans, Arial, sans-serif" }}
+      style={{ background: "rgb(222,222,227)", minHeight: "100vh", fontFamily: "Liberation Sans, Arial, sans-serif" }}
       onClick={() => settingsOpen && setSettingsOpen(false)}
     >
 
@@ -747,12 +747,12 @@ export default function App() {
       </div>
 
       {/* Page title (fixed, acts as header) */}
-      <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, background: activeTabColor, borderBottom: "1px solid #1e3a5f", padding: "8px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", transition: "background 0.3s" }}>
-        <span style={{ color: "#90caf9", fontSize: 16, fontWeight: 700, letterSpacing: 0.5 }}>{config.title}</span>
+      <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, background: activeTabColor, borderBottom: "1px solid rgba(0,0,0,0.15)", padding: "8px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", transition: "background 0.3s" }}>
+        <span style={{ color: "#ffffff", fontSize: 16, fontWeight: 700, letterSpacing: 0.5 }}>{config.title}</span>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }} onClick={e => e.stopPropagation()}>
           <button
             onClick={() => setPickerOpen(true)}
-            style={{ background: "none", border: "1px solid transparent", borderRadius: 4, color: "#90caf9", cursor: "pointer", fontSize: 13, padding: "3px 10px" }}
+            style={{ background: "none", border: "1px solid transparent", borderRadius: 4, color: "#ffffff", cursor: "pointer", fontSize: 13, padding: "3px 10px" }}
           >
             Open…
           </button>
@@ -760,7 +760,7 @@ export default function App() {
           <button
             onClick={() => setSettingsOpen(o => !o)}
             title="Settings"
-            style={{ background: settingsOpen ? "#1a3a5c" : "none", border: "1px solid " + (settingsOpen ? "#4a7ab5" : "transparent"), borderRadius: 4, color: "#90caf9", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: "3px 7px" }}
+            style={{ background: settingsOpen ? "rgba(0,0,0,0.15)" : "none", border: "1px solid " + (settingsOpen ? "rgba(255,255,255,0.4)" : "transparent"), borderRadius: 4, color: "#ffffff", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: "3px 7px" }}
           >
             ⚙
           </button>
