@@ -89,9 +89,9 @@ export function BLLayoutAB() {
   // A section: s1aX+jawW → msX
   // post shutter: handled by SS2 color
 
-  const msColor  = msOpen  ? colors.statusOk : "#cc0000";
+  const msColor  = msOpen  ? colors.statusOk : colors.statusError;
   const msLabel  = msBlock ? "CLOSED"  : "OPEN";
-  const ss2Color = ss2open ? colors.statusOk : "#cc0000";
+  const ss2Color = ss2open ? colors.statusOk : colors.statusError;
 
   return (
     <div style={{ fontFamily: "sans-serif", fontSize: 10 }}>
@@ -113,9 +113,9 @@ export function BLLayoutAB() {
         {/* B section: continuous m3rX → s1aX (slit 2B jaws overlay) */}
         <rect x={m3rX} y={by} width={s1aX - m3rX} height={bh} fill={cB} />
         {/* A section: continuous s1aX → msX (slit 1A jaws overlay) */}
-        <rect x={s1aX} y={by} width={msX - s1aX - 2} height={bh} fill={cA} />
+        <rect x={s1aX} y={by} width={msX - s1aX} height={bh} fill={cA} />
         {/* Post-shutter: msX+msW → ss2X — green when SS2 open AND PS2 open */}
-        <rect x={msX + msW + 2} y={by} width={ss2X - msX - msW - 2} height={bh}
+        <rect x={msX + msW} y={by} width={ss2X - msX - msW} height={bh}
           fill={ss2open && toDouble(ps2r) === 1 ? C_PHOTON : C_BEAM} />
 
         {/* ── M3R mirror ── */}
@@ -145,16 +145,15 @@ export function BLLayoutAB() {
         <text x={s1aX + jawW/2} y={labelY} textAnchor="middle" fontSize={8} fill="#333">1A</text>
 
         {/* ── Main Shutter ── */}
-        <rect x={msX - 2}  y={by - msH/2 - 2} width={msW + 4} height={msH + 4} fill="#111" rx={2} />
-        <rect x={msX}      y={by - msH/2}      width={msW}     height={msH}     fill={msColor} rx={1} />
-        <text x={msX + msW/2} y={by - msH/2 - 7} textAnchor="middle" fontSize={8} fill="#333">Main Shutter</text>
-        <text x={msX + msW/2} y={by + 4} textAnchor="middle" fontSize={8} fontWeight="700" fill="#fff">
+        <rect x={msX} y={by + bh/2 - msH/2} width={msW} height={msH} fill={msColor} rx={1} />
+        <text x={msX + msW/2} y={by + bh/2 - msH/2 - 4} textAnchor="middle" fontSize={8} fill="#333">Main Shutter</text>
+        <text x={msX + msW/2} y={by + bh/2 + 3} textAnchor="middle" fontSize={8} fontWeight="700" fill="#fff">
           {msLabel}
         </text>
 
         {/* ── Safety Shutter SS2 ── */}
-        <rect x={ss2X} y={Math.max(2, by - ss2H/2)} width={ss2W}
-          height={Math.min(ss2H, H - Math.max(2, by - ss2H/2) - 2)}
+        <rect x={ss2X} y={Math.max(2, by + bh/2 - ss2H/2)} width={ss2W}
+          height={Math.min(ss2H, H - Math.max(2, by + bh/2 - ss2H/2) - 2)}
           fill={ss2Color} rx={2} />
 
       </svg>
@@ -171,11 +170,11 @@ export function BLLayoutAB() {
             <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
               <div style={{ display: "grid" }}>
                 <span style={{ gridArea: "1/1", visibility: "hidden", fontWeight: 600 }}>YELLOW</span>
-                {epsGreen  && <span style={{ gridArea: "1/1", fontWeight: 600, color: "#2e7d32" }}>GREEN</span>}
-                {epsYellow && <span style={{ gridArea: "1/1", fontWeight: 600, color: "#e65100" }}>YELLOW</span>}
-                {epsRed    && <span style={{ gridArea: "1/1", fontWeight: 600, color: "#c62828" }}>RED</span>}
+                {epsGreen  && <span style={{ gridArea: "1/1", fontWeight: 600, color: colors.statusOk }}>GREEN</span>}
+                {epsYellow && <span style={{ gridArea: "1/1", fontWeight: 600, color: colors.statusWarn }}>YELLOW</span>}
+                {epsRed    && <span style={{ gridArea: "1/1", fontWeight: 600, color: colors.statusError }}>RED</span>}
               </div>
-              {epsBuzzer && <span style={{ fontWeight: 600, color: "#c62828" }}>BUZZER ON</span>}
+              {epsBuzzer && <span style={{ fontWeight: 600, color: colors.statusError }}>BUZZER ON</span>}
             </div>
           </div>
         </div>
@@ -184,16 +183,16 @@ export function BLLayoutAB() {
         <div style={{ width: msW + 4, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
           <button
             onClick={() => pvwsWriter.write("S29ID-PSS:FES:OpenEPICSC", 1)}
-            style={{ background: "#e8f5e9", color: "#1b5e20", border: "1px solid #4caf50", borderRadius: 3, fontSize: 9, padding: "1px 4px", cursor: "pointer", whiteSpace: "nowrap" }}>
+            style={{ background: "#e8f5e9", color: "#1b5e20", border: "1px solid #4caf50", borderRadius: 3, fontSize: 9, padding: "1px 4px", cursor: "pointer", whiteSpace: "nowrap", width: "100%" }}>
             MS OPEN
           </button>
           <button
             onClick={() => pvwsWriter.write("S29ID-PSS:FES:CloseEPICSC", 1)}
-            style={{ background: "#ffebee", color: "#b71c1c", border: "1px solid #ef5350", borderRadius: 3, fontSize: 9, padding: "1px 4px", cursor: "pointer", whiteSpace: "nowrap" }}>
-            MS CLOS
+            style={{ background: "#ffebee", color: "#b71c1c", border: "1px solid #ef5350", borderRadius: 3, fontSize: 9, padding: "1px 4px", cursor: "pointer", whiteSpace: "nowrap", width: "100%" }}>
+            MS CLOSE
           </button>
           {!stationOk && (
-            <span style={{ color: "#ef5350", fontWeight: 700, fontSize: 9, whiteSpace: "nowrap" }}>
+            <span style={{ color: colors.statusError, fontSize: 9, whiteSpace: "nowrap" }}>
               Station NOT SEARCHED
             </span>
           )}

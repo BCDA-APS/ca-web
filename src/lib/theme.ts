@@ -42,7 +42,7 @@ export const colors = {
   // Status / alarm
   statusOk:    "#4caf50",
   statusWarn:  "#f9a825",
-  statusError: "#e53935",
+  statusError: "#cc0000",
 } as const;
 
 /** Canonical font sizes. */

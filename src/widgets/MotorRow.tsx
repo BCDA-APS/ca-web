@@ -174,7 +174,7 @@ const styles: Record<string, React.CSSProperties> = {
   tweakInput:   { background: colors.inputBg, border: `1px solid ${colors.inputBorder}`, color: colors.spText, padding: "3px 5px", fontFamily: "monospace", width: 60, borderRadius: 3, fontSize: 11 },
   statusCell:   { padding: "6px 12px", textAlign: "center", width: 70, fontWeight: 600 },
   stopCell:     { padding: "4px 8px", width: 80 },
-  stopBtn:      { background: "#c62828", color: "#fff", border: "none", borderRadius: 3, padding: "4px 12px", cursor: "pointer", fontWeight: 700, width: "100%" },
+  stopBtn:      { background: colors.statusError, color: "#fff", border: "none", borderRadius: 3, padding: "4px 12px", cursor: "pointer", fontWeight: 700, width: "100%" },
   detailCell:   { padding: "4px 4px", width: 36 },
   detailBtn:    { background: colors.cardBg, color: colors.relatedFg, border: `1px solid ${colors.cardBarBg}`, borderRadius: 3, padding: "4px 8px", cursor: "pointer", fontWeight: 700 },
 };

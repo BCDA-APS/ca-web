@@ -64,9 +64,9 @@ function ArpesMotorsContent() {
           onClick={() => pvwsWriter.write("29idc:allstop.VAL", 1)}
           style={{
             padding: "5px 16px",
-            background: "#7f1d1d",
-            color: "#fecaca",
-            border: "1px solid #ef5350",
+            background: colors.statusError,
+            color: "#fff",
+            border: `1px solid ${colors.statusError}`,
             borderRadius: 4,
             fontSize: 12,
             fontFamily: "sans-serif",
