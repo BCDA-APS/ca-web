@@ -5,19 +5,19 @@ export const colors = {
   rbvBg:     "rgb(236,236,236)",
   rbvBorder: "rgb(160,168,215)",
 
-  // Setpoint (SP / VAL) — light text on dark blue
-  spText:    "rgb(228,228,228)",
-  spBg:      "rgb(0,53,132)",
-  spBorder:  "rgb(0,35,90)",
+  // Setpoint (SP / VAL) — dark blue text on medium blue
+  spText:    "rgb(10,37,159)",
+  spBg:      "rgb(162,186,221)",
+  spBorder:  "rgb(120,150,190)",
 
   // Active text input
-  inputBg:     "rgb(0,53,132)",
-  inputBorder: "rgb(0,35,90)",
+  inputBg:     "rgb(162,186,221)",
+  inputBorder: "rgb(120,150,190)",
 
   // Tweak buttons (‹ ›)
-  tweakBg:     "#2060a0",
-  tweakFg:     "#cce0ff",
-  tweakBorder: "#1a4a7a",
+  tweakBg:     "rgb(162,186,221)",
+  tweakFg:     "rgb(10,37,159)",
+  tweakBorder: "rgb(120,150,190)",
 
   // Related display buttons (Gauge, Pump, Ring Info…)
   relatedBg:     "rgb(210,220,240)",

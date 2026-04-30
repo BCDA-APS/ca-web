@@ -125,9 +125,13 @@ export function TweakValue({ value, onCommit, style, onContextMenu }: {
     fontFamily: "monospace",
     fontSize: fontSize.label,
     borderRadius: 3,
-    padding: "2px 4px",
+    height: 22,
+    padding: "0 4px",
     boxSizing: "border-box",
     textAlign: "center",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
     ...style,
   };
 

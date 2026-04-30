@@ -23,7 +23,7 @@ const rbvStyle: React.CSSProperties = {
 
 const tweakBtnStyle: React.CSSProperties = {
   background: colors.tweakBg, color: colors.tweakFg, border: `1px solid ${colors.tweakBorder}`,
-  borderRadius: 3, width: 24, height: 24, fontSize: 16, lineHeight: "1",
+  borderRadius: 3, width: 22, height: 22, fontSize: 16, lineHeight: "1",
   cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
   padding: 0, flexShrink: 0,
 };
@@ -215,7 +215,7 @@ function MonoSection() {
 
 
   return (
-    <div style={{ flexShrink: 0 }}>
+    <div style={{ flexShrink: 0, display: "flex", flexDirection: "column" }}>
       <div style={sectionHeaderStyle}>Mono</div>
 
       {/* Row 1: RBV | eV | Done/Busy */}
@@ -242,10 +242,10 @@ function MonoSection() {
       <Row>
         <div style={{ display: "flex", alignItems: "center", gap: 4, width: FW, flexShrink: 0 }}>
           <button onClick={() => pvwsWriter.write("29id:MonoEnergyTweakDec.PROC", 1)}
-            style={tweakBtnStyle} disabled={!conn}>‹</button>
+            style={tweakBtnStyle} disabled={!conn}><span style={{ marginTop: -3 }}>‹</span></button>
           <TweakValue value={twv} onCommit={n => pvwsWriter.write("29id:MonoEnergyTweakValue", n)} style={{ width: TWV_W }} onContextMenu={e => pvCtx("29id:MonoEnergyTweakValue", twvRaw, e)} />
           <button onClick={() => pvwsWriter.write("29id:MonoEnergyTweakInc.PROC", 1)}
-            style={tweakBtnStyle} disabled={!conn}>›</button>
+            style={tweakBtnStyle} disabled={!conn}><span style={{ marginTop: -3 }}>›</span></button>
         </div>
         <span style={unitStyle}>eV</span>
         <div style={{ minWidth: 40 }}>
@@ -272,8 +272,9 @@ function MonoSection() {
         </div>
       </Row>
 
+      <div style={{ flex: 1 }} />
       {/* Row 5: Ring current | mA | Ring Info button */}
-      <Row mt={2}>
+      <Row mt={0}>
         <RbvBox value={ring} prec={(rngRaw as any)?.display?.precision ?? 1} width={FW} onContextMenu={e => pvCtx("S-DCCT:CurrentM", rngRaw, e)} />
         <span style={unitStyle}>mA</span>
         <RingInfoButton />
@@ -347,7 +348,7 @@ function IdSection() {
             onClick={() => pvwsWriter.write("S29ID:StartRampC.VAL", 1)}
             disabled={!conn}
             style={{
-              background: "#1a4a1a", color: "#a5d6a7", border: `1px solid ${colors.statusOk}`,
+              background: "#e8f5e9", color: "#1b5e20", border: `1px solid ${colors.statusOk}`,
               borderRadius: 3, fontSize: fontSize.label, cursor: "pointer",
               width: "100%", height: "100%",
             }}
@@ -383,7 +384,7 @@ function IdSection() {
       {/* Row 3: Mode label | ActualModeM RBV | DesiredModeC menu */}
       <Row>
         <div style={{ ...labelStyle, width: ID_LABEL_W }}>Mode</div>
-        <div onContextMenu={e => pvCtx("S29ID:ActualModeM", modeRaw, e)} style={{ ...rbvStyle, textAlign: "left", fontSize: fontSize.badge, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "context-menu" }}>
+        <div onContextMenu={e => pvCtx("S29ID:ActualModeM", modeRaw, e)} style={{ ...rbvStyle, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "context-menu" }}>
           {mode}
         </div>
         <select
@@ -392,7 +393,7 @@ function IdSection() {
           style={{
             flex: 1, minWidth: 0,
             background: colors.spBg, color: colors.spText, border: `1px solid ${colors.spBorder}`,
-            borderRadius: 3, fontSize: fontSize.badge, padding: "4px 4px", cursor: "pointer",
+            borderRadius: 3, fontSize: fontSize.mono, padding: "4px 4px", cursor: "pointer",
           }}
         >
           {(desChoices ?? []).map((m, i) => <option key={i} value={i}>{m}</option>)}

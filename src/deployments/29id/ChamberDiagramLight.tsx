@@ -262,8 +262,8 @@ export function ChamberDiagramLight() {
               ref={spRef}
               style={{
                 width: "100%", height: "100%", boxSizing: "border-box",
-                background: "#1a3a4a", border: "1px solid #4a90d9",
-                color: "#fff", fontFamily: "monospace", fontSize: 12,
+                background: "rgb(162,186,221)", border: "1px solid rgb(120,150,190)",
+                color: "rgb(10,37,159)", fontFamily: "monospace", fontSize: 12,
                 padding: "1px 3px", borderRadius: 2,
               }}
               value={spInput}
@@ -278,8 +278,8 @@ export function ChamberDiagramLight() {
         ) : (
           <g onClick={startSPEdit} style={{ cursor: "text" }}>
             <rect x="416" y="196" width="55" height="16" rx="2"
-              fill="rgb(0,53,132)" stroke="rgb(0,35,90)" strokeWidth="1" />
-            <text x="469" y="208" fill="rgb(228,228,228)" fontSize="12" fontFamily="monospace"
+              fill="rgb(162,186,221)" stroke="rgb(120,150,190)" strokeWidth="1" />
+            <text x="469" y="208" fill="rgb(10,37,159)" fontSize="12" fontFamily="monospace"
               textAnchor="end">{spVal !== null ? spVal.toFixed(1) : "—"}</text>
           </g>
         )}

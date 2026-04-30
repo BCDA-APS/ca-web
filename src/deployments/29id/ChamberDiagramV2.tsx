@@ -259,7 +259,7 @@ export function ChamberDiagramV2() {
                 {editingSP ? (
                   <input
                     ref={spRef}
-                    style={{ width: 55, fontFamily: "monospace", fontSize: 12, padding: "2px 4px", background: "rgb(0,53,132)", color: "rgb(228,228,228)", border: "1px solid rgb(0,35,90)", borderRadius: 3, boxSizing: "border-box" }}
+                    style={{ width: 55, fontFamily: "monospace", fontSize: 12, padding: "2px 4px", background: "rgb(162,186,221)", color: "rgb(10,37,159)", border: "1px solid rgb(120,150,190)", borderRadius: 3, boxSizing: "border-box" }}
                     value={spInput}
                     onChange={e => setSpInput(e.target.value)}
                     onKeyDown={e => { if (e.key === "Enter") commitSP(); if (e.key === "Escape") cancelSP(); }}
@@ -268,7 +268,7 @@ export function ChamberDiagramV2() {
                 ) : (
                   <span
                     onClick={startSPEdit}
-                    style={{ fontFamily: "monospace", fontSize: 12, color: "rgb(228,228,228)", background: "rgb(0,53,132)", border: "1px solid rgb(0,35,90)", borderRadius: 3, padding: "2px 4px", minWidth: 55, display: "inline-block", textAlign: "right", cursor: "text", boxSizing: "border-box" }}>
+                    style={{ fontFamily: "monospace", fontSize: 12, color: "rgb(10,37,159)", background: "rgb(162,186,221)", border: "1px solid rgb(120,150,190)", borderRadius: 3, padding: "2px 4px", minWidth: 55, display: "inline-block", textAlign: "right", cursor: "text", boxSizing: "border-box" }}>
                     {spVal !== null ? spVal.toFixed(1) : "—"}
                   </span>
                 )}
@@ -288,7 +288,7 @@ export function ChamberDiagramV2() {
                 <select
                   value={["off","low","medium","high"].indexOf((htrRange ?? "").toLowerCase())}
                   onChange={e => pvwsWriter.write("29idARPES:LS335:TC1:HTR1:Range", parseInt(e.target.value))}
-                  style={{ width: 80, background: "rgb(210,220,240)", color: heaterColor(htrRange), border: "1px solid rgb(160,180,220)", borderRadius: 3, fontSize: 11, padding: "1px 2px", cursor: "pointer" }}>
+                  style={{ width: 80, background: "rgb(162,186,221)", color: heaterColor(htrRange), border: "1px solid rgb(120,150,190)", borderRadius: 3, fontSize: 11, padding: "1px 2px", cursor: "pointer" }}>
                   <option value={0}>Off</option>
                   <option value={1}>Low</option>
                   <option value={2}>Medium</option>
@@ -302,7 +302,7 @@ export function ChamberDiagramV2() {
                 <select
                   value={SCAN_OPTS.indexOf((scanStr ?? "").toLowerCase())}
                   onChange={e => pvwsWriter.write("29idARPES:LS335:TC1:read.SCAN", parseInt(e.target.value))}
-                  style={{ width: 80, background: "rgb(210,220,240)", color: "rgb(0,53,132)", border: "1px solid rgb(160,180,220)", borderRadius: 3, fontSize: 11, padding: "1px 2px", cursor: "pointer" }}>
+                  style={{ width: 80, background: "rgb(162,186,221)", color: "rgb(10,37,159)", border: "1px solid rgb(120,150,190)", borderRadius: 3, fontSize: 11, padding: "1px 2px", cursor: "pointer" }}>
                   {SCAN_OPTS.map((opt, i) => <option key={i} value={i}>{opt}</option>)}
                 </select>
               </div>
@@ -372,7 +372,7 @@ export function ChamberDiagramV2() {
             <select
               value={SCAN_OPTS.indexOf(d16scan.toLowerCase())}
               onChange={e => pvwsWriter.write("29idc:ca2:read.SCAN", parseInt(e.target.value))}
-              style={{ width: 40, background: "rgb(210,220,240)", color: "rgb(0,53,132)", border: "1px solid rgb(160,180,220)", borderRadius: 3, fontSize: 11, padding: "1px 0", cursor: "pointer" }}>
+              style={{ width: 40, background: "rgb(162,186,221)", color: "rgb(10,37,159)", border: "1px solid rgb(120,150,190)", borderRadius: 3, fontSize: 11, padding: "1px 0", cursor: "pointer" }}>
               {SCAN_OPTS.map((opt, i) => <option key={i} value={i}>{opt}</option>)}
             </select>
             <button onClick={() => window.dispatchEvent(new CustomEvent("open-ui", { detail: { file: "/ui/Keithley6485.ui", macros: { P: "29idc:", CA: "ca2" }, label: "Keithley D16" } }))}
@@ -392,7 +392,7 @@ export function ChamberDiagramV2() {
             <select
               value={SCAN_OPTS.indexOf(d14scan.toLowerCase())}
               onChange={e => pvwsWriter.write("29idb:ca14:read.SCAN", parseInt(e.target.value))}
-              style={{ width: 40, background: "rgb(210,220,240)", color: "rgb(0,53,132)", border: "1px solid rgb(160,180,220)", borderRadius: 3, fontSize: 11, padding: "1px 0", cursor: "pointer" }}>
+              style={{ width: 40, background: "rgb(162,186,221)", color: "rgb(10,37,159)", border: "1px solid rgb(120,150,190)", borderRadius: 3, fontSize: 11, padding: "1px 0", cursor: "pointer" }}>
               {SCAN_OPTS.map((opt, i) => <option key={i} value={i}>{opt}</option>)}
             </select>
             <button onClick={() => window.dispatchEvent(new CustomEvent("open-ui", { detail: { file: "/ui/Keithley6485.ui", macros: { P: "29idb:", CA: "ca14" }, label: "Keithley D14" } }))}
