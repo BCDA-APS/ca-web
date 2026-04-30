@@ -132,17 +132,17 @@ export function BLLayoutAB() {
             stroke="rgb(10,0,184)" strokeWidth={bh} strokeLinecap="round"
           />
         )}
-        <text x={m3rX} y={labelY} textAnchor="middle" fontSize={8} fill="#333">M3R</text>
+        <text x={m3rX} y={by + 12 + bh + 5} textAnchor="middle" fontSize={8} fill="#333">M3R</text>
 
         {/* ── Slit 2B ── */}
         <rect x={s2bX} y={by - 2 - 13} width={jawW} height={13} fill="#333" />
         <rect x={s2bX} y={by + bh + 2} width={jawW} height={13} fill="#333" />
-        <text x={s2bX + jawW/2} y={labelY} textAnchor="middle" fontSize={8} fill="#333">2B</text>
+        <text x={s2bX + jawW/2} y={by - 2 - 13 - 2} textAnchor="middle" fontSize={8} fill="#333">2B</text>
 
         {/* ── Slit 1A ── */}
         <rect x={s1aX} y={by - 2 - 13} width={jawW} height={13} fill="#333" />
         <rect x={s1aX} y={by + bh + 2} width={jawW} height={13} fill="#333" />
-        <text x={s1aX + jawW/2} y={labelY} textAnchor="middle" fontSize={8} fill="#333">1A</text>
+        <text x={s1aX + jawW/2} y={by - 2 - 13 - 2} textAnchor="middle" fontSize={8} fill="#333">1A</text>
 
         {/* ── Main Shutter ── */}
         <rect x={msX} y={by + bh/2 - msH/2} width={msW} height={msH} fill={msColor} rx={1} />

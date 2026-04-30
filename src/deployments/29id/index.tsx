@@ -7,7 +7,7 @@ import { ChamberDiagram } from "./ChamberDiagram";
 import { ChamberDiagramLight } from "./ChamberDiagramLight";
 import { ChamberDiagramV2 } from "./ChamberDiagramV2";
 import { BeamlineEnergy } from "./BeamlineEnergy";
-import { BLLayoutAB } from "./BLLayoutAB";
+import { BeamlineLayout } from "./BeamlineLayout";
 import { pvwsWriter } from "../../lib/pvwsWriter";
 import type { DeploymentConfig } from "../types";
 
@@ -133,7 +133,7 @@ export const config: DeploymentConfig = {
       { id: "29idc-motors",  title: "29ID-C Motors",   Content: ArpesMotorsContent },
       { id: "29idc-arpes",   title: "29ID-C ARPES",    Content: ArpesContent },
       { id: "29idc-energy",  title: "Beamline Energy", Content: BeamlineEnergy },
-      { id: "29id-bl-layout-ab", title: "Beamline Layout", Content: BLLayoutAB },
+      { id: "29id-bl-layout-ab", title: "Beamline Layout", Content: BeamlineLayout },
     ],
     2: [{ id: "29idd-kappa", title: "29ID-D Kappa", Content: KappaContent }],
   },
