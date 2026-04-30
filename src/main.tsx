@@ -1,4 +1,5 @@
 import { createRoot } from "react-dom/client";
+import "./index.css";
 import { Provider } from "react-redux";
 import { OutlineProvider, store } from "@diamondlightsource/cs-web-lib";
 import { pvwsWriter } from "./lib/pvwsWriter";
