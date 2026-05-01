@@ -110,6 +110,7 @@ function KappaContent() {
 export const config: DeploymentConfig = {
   title: "29ID Beamline",
   tabs: [
+    { id: 3, icon: "✴️", label: "29ID-A", color: "rgb(174,203,255)" },
     { id: 1, icon: "⚛",  label: "29ID-C", color: "rgb(170,170,255)" },
     { id: 2, icon: "💠", label: "29ID-D" },
   ],
@@ -119,6 +120,7 @@ export const config: DeploymentConfig = {
     "29idc-arpes":   { x: 100, y: 1000 },
     "29idc-energy":  { x: 100, y: 500 },
     "29idd-kappa":   { x: 100, y:  55 },
+    "29id-beamline-layout": { x: 100, y:  55 },
   },
   tabPanels: {
     1: [
@@ -128,5 +130,6 @@ export const config: DeploymentConfig = {
       { id: "29idc-energy",  title: "Beamline Energy", Content: BeamlineEnergy },
     ],
     2: [{ id: "29idd-kappa", title: "29ID-D Kappa", Content: KappaContent }],
+    3: [{ id: "29id-beamline-layout", title: "Beamline Layout", Content: BeamlineLayout }],
   },
 };
