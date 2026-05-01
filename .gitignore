@@ -3,3 +3,8 @@ dist/
 .env
 .loglogin
 .ui-cache/
+.claude/agent-memory/
+.claude/audits/
+.claude/health/
+.claude/worktrees/
+.claude/settings.local.json

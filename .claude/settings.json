@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "deny": ["Bash(rm -rf *)"]
+  },
+  "hooks": {
+    "PreToolUse": [{
+      "matcher": "Edit|Write",
+      "hooks": [{ "type": "command", "command": "bash .claude/hooks/protect-files.sh $CLAUDE_FILE_PATH", "timeout": 5 }]
+    }]
+  }
+}
