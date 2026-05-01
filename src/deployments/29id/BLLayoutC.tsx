@@ -16,9 +16,13 @@ export function BLLayoutC() {
   // Mirror (shared with AB)
   const [,,,m3rr]      = useConnection("blc-m3r",   "ca://29id_m3r:TX_MON");
 
-  // FE open (same condition as AB)
-  const [,,,ss1r]      = useConnection("blc-ss1",   "ca://S29ID-FEEPS:SS1:OpenedM");
-  const [,,,ps2r]      = useConnection("blc-ps2",   "ca://S29ID-FEEPS:PS2:OpenedM");
+  // Beam present at station A and C (PSS — reflects FE, shutters, valves)
+  const [,,,staAr]     = useConnection("blc-staA",  "ca://S29ID-PSS:StaA:BeamPresent:CM");
+  const [,,,staCr]     = useConnection("blc-staC",  "ca://S29ID-PSS:StaC:BeamPresent:CM");
+
+  // B-section gate valves (GV05/GV15 — upstream of C, controlled from AB side)
+  const [,,,gv05r]     = useConnection("blc-gv05",  "ca://29id:BLEPS:GV05:OPENED:STS");
+  const [,,,gv15r]     = useConnection("blc-gv15",  "ca://29id:BLEPS:GV15:OPENED:STS");
 
   // C-section gate valves between B and C branches
   const [,,,gv06r]     = useConnection("blc-gv06",  "ca://29id:BLEPS:GV06:OPENED:STS");
@@ -47,8 +51,12 @@ export function BLLayoutC() {
 
   // Derived values
   const m3rVal    = toDouble(m3rr);
-  const m3rDefl   = m3rVal !== null && m3rVal < 5;  // TX_MON < 5 → mirror deflecting into C
-  const feOpen    = toDouble(ss1r) === 1 && toDouble(ps2r) === 1;
+  const m3rDefl   = m3rVal !== null && m3rVal < 5;  // TX_MON < 5 → mirror deflecting (beam to B, not C)
+  const staABeam  = toDouble(staAr) === 1;
+  const staCBeam  = toDouble(staCr) === 1;
+  const beamAny   = staABeam || staCBeam;   // StaA OR StaC beam present
+  const beamBoth  = staABeam && staCBeam;   // StaA AND StaC beam present
+  const bGvsOpen  = toDouble(gv05r) === 1 && toDouble(gv15r) === 1;
   const cGvsOpen  = toDouble(gv06r) === 1 && toDouble(gv08r) === 1 && toDouble(gv09r) === 1;
   const gv10Open  = toDouble(gv10or) === 1;
   const gv10Closed = toDouble(gv10cr) === 1;
@@ -65,13 +73,13 @@ export function BLLayoutC() {
   const ip11cVal   = toDouble(ip11cr);
   const ip11cStr   = ip11cConn && ip11cVal !== null ? ip11cVal.toExponential(2) : "—";
 
-  // Beam segment colors (C gets beam only when mirror deflecting)
-  // cRight: M3R connection → C-Shutter (controlled by GV06/08/09)
-  const cRight  = !m3rDefl ? C_BEAM : segColor(feOpen, cGvsOpen);
-  // cMid: C-Shutter → GV10 (controlled by C-Shutter + upstream valves)
-  const cMid    = !m3rDefl ? C_BEAM : segColor(feOpen, csOpen && cGvsOpen);
-  // cLeft: GV10 → ARPES (controlled by GV10 + C-Shutter + upstream valves)
-  const cLeft   = !m3rDefl ? C_BEAM : segColor(feOpen, gv10Open && csOpen && cGvsOpen);
+  // Beam segment colors — mirror flat (TX_MON>5, m3rDefl=false): C gets beam
+  //   cRight: green=(StaA&&StaC)&&TX_MON>5  orange=(GV05=0||GV15=0)&&TX_MON>5
+  //   cMid:   green=(StaA||StaC)&&TX_MON>5  orange=(GV06=0||GV08=0||GV09=0)&&TX_MON>5
+  //   cLeft:  green=(StaA||StaC)&&GV10!=0   orange=GV10=0&&TX_MON>5
+  const cRight = m3rDefl ? C_BEAM : !bGvsOpen ? C_BLOCK : beamBoth ? C_PHOTON : C_BEAM;
+  const cMid   = m3rDefl ? C_BEAM : !cGvsOpen ? C_BLOCK : beamAny  ? C_PHOTON : C_BEAM;
+  const cLeft  = !gv10Open && !m3rDefl ? C_BLOCK : beamAny && gv10Open && !m3rDefl ? C_PHOTON : C_BEAM;
 
   // ── SVG geometry ─────────────────────────────────────────────────────────
   const W     = 260;

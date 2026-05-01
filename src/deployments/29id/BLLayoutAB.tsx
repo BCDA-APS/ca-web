@@ -99,10 +99,8 @@ export function BLLayoutAB() {
 
         {/* ── Beam segments (bottom layer) ── */}
 
-        {/* Pre-M3R horizontal: only shown when M3R is straight */}
-        {!m3rDefl && (
-          <rect x={0} y={by} width={m3rX} height={bh} fill={cFE} />
-        )}
+        {/* Pre-M3R horizontal: cFE when mirror flat, C_BEAM (blue path) when deflecting */}
+        <rect x={0} y={by} width={m3rX} height={bh} fill={m3rDefl ? C_BEAM : cFE} />
 
         {/* M3R deflected vertical: shown when M3R is in */}
         {m3rDefl && (
