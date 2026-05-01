@@ -31,7 +31,7 @@ export const colors = {
 
   // Section headers
   sectionHdr:       "#7c6fa0",
-  sectionHdrBorder: "#2a1a4a",
+  sectionHdrBorder: "#b0b0b8",
 
   // Motor card backgrounds
   cardBg:         "rgb(200,200,205)",
