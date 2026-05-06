@@ -72,18 +72,23 @@ const togBtn = (active: boolean, danger: boolean): React.CSSProperties => ({
 
 function IdMagneticsSection() {
   const [,,, bxRaw]   = useConnection("mag-bx",    "ca://S29ID:BxRdbkM.VAL");
+  const [,,, bxBRaw]  = useConnection("mag-bx-b",  "ca://S29ID:BxRdbkM");
   const [,,, bxqRaw]  = useConnection("mag-bxq",   "ca://S29ID:BxqRdbk_");
   const [,,, byRaw]   = useConnection("mag-by",    "ca://S29ID:ByRdbkM.VAL");
+  const [,,, byDRaw]  = useConnection("mag-by-d",  "ca://S29ID:ByRdbkM");
   const [,,, byqRaw]  = useConnection("mag-byq",   "ca://S29ID:ByqRdbk_");
   const [,,, onRaw]   = useConnection("mag-on",    "ca://S29ID:Main_on_offC.VAL");
   const [,,, qpRaw]   = useConnection("mag-qp",    "ca://S29ID:QuasiRatioM.RVAL");
   const [,,, qpSpRaw] = useConnection("mag-qp-sp", "ca://S29ID:QuasiRatioInC.C");
   const [,,, tdirRaw] = useConnection("mag-tdir",  "ca://S29ID:TableDirection_");
-  const [,,, earthRaw]= useConnection("mag-earth", "ca://S29ID:SetEarthCorr_");
+  const [,,, earthRaw]    = useConnection("mag-earth",     "ca://S29ID:SetEarthCorr_");
+  const [,,, earthFailRaw]= useConnection("mag-earth-fail","ca://S29ID:CorrRdbkEarth_.VAL");
 
   const bx  = toDouble(bxRaw);
+  const bxB = toDouble(bxBRaw);
   const bxq = toDouble(bxqRaw);
   const by  = toDouble(byRaw);
+  const byD = toDouble(byDRaw);
   const byq = toDouble(byqRaw);
   const on  = toBool(onRaw);
   const tdirFull = toStr(tdirRaw);
@@ -92,6 +97,10 @@ function IdMagneticsSection() {
 
   const bxRatio = bx !== null && bx !== 0 && bxq !== null ? bxq / bx : null;
   const byRatio = by !== null && by !== 0 && byq !== null ? byq / by : null;
+
+  const qpCommFail   = (bx !== null && bx > 1 && bxB !== null && bx * 0.5 > bxB)
+                    || (by !== null && by > 1 && byD !== null && by * 0.5 > byD);
+  const earthFail    = (toDouble(earthFailRaw) ?? -1) > -1;
 
   return (
     <div style={{ flex: 1, minWidth: 0 }}>
@@ -127,6 +136,7 @@ function IdMagneticsSection() {
         <span style={{ ...labelStyle, width: MAG_QLBL }}>QP %</span>
         <ChanRbvBox raw={qpRaw} fallbackPrec={1} width={MAG_FW} />
         <ChanSpBox raw={qpSpRaw} fallbackPrec={1} width={MAG_FW} onCommit={n => pvwsWriter.write("S29ID:QuasiRatioInC.C", n)} />
+        {qpCommFail && <span style={{ fontSize: fontSize.label, color: colors.statusError, lineHeight: 1.2 }}>QP coils<br />comm fail</span>}
       </Row>
 
       {/* Table readback + Earth Coils */}
@@ -135,6 +145,7 @@ function IdMagneticsSection() {
         <div style={{ ...rbvStyle, width: MAG_FW, textAlign: "center" }}>{tdir}</div>
         <span style={{ ...labelStyle, width: 114 }}>Earth Coils</span>
         <div style={{ ...rbvStyle, width: MAG_FW }}>{earth}</div>
+        {earthFail && <span style={{ fontSize: fontSize.label, color: colors.statusError, lineHeight: 1.2 }}>Earth coils fail</span>}
       </Row>
     </div>
   );
