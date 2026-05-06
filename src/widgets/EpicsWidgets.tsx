@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { colors, fontSize } from "../lib/theme";
+import { toDouble } from "../lib/epics";
 
 // ── RbvBox ────────────────────────────────────────────────────────────────────
 
@@ -110,9 +111,10 @@ export function SpBox({ value, prec = 3, width, onCommit, disabled = false, onCo
 // ── TweakValue ────────────────────────────────────────────────────────────────
 
 /** Click-to-edit step size with ↑ ×10 / ↓ ÷10 keyboard scaling. */
-export function TweakValue({ value, onCommit, style, onContextMenu }: {
+export function TweakValue({ value, onCommit, prec, style, onContextMenu }: {
   value: number | null;
   onCommit: (n: number) => void;
+  prec?: number;
   style?: React.CSSProperties;
   onContextMenu?: (e: React.MouseEvent) => void;
 }) {
@@ -176,7 +178,7 @@ export function TweakValue({ value, onCommit, style, onContextMenu }: {
         userSelect: "none",
       }}
     >
-      {value !== null ? String(value) : "—"}
+      {value !== null ? (prec !== undefined ? value.toFixed(prec) : String(value)) : "—"}
     </div>
   );
 }
@@ -249,6 +251,35 @@ export function RelatedDisplay({ label, onClick }: { label: string; onClick: () 
       {label}
     </button>
   );
+}
+
+// ── ChanRbvBox ────────────────────────────────────────────────────────────────
+
+/** RbvBox that reads value and precision directly from raw channel data. Prefer this over RbvBox for PV-backed displays. */
+export function ChanRbvBox({ raw, fallbackPrec = 4, width, style, onContextMenu }: {
+  raw: unknown;
+  fallbackPrec?: number;
+  width?: number;
+  style?: React.CSSProperties;
+  onContextMenu?: (e: React.MouseEvent) => void;
+}) {
+  const prec = (raw as any)?.display?.precision ?? fallbackPrec;
+  return <RbvBox value={toDouble(raw)} prec={prec} width={width} style={style} onContextMenu={onContextMenu} />;
+}
+
+// ── ChanSpBox ─────────────────────────────────────────────────────────────────
+
+/** SpBox that reads value and precision directly from raw channel data. Prefer this over SpBox for PV-backed displays. */
+export function ChanSpBox({ raw, fallbackPrec = 4, width, onCommit, disabled, onContextMenu }: {
+  raw: unknown;
+  fallbackPrec?: number;
+  width?: number;
+  onCommit: (n: number) => void;
+  disabled?: boolean;
+  onContextMenu?: (e: React.MouseEvent) => void;
+}) {
+  const prec = (raw as any)?.display?.precision ?? fallbackPrec;
+  return <SpBox value={toDouble(raw)} prec={prec} width={width} onCommit={onCommit} disabled={disabled} onContextMenu={onContextMenu} />;
 }
 
 // ── Row ───────────────────────────────────────────────────────────────────────

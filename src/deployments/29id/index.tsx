@@ -6,6 +6,7 @@ import { MotorGrid } from "../../widgets/MotorGrid";
 import { ChamberDiagramV2 } from "./ChamberDiagramV2";
 import { BeamlineEnergy } from "./BeamlineEnergy";
 import { BeamlineLayout } from "./BeamlineLayout";
+import { Mirrors } from "./Mirrors";
 import { pvwsWriter } from "../../lib/pvwsWriter";
 import type { DeploymentConfig } from "../types";
 
@@ -121,6 +122,7 @@ export const config: DeploymentConfig = {
     "29idc-energy":  { x: 100, y: 500 },
     "29idd-kappa":   { x: 100, y:  55 },
     "29id-beamline-layout": { x: 100, y:  55 },
+    "29id-mirrors":         { x: 600, y:  55 },
   },
   tabPanels: {
     1: [
@@ -130,6 +132,9 @@ export const config: DeploymentConfig = {
       { id: "29idc-energy",  title: "Beamline Energy", Content: BeamlineEnergy },
     ],
     2: [{ id: "29idd-kappa", title: "29ID-D Kappa", Content: KappaContent }],
-    3: [{ id: "29id-beamline-layout", title: "Beamline Layout", Content: BeamlineLayout }],
+    3: [
+      { id: "29id-beamline-layout", title: "Beamline Layout", Content: BeamlineLayout },
+      { id: "29id-mirrors",         title: "Mirrors",         Content: Mirrors },
+    ],
   },
 };
