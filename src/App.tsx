@@ -47,7 +47,7 @@ class AppErrorBoundary extends Component<
 // ── Draggable panel ───────────────────────────────────────────────────────────
 
 // Global z-index counter so clicking a panel brings it to the front.
-let gZ = 100;
+let gZ = 10;
 
 interface PanelState { x: number; y: number; locked: boolean }
 
@@ -99,7 +99,7 @@ function DraggablePanel({ id, title, defaultPos, onClose, children }: { id: stri
     <div
       onMouseDown={bringToFront}
       style={{
-        position: "fixed", left: ps.x, top: ps.y, zIndex: zIdx,
+        position: "absolute", left: ps.x, top: ps.y, zIndex: zIdx,
         background: "rgb(222,222,227)", borderRadius: 6,
         boxShadow: "0 4px 16px rgba(0,0,0,0.25)", border: "1px solid #b0b0b8",
         fontFamily: "Liberation Sans, Arial, sans-serif",
@@ -235,7 +235,7 @@ function AppOverlayPanel({ ov, onClose }: { ov: AppOverlay; onClose: () => void 
 
 function Sidebar({ tabs, active, onSelect }: { tabs: Tab[]; active: number; onSelect: (id: number) => void }) {
   return (
-    <div style={{ position: "fixed", top: 40, left: 0, bottom: 0, width: 68, zIndex: 40, background: "#0a1520", borderRight: "1px solid #1e3a5f", display: "flex", flexDirection: "column", paddingTop: 8 }}>
+    <div style={{ position: "fixed", top: 40, left: 0, bottom: 0, width: 68, zIndex: 2000, background: "#0a1520", borderRight: "1px solid #1e3a5f", display: "flex", flexDirection: "column", paddingTop: 8 }}>
       {tabs.map(tab => (
         <button
           key={tab.id}
@@ -728,7 +728,7 @@ export default function App() {
   return (
     <AppErrorBoundary>
     <div
-      style={{ background: "rgb(222,222,227)", minHeight: "100vh", fontFamily: "Liberation Sans, Arial, sans-serif" }}
+      style={{ background: "rgb(222,222,227)", minHeight: "100vh", minWidth: 2000, position: "relative", fontFamily: "Liberation Sans, Arial, sans-serif" }}
       onClick={() => settingsOpen && setSettingsOpen(false)}
     >
 
@@ -747,7 +747,7 @@ export default function App() {
       </div>
 
       {/* Page title (fixed, acts as header) */}
-      <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, background: activeTabColor, borderBottom: "1px solid rgba(0,0,0,0.15)", padding: "8px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", transition: "background 0.3s" }}>
+      <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 2001, background: activeTabColor, borderBottom: "1px solid rgba(0,0,0,0.15)", padding: "8px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", transition: "background 0.3s" }}>
         <span style={{ color: "#ffffff", fontSize: 16, fontWeight: 700, letterSpacing: 0.5 }}>{config.title}</span>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }} onClick={e => e.stopPropagation()}>
           <button
