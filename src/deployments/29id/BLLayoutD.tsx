@@ -88,6 +88,8 @@ export function BLLayoutD() {
 
         {/* ── Beam segments (bottom layer) ── */}
 
+        {/* Left edge → RSXS left edge (connects to BLLayoutE beam) */}
+        <rect x={0} y={by} width={rsxsX - rsxsR} height={bh} fill={cLeft} />
         {/* RSXS exit → GV14 center */}
         <rect x={rsxsX + rsxsR} y={by} width={gv14X - (rsxsX + rsxsR)} height={bh} fill={cLeft} />
         {/* GV14 center → D-Shutter */}
