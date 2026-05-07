@@ -109,9 +109,9 @@ function IdMagneticsSection() {
       {/* Bx row */}
       <Row>
         <span style={{ ...labelStyle, width: MAG_LBL }}>Bx</span>
-        <div style={magNumStyle}>{bx !== null ? bx.toFixed(3) : "—"}</div>
+        <div style={{ ...magNumStyle, cursor: "context-menu" }} onContextMenu={e => pvCtx("S29ID:BxRdbkM.VAL", bxRaw, e)}>{bx !== null ? bx.toFixed(3) : "—"}</div>
         <span style={{ ...labelStyle, width: MAG_QLBL }}>Bxq</span>
-        <div style={magNumStyle}>{bxq !== null ? bxq.toFixed(3) : "—"}</div>
+        <div style={{ ...magNumStyle, cursor: "context-menu" }} onContextMenu={e => pvCtx("S29ID:BxqRdbk_", bxqRaw, e)}>{bxq !== null ? bxq.toFixed(3) : "—"}</div>
         <span style={{ ...labelStyle, width: RATIO_LBL }}>ratio</span>
         <div style={magRatioStyle}>{bxRatio !== null ? bxRatio.toFixed(2) : "—"}</div>
       </Row>
@@ -119,9 +119,9 @@ function IdMagneticsSection() {
       {/* By row */}
       <Row>
         <span style={{ ...labelStyle, width: MAG_LBL }}>By</span>
-        <div style={magNumStyle}>{by !== null ? by.toFixed(3) : "—"}</div>
+        <div style={{ ...magNumStyle, cursor: "context-menu" }} onContextMenu={e => pvCtx("S29ID:ByRdbkM.VAL", byRaw, e)}>{by !== null ? by.toFixed(3) : "—"}</div>
         <span style={{ ...labelStyle, width: MAG_QLBL }}>Byq</span>
-        <div style={magNumStyle}>{byq !== null ? byq.toFixed(3) : "—"}</div>
+        <div style={{ ...magNumStyle, cursor: "context-menu" }} onContextMenu={e => pvCtx("S29ID:ByqRdbk_", byqRaw, e)}>{byq !== null ? byq.toFixed(3) : "—"}</div>
         <span style={{ ...labelStyle, width: RATIO_LBL }}>ratio</span>
         <div style={magRatioStyle}>{byRatio !== null ? byRatio.toFixed(2) : "—"}</div>
       </Row>
