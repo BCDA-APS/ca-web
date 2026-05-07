@@ -142,9 +142,9 @@ function IdMagneticsSection() {
       {/* Table readback + Earth Coils */}
       <Row>
         <span style={{ ...labelStyle, width: MAG_LBL }}>Table</span>
-        <div style={{ ...rbvStyle, width: MAG_FW, textAlign: "center" }}>{tdir}</div>
+        <div style={{ ...rbvStyle, width: MAG_FW, textAlign: "center", cursor: "context-menu" }} onContextMenu={e => pvCtx("S29ID:TableDirection_", tdirRaw, e)}>{tdir}</div>
         <span style={{ ...labelStyle, width: 114 }}>Earth Coils</span>
-        <div style={{ ...rbvStyle, width: MAG_FW }}>{earth}</div>
+        <div style={{ ...rbvStyle, width: MAG_FW, cursor: "context-menu" }} onContextMenu={e => pvCtx("S29ID:SetEarthCorr_", earthRaw, e)}>{earth}</div>
         {earthFail && <span style={{ fontSize: fontSize.label, color: colors.statusError, lineHeight: 1.2 }}>Earth coils fail</span>}
       </Row>
     </div>
