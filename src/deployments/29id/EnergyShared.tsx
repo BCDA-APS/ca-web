@@ -265,7 +265,7 @@ export function MonoSection() {
           onClick={() => pvwsWriter.write("29idmono:STOP_CMD.PROC", 1)}
           style={{
             background: colors.statusError, color: "#fff", border: `1px solid ${colors.statusError}`,
-            borderRadius: 3, padding: "3px 0", fontSize: fontSize.label, cursor: "pointer",
+            borderRadius: 3, padding: "3px 0", fontSize: fontSize.label, fontWeight: 700, cursor: "pointer",
             width: FW, boxSizing: "border-box", flexShrink: 0,
           }}
         >STOP</button>
