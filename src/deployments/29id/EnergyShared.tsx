@@ -69,6 +69,14 @@ function mirLabel(mir: number | null): string | null {
   return null;
 }
 
+function mirColor(mir: number | null): string {
+  if (mir === 1) return "#ffa726";        // Au — amber
+  if (mir === 2) return "#9e9e9e";        // Si — grey
+  if (mir === 3) return "#212121";        // C  — black
+  if (mir !== null && mir > 3) return colors.statusError; // No stripe — alarm red
+  return colors.dim;
+}
+
 // ── RingInfoButton ────────────────────────────────────────────────────────────
 
 const ringInfoItems = [
@@ -233,7 +241,7 @@ export function MonoSection() {
         <span style={unitStyle}>eV</span>
         <div style={{ minWidth: 40 }}>
           {grtLabel(grt)
-            ? <span style={{ fontSize: fontSize.badge, fontWeight: 700, color: colors.relatedFg }}>{grtLabel(grt)}</span>
+            ? <span style={{ fontSize: fontSize.badge, fontWeight: 700, color: grt !== null && grt > 3 ? colors.statusError : colors.relatedFg }}>{grtLabel(grt)}</span>
             : <span style={{ fontSize: fontSize.small, color: colors.dim }}>—</span>}
         </div>
       </Row>
@@ -248,7 +256,7 @@ export function MonoSection() {
         </div>
         <span style={unitStyle}>eV</span>
         <div style={{ minWidth: 40 }}>
-          {mirLabel(mir) ? <span style={{ fontSize: fontSize.badge, fontWeight: 700, color: "#ffa726" }}>{mirLabel(mir)}</span> : null}
+          {mirLabel(mir) ? <span style={{ fontSize: fontSize.badge, fontWeight: 700, color: mirColor(mir) }}>{mirLabel(mir)}</span> : null}
         </div>
       </Row>
 
