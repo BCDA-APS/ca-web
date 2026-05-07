@@ -7,6 +7,7 @@ import { ChamberDiagramV2 } from "./ChamberDiagramV2";
 import { BeamlineEnergy } from "./BeamlineEnergy";
 import { BeamlineEnergyA } from "./BeamlineEnergyA";
 import { BeamlineLayout } from "./BeamlineLayout";
+import { BLLayoutD } from "./BLLayoutD";
 import { Mirrors } from "./Mirrors";
 import { pvwsWriter } from "../../lib/pvwsWriter";
 import type { DeploymentConfig } from "../types";
@@ -125,6 +126,7 @@ export const config: DeploymentConfig = {
     "29id-beamline-layout": { x: 100, y:  55 },
     "29id-mirrors":         { x: 600, y:  55 },
     "29id-energy-a":        { x: 100, y: 500 },
+    "29id-bllayout-d":      { x: 100, y: 200 },
   },
   tabPanels: {
     1: [
@@ -138,6 +140,7 @@ export const config: DeploymentConfig = {
       { id: "29id-beamline-layout", title: "Beamline Layout", Content: BeamlineLayout },
       { id: "29id-mirrors",         title: "Mirrors",         Content: Mirrors },
       { id: "29id-energy-a",        title: "Beamline Energy", Content: BeamlineEnergyA },
+      { id: "29id-bllayout-d",      title: "D Layout",        Content: BLLayoutD },
     ],
   },
 };

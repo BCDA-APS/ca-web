@@ -82,7 +82,7 @@ export function BLLayoutC() {
   const cLeft  = !gv10Open && !m3rDefl ? C_BLOCK : beamAny && gv10Open && !m3rDefl ? C_PHOTON : C_BEAM;
 
   // ── SVG geometry ─────────────────────────────────────────────────────────
-  const W     = 260;
+  const W     = 235;
   const H     = 95;
   const by    = 30;
   const bh    = 5;

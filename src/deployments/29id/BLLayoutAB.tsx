@@ -71,7 +71,7 @@ export function BLLayoutAB() {
   const bh = 5;  // beam stripe height
 
   const scale = W / 260;
-  const m3rX   = Math.round(30  * scale);
+  const m3rX   = Math.round(17  * scale);
   const s2bX   = Math.round(72  * scale);
   const s1aX   = Math.round(122 * scale);
   const msX    = Math.round(156 * scale);
@@ -163,7 +163,7 @@ export function BLLayoutAB() {
 
         {/* Left: EPS Status — under the slits area */}
         <div style={{ width: msX - 2, paddingTop: H - by - Math.ceil(msH / 2) - 6, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 2 }}>
-          <div style={{ border: "1px solid #b0b0b8", borderRadius: 3, padding: "1px 6px", fontSize: 9, marginLeft: m3rX, transform: "translateX(-50%)" }}>
+          <div style={{ border: "1px solid #b0b0b8", borderRadius: 3, padding: "1px 6px", fontSize: 9, marginLeft: Math.round((m3rX + msX) / 2), transform: "translateX(-50%)" }}>
             <div style={{ textAlign: "center", color: "#666", fontSize: 8, marginBottom: 2 }}>EPS Status</div>
             <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
               <div style={{ display: "grid" }}>
@@ -172,23 +172,25 @@ export function BLLayoutAB() {
                 {epsYellow && <span style={{ gridArea: "1/1", fontWeight: 600, color: colors.statusWarn }}>YELLOW</span>}
                 {epsRed    && <span style={{ gridArea: "1/1", fontWeight: 600, color: colors.statusError }}>RED</span>}
               </div>
-              {epsBuzzer && <span style={{ fontWeight: 600, color: colors.statusError }}>BUZZER ON</span>}
+              {epsBuzzer && <span style={{ fontWeight: 600, color: colors.statusError, whiteSpace: "nowrap" }}>BUZZER ON</span>}
             </div>
           </div>
         </div>
 
-        {/* Right: Station NOT SEARCHED + MS OPEN / CLOS — under the main shutter rect */}
-        <div style={{ width: msW + 4, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-          <button
-            onClick={() => pvwsWriter.write("S29ID-PSS:FES:OpenEPICSC", 1)}
-            style={{ background: "#e8f5e9", color: "#1b5e20", border: "1px solid #4caf50", borderRadius: 3, fontSize: 9, padding: "1px 4px", cursor: "pointer", whiteSpace: "nowrap", width: "100%" }}>
-            MS OPEN
-          </button>
-          <button
-            onClick={() => pvwsWriter.write("S29ID-PSS:FES:CloseEPICSC", 1)}
-            style={{ background: "#ffebee", color: "#b71c1c", border: "1px solid #ef5350", borderRadius: 3, fontSize: 9, padding: "1px 4px", cursor: "pointer", whiteSpace: "nowrap", width: "100%" }}>
-            MS CLOSE
-          </button>
+        {/* Right: MS OPEN / CLOSE + Station NOT SEARCHED */}
+        <div style={{ width: W - msX, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 2 }}>
+          <div style={{ width: msW + 4, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+            <button
+              onClick={() => pvwsWriter.write("S29ID-PSS:FES:OpenEPICSC", 1)}
+              style={{ background: "#e8f5e9", color: "#1b5e20", border: "1px solid #4caf50", borderRadius: 3, fontSize: 9, padding: "1px 4px", cursor: "pointer", whiteSpace: "nowrap", width: "100%" }}>
+              MS OPEN
+            </button>
+            <button
+              onClick={() => pvwsWriter.write("S29ID-PSS:FES:CloseEPICSC", 1)}
+              style={{ background: "#ffebee", color: "#b71c1c", border: "1px solid #ef5350", borderRadius: 3, fontSize: 9, padding: "1px 4px", cursor: "pointer", whiteSpace: "nowrap", width: "100%" }}>
+              MS CLOSE
+            </button>
+          </div>
           {!stationOk && (
             <span style={{ color: colors.statusError, fontSize: 9, whiteSpace: "nowrap" }}>
               Station NOT SEARCHED
