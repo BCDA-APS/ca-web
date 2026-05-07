@@ -102,9 +102,9 @@ export function BLLayoutAB() {
         {/* Pre-M3R horizontal: cFE when mirror flat, C_BEAM (blue path) when deflecting */}
         <rect x={0} y={by} width={m3rX} height={bh} fill={m3rDefl ? C_BEAM : cFE} />
 
-        {/* M3R deflected vertical: shown when M3R is in */}
+        {/* M3R deflected vertical: 6px wide (integer coords) to align with D's 6px vertical */}
         {m3rDefl && (
-          <rect x={m3rX - bh/2} y={0} width={bh} height={by}
+          <rect x={m3rX - 3} y={0} width={bh + 1} height={by}
             fill={feOpen ? C_PHOTON : !bOpen ? C_BLOCK : C_BEAM} />
         )}
 

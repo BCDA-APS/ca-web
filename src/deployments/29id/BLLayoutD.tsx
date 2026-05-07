@@ -95,9 +95,9 @@ export function BLLayoutD() {
         {/* GV14 center → D-Shutter */}
         <rect x={gv14X} y={by} width={dsX - gv14X} height={bh} fill={cMid} />
         {/* D-Shutter → right-angle corner */}
-        <rect x={dsX + dsW} y={by} width={W - bh - (dsX + dsW)} height={bh} fill={cRight} />
-        {/* Right-angle: vertical segment going down to bottom (connects to M3R below) */}
-        <rect x={W - bh} y={by} width={bh} height={H - by} fill={cRight} />
+        <rect x={dsX + dsW} y={by} width={W - bh - 1 - (dsX + dsW)} height={bh} fill={cRight} />
+        {/* Right-angle: vertical segment going down to bottom (connects to M3R below); 6px wide so center lands on integer pixel */}
+        <rect x={W - bh - 1} y={by} width={bh + 1} height={H - by} fill={cRight} />
 
         {/* ── RSXS Chamber ── */}
         <circle cx={rsxsX} cy={by + bh / 2} r={rsxsR}
