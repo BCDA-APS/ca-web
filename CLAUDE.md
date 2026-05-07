@@ -39,6 +39,7 @@ Note: npm is not available system-wide. Always activate the `nodejs` conda env f
 
 - Use `ChanRbvBox` and `ChanSpBox` (from `src/widgets/EpicsWidgets.tsx`) whenever displaying a PV value — they read precision automatically from the channel metadata.
 - Use `RbvBox` / `SpBox` only for computed values that are not directly backed by a PV.
+- Every `ChanRbvBox` and `ChanSpBox` must have `onContextMenu={e => pvCtx("PV:NAME", raw, e)}` (import `pvCtx` from `../../lib/epics`). No exceptions.
 - In every panel, align all columns consistently: labels and values must be explicitly left-aligned, right-aligned, or centered — never left to default browser flow. Boxes and buttons in the same row share the same height. Column headers use the same `gap` as data rows so they stay in sync with their fields.
 
 ## Docs

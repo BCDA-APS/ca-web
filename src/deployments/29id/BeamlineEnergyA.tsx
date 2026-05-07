@@ -1,6 +1,6 @@
 import { useConnection } from "@diamondlightsource/cs-web-lib";
 import { pvwsWriter } from "../../lib/pvwsWriter";
-import { toDouble, toStr, toBool } from "../../lib/epics";
+import { toDouble, toStr, toBool, pvCtx } from "../../lib/epics";
 import { colors, fontSize } from "../../lib/theme";
 import { ChanRbvBox, ChanSpBox, Row } from "../../widgets/EpicsWidgets";
 import { MonoSection, IdSection, SectionHead, rbvStyle, labelStyle } from "./EnergyShared";
@@ -27,20 +27,20 @@ function EBpmSection() {
       <div style={subHead}>Vertical</div>
       <Row>
         <span style={{ ...labelStyle, width: BPM_LW }}>Pos</span>
-        <ChanRbvBox raw={vPosRaw} fallbackPrec={1} width={BPM_FW} />
+        <ChanRbvBox raw={vPosRaw} fallbackPrec={1} width={BPM_FW} onContextMenu={e => pvCtx("S29:ID:SrcPt:VPositionM", vPosRaw, e)} />
       </Row>
       <Row>
         <span style={{ ...labelStyle, width: BPM_LW }}>Ang</span>
-        <ChanRbvBox raw={vAngRaw} fallbackPrec={1} width={BPM_FW} />
+        <ChanRbvBox raw={vAngRaw} fallbackPrec={1} width={BPM_FW} onContextMenu={e => pvCtx("S29:ID:SrcPt:VAngleM", vAngRaw, e)} />
       </Row>
       <div style={{ ...subHead, marginTop: 6 }}>Horizontal</div>
       <Row>
         <span style={{ ...labelStyle, width: BPM_LW }}>Pos</span>
-        <ChanRbvBox raw={hPosRaw} fallbackPrec={1} width={BPM_FW} />
+        <ChanRbvBox raw={hPosRaw} fallbackPrec={1} width={BPM_FW} onContextMenu={e => pvCtx("S29:ID:SrcPt:HPositionM", hPosRaw, e)} />
       </Row>
       <Row>
         <span style={{ ...labelStyle, width: BPM_LW }}>Ang</span>
-        <ChanRbvBox raw={hAngRaw} fallbackPrec={1} width={BPM_FW} />
+        <ChanRbvBox raw={hAngRaw} fallbackPrec={1} width={BPM_FW} onContextMenu={e => pvCtx("S29:ID:SrcPt:HAngleM", hAngRaw, e)} />
       </Row>
       <div style={{ marginTop: 6, fontSize: fontSize.small, color: colors.dim, fontStyle: "italic", maxWidth: BPM_FW + BPM_LW }}>
         Outboard = more pos values
@@ -134,8 +134,8 @@ function IdMagneticsSection() {
           <button onClick={() => pvwsWriter.write("S29ID:Main_on_offC.VAL", 0)} style={togBtn(on === false, true)}>Off</button>
         </div>
         <span style={{ ...labelStyle, width: MAG_QLBL }}>QP %</span>
-        <ChanRbvBox raw={qpRaw} fallbackPrec={1} width={MAG_FW} />
-        <ChanSpBox raw={qpSpRaw} fallbackPrec={1} width={MAG_FW} onCommit={n => pvwsWriter.write("S29ID:QuasiRatioInC.C", n)} />
+        <ChanRbvBox raw={qpRaw} fallbackPrec={1} width={MAG_FW} onContextMenu={e => pvCtx("S29ID:QuasiRatioM.RVAL", qpRaw, e)} />
+        <ChanSpBox raw={qpSpRaw} fallbackPrec={1} width={MAG_FW} onCommit={n => pvwsWriter.write("S29ID:QuasiRatioInC.C", n)} onContextMenu={e => pvCtx("S29ID:QuasiRatioInC.C", qpSpRaw, e)} />
         {qpCommFail && <span style={{ fontSize: fontSize.label, color: colors.statusError, lineHeight: 1.2 }}>QP coils<br />comm fail</span>}
       </Row>
 

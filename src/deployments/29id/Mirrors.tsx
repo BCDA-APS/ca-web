@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useConnection } from "@diamondlightsource/cs-web-lib";
 import { pvwsWriter } from "../../lib/pvwsWriter";
-import { toDouble, toStr } from "../../lib/epics";
+import { toDouble, toStr, pvCtx } from "../../lib/epics";
 import { colors, fontSize } from "../../lib/theme";
 import { ChanRbvBox, ChanSpBox, TweakValue, TweakButton, Row } from "../../widgets/EpicsWidgets";
 
@@ -68,14 +68,14 @@ function AxisRow({ prefix, axisKey, label, unit }: {
   return (
     <Row>
       <span style={labelStyle}>{label}</span>
-      <ChanRbvBox raw={monRaw} width={FW} />
+      <ChanRbvBox raw={monRaw} width={FW} onContextMenu={e => pvCtx(`${prefix}${axisKey}_MON`, monRaw, e)} />
       <span style={{ fontSize: fontSize.label, color: colors.unit, width: UW, flexShrink: 0 }}>
         {unit}
       </span>
       <TweakButton size={BTN} onClick={() => pvwsWriter.write(`${prefix}${axisKey}_TWN_CMD.PROC`, 1)} disabled={!conn}>
         ‹
       </TweakButton>
-      <ChanSpBox raw={spRaw} width={FW} onCommit={n => pvwsWriter.write(`${prefix}${axisKey}_POS_SP`, n)} disabled={!conn} />
+      <ChanSpBox raw={spRaw} width={FW} onCommit={n => pvwsWriter.write(`${prefix}${axisKey}_POS_SP`, n)} disabled={!conn} onContextMenu={e => pvCtx(`${prefix}${axisKey}_POS_SP`, spRaw, e)} />
       <TweakButton size={BTN} onClick={() => pvwsWriter.write(`${prefix}${axisKey}_TWP_CMD.PROC`, 1)} disabled={!conn}>
         ›
       </TweakButton>
