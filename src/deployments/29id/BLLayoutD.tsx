@@ -55,9 +55,9 @@ export function BLLayoutD() {
   const vac15Trip = (toDouble(vac15r) ?? 0) !== 0;
   const vac15Color = vac15Trip ? colors.statusError : colors.statusOk;
   const vs10dVal  = toDouble(vs10dr);
-  const vs10dStr  = vs10dConn && vs10dVal !== null ? vs10dVal.toExponential(2) : "—";
+  const vs10dStr  = vs10dConn && Number.isFinite(vs10dVal) ? vs10dVal!.toExponential(2) : "—";
   const vs11dVal  = toDouble(vs11dr);
-  const vs11dStr  = vs11dConn && vs11dVal !== null ? vs11dVal.toExponential(2) : "—";
+  const vs11dStr  = vs11dConn && Number.isFinite(vs11dVal) ? vs11dVal!.toExponential(2) : "—";
 
   // Segment colors — D receives beam only when M3R is deflecting (inverse of C)
   const cRight = !m3rDefl ? C_BEAM : !bOpen     ? C_BLOCK : feOpen              ? C_PHOTON : C_BEAM;

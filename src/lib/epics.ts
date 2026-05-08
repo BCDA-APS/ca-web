@@ -6,9 +6,9 @@ import type { MouseEvent } from "react";
 export function toDouble(d: unknown): number | null {
   if (!d) return null;
   const val = (d as { value?: { doubleValue?: number; floatValue?: number; intValue?: number; stringValue?: string } }).value;
-  if (val?.doubleValue !== undefined) return val.doubleValue;
-  if (val?.floatValue  !== undefined) return val.floatValue;
-  if (val?.intValue    !== undefined) return val.intValue;
+  if (val?.doubleValue !== undefined) return Number.isFinite(val.doubleValue) ? val.doubleValue : null;
+  if (val?.floatValue  !== undefined) return Number.isFinite(val.floatValue)  ? val.floatValue  : null;
+  if (val?.intValue    !== undefined) return Number.isFinite(val.intValue)    ? val.intValue    : null;
   if (val?.stringValue !== undefined) { const n = parseFloat(val.stringValue); return isNaN(n) ? null : n; }
   return null;
 }

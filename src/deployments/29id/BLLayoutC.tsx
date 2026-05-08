@@ -67,11 +67,11 @@ export function BLLayoutC() {
   const vac11Trip  = (toDouble(vac11r) ?? 0) !== 0;
   const vac11Color = vac11Trip ? colors.statusError : colors.statusOk;
   const vs10cVal   = toDouble(vs10cr);
-  const vs10cStr   = vs10cConn && vs10cVal !== null ? vs10cVal.toExponential(2) : "—";
+  const vs10cStr   = vs10cConn && Number.isFinite(vs10cVal) ? vs10cVal!.toExponential(2) : "—";
   const vs11cVal   = toDouble(vs11cr);
-  const vs11cStr   = vs11cConn && vs11cVal !== null ? vs11cVal.toExponential(2) : "—";
+  const vs11cStr   = vs11cConn && Number.isFinite(vs11cVal) ? vs11cVal!.toExponential(2) : "—";
   const ip11cVal   = toDouble(ip11cr);
-  const ip11cStr   = ip11cConn && ip11cVal !== null ? ip11cVal.toExponential(2) : "—";
+  const ip11cStr   = ip11cConn && Number.isFinite(ip11cVal) ? ip11cVal!.toExponential(2) : "—";
 
   // Beam segment colors — mirror flat (TX_MON>5, m3rDefl=false): C gets beam
   //   cRight: green=(StaA&&StaC)&&TX_MON>5  orange=(GV05=0||GV15=0)&&TX_MON>5

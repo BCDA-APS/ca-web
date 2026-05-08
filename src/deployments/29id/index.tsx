@@ -10,6 +10,7 @@ import { BeamlineLayout } from "./BeamlineLayout";
 import { BLLayoutD } from "./BLLayoutD";
 import { BLLayoutE } from "./BLLayoutE";
 import { Mirrors } from "./Mirrors";
+import { Slits } from "./Slits";
 import { pvwsWriter } from "../../lib/pvwsWriter";
 import type { DeploymentConfig } from "../types";
 
@@ -129,6 +130,7 @@ export const config: DeploymentConfig = {
     "29id-energy-a":        { x: 100, y: 500 },
     "29id-bllayout-d":      { x: 100, y: 200 },
     "29id-bllayout-e":      { x: 100, y: 400 },
+    "29id-slits":           { x: 400, y:  55 },
   },
   tabPanels: {
     1: [
@@ -144,6 +146,7 @@ export const config: DeploymentConfig = {
       { id: "29id-energy-a",        title: "Beamline Energy", Content: BeamlineEnergyA },
       { id: "29id-bllayout-d",      title: "D Layout",        Content: BLLayoutD },
       { id: "29id-bllayout-e",      title: "E Layout",        Content: BLLayoutE },
+      { id: "29id-slits",           title: "Slits",           Content: Slits },
     ],
   },
 };
