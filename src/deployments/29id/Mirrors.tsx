@@ -73,15 +73,31 @@ function AxisRow({ prefix, axisKey, label, unit }: {
         {unit}
       </span>
       <TweakButton size={BTN} onClick={() => pvwsWriter.write(`${prefix}${axisKey}_TWN_CMD.PROC`, 1)} disabled={!conn}>
-        ‹
+        −
       </TweakButton>
       <ChanSpBox raw={spRaw} width={FW} onCommit={n => pvwsWriter.write(`${prefix}${axisKey}_POS_SP`, n)} disabled={!conn} onContextMenu={e => pvCtx(`${prefix}${axisKey}_POS_SP`, spRaw, e)} />
       <TweakButton size={BTN} onClick={() => pvwsWriter.write(`${prefix}${axisKey}_TWP_CMD.PROC`, 1)} disabled={!conn}>
-        ›
+        +
       </TweakButton>
       <TweakValue value={twv} prec={4} onCommit={n => pvwsWriter.write(`${prefix}${axisKey}_TWV_SP`, n)} style={{ width: TWV_W, height: BTN }} />
     </Row>
   );
+}
+
+// ── Status color helpers ──────────────────────────────────────────────────────
+
+function stsColor(val: number | null): string {
+  if (val === 1) return colors.statusOk;               // Positioned
+  if (val === 0 || val === 2) return colors.statusWarn; // Moving / Homing
+  if (val === 8) return colors.statusError;              // Fault
+  return colors.rbvText;
+}
+
+function homColor(val: number | null): string {
+  if (val === 2) return colors.statusOk;               // Homed
+  if (val === 1) return colors.statusWarn;              // Homing
+  if (val === 0 || val === 8) return colors.statusError; // Not homed / Fault
+  return colors.rbvText;
 }
 
 // ── MirrorFooter ──────────────────────────────────────────────────────────────
@@ -92,6 +108,8 @@ function MirrorFooter({ prefix }: { prefix: string }) {
 
   const stsStr = toStr(stsRaw) ?? "—";
   const homStr = toStr(homRaw) ?? "—";
+  const stsNum = toDouble(stsRaw);
+  const homNum = toDouble(homRaw);
 
   const valueStyle: React.CSSProperties = {
     fontSize: fontSize.label,
@@ -129,11 +147,11 @@ function MirrorFooter({ prefix }: { prefix: string }) {
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
         <span style={labelStyle}>Status</span>
-        <span style={valueStyle}>{stsStr}</span>
+        <span style={{ ...valueStyle, color: stsColor(stsNum) }}>{stsStr}</span>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
         <span style={labelStyle}>Homing</span>
-        <span style={valueStyle}>{homStr}</span>
+        <span style={{ ...valueStyle, color: homColor(homNum) }}>{homStr}</span>
       </div>
 
       {/* MOVE aligned with ‹ column */}
