@@ -1,4 +1,6 @@
-import { BeamlineLayout } from "./BeamlineLayout";
+import { MiniSlitARPES } from "./BeamlineLayout";
+import { BLLayoutC } from "./BLLayoutC";
+import { BLLayoutAB } from "./BLLayoutAB";
 import { MonoSection, IdSection } from "./EnergyShared";
 
 export function BeamlineEnergy() {
@@ -10,8 +12,12 @@ export function BeamlineEnergy() {
         <IdSection />
       </div>
       <div style={{ borderTop: "1px solid #b0b0b8", margin: "10px 0 0" }} />
-      <div style={{ padding: "6px 0 10px" }}>
-        <BeamlineLayout />
+      <div style={{ padding: "6px 0 10px", display: "flex", alignItems: "flex-start", gap: 0 }}>
+        <div style={{ alignSelf: "center", padding: "0 4px" }}>
+          <MiniSlitARPES />
+        </div>
+        <BLLayoutC />
+        <BLLayoutAB />
       </div>
     </div>
   );

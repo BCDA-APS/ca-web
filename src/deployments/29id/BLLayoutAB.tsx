@@ -65,13 +65,13 @@ export function BLLayoutAB() {
   const cA  = segColor(feOpen, aOpen);               // A section (GV01-04)
 
   // ── SVG geometry ──────────────────────────────────────────────────────────
-  const W  = 300;
+  const W  = 260;
   const H  = 65;
   const by = 30; // beam centre Y
   const bh = 5;  // beam stripe height
 
   const scale = W / 260;
-  const m3rX   = Math.round(17  * scale);
+  const m3rX   = Math.round(23  * scale); // D exit center=407; AB left=W_E+W_C-1=384; 407-384=23
   const s2bX   = Math.round(72  * scale);
   const s1aX   = Math.round(122 * scale);
   const msX    = Math.round(156 * scale);

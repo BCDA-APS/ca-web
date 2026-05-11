@@ -93,7 +93,7 @@ function MiniSlitD() {
   );
 }
 
-function MiniSlitARPES() {
+export function MiniSlitARPES() {
   return (
     <MiniSlit
       title="ARPES"
@@ -139,7 +139,7 @@ export function BeamlineLayout() {
       </div>
       {/* Bottom row: mini slits fill the 153px gap left of ARPES, then C + AB */}
       <div style={{ display: "flex", alignItems: "flex-start", gap: 0 }}>
-        <div style={{ width: 153, flexShrink: 0, display: "flex", gap: 4, justifyContent: "center", alignSelf: "center" }}>
+        <div style={{ width: 150, flexShrink: 0, display: "flex", gap: 4, justifyContent: "center", alignSelf: "center" }}>
           <MiniSlitD />
           <MiniSlitARPES />
         </div>
