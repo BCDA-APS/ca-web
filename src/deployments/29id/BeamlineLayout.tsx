@@ -138,8 +138,8 @@ export function BeamlineLayout() {
         <div style={{ flexShrink: 0 }}><BLLayoutD /></div>
       </div>
       {/* Bottom row: mini slits fill the 153px gap left of ARPES, then C + AB */}
-      <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
-        <div style={{ width: 153, flexShrink: 0, display: "flex", gap: 4, justifyContent: "center" }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 0 }}>
+        <div style={{ width: 153, flexShrink: 0, display: "flex", gap: 4, justifyContent: "center", alignSelf: "center" }}>
           <MiniSlitD />
           <MiniSlitARPES />
         </div>
