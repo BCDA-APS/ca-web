@@ -39,13 +39,14 @@ export function RbvBox({ value, prec = 3, width, style, onContextMenu }: {
 // ── SpBox ─────────────────────────────────────────────────────────────────────
 
 /** Click-to-edit setpoint box. */
-export function SpBox({ value, prec = 3, width, onCommit, disabled = false, onContextMenu }: {
+export function SpBox({ value, prec = 3, width, onCommit, disabled = false, onContextMenu, style }: {
   value: number | null;
   prec?: number;
   width?: number;
   onCommit: (n: number) => void;
   disabled?: boolean;
   onContextMenu?: (e: React.MouseEvent) => void;
+  style?: React.CSSProperties;
 }) {
   const [editing, setEditing] = useState(false);
   const [input, setInput] = useState("");
@@ -60,6 +61,7 @@ export function SpBox({ value, prec = 3, width, onCommit, disabled = false, onCo
     boxSizing: "border-box",
     flexShrink: 0,
     ...(width !== undefined ? { width } : {}),
+    ...style,
   };
 
   if (editing) {
@@ -131,9 +133,7 @@ export function TweakValue({ value, onCommit, prec, style, onContextMenu }: {
     padding: "0 4px",
     boxSizing: "border-box",
     textAlign: "center",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
+    minWidth: 0,
     ...style,
   };
 
@@ -171,6 +171,9 @@ export function TweakValue({ value, onCommit, prec, style, onContextMenu }: {
       title="Click to change step (↑ ×10, ↓ ÷10)"
       style={{
         ...base,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
         color: colors.spText,
         background: colors.spBg,
         border: `1px solid ${colors.spBorder}`,
@@ -186,10 +189,11 @@ export function TweakValue({ value, onCommit, prec, style, onContextMenu }: {
 // ── TweakButton ───────────────────────────────────────────────────────────────
 
 /** Styled ‹ / › tweak button. Pass direction as children. */
-export function TweakButton({ onClick, disabled = false, size = 24, children }: {
+export function TweakButton({ onClick, disabled = false, size = 24, width, children }: {
   onClick: () => void;
   disabled?: boolean;
   size?: number;
+  width?: number;
   children: React.ReactNode;
 }) {
   return (
@@ -201,7 +205,7 @@ export function TweakButton({ onClick, disabled = false, size = 24, children }: 
         color: colors.tweakFg,
         border: `1px solid ${colors.tweakBorder}`,
         borderRadius: 3,
-        width: size,
+        width: width ?? size,
         height: size,
         fontSize: size - 8,
         lineHeight: "1",
@@ -256,30 +260,33 @@ export function RelatedDisplay({ label, onClick }: { label: string; onClick: () 
 // ── ChanRbvBox ────────────────────────────────────────────────────────────────
 
 /** RbvBox that reads value and precision directly from raw channel data. Prefer this over RbvBox for PV-backed displays. */
-export function ChanRbvBox({ raw, fallbackPrec = 4, width, style, onContextMenu }: {
+export function ChanRbvBox({ raw, fallbackPrec = 4, forcePrecision, width, style, onContextMenu }: {
   raw: unknown;
   fallbackPrec?: number;
+  forcePrecision?: number;
   width?: number;
   style?: React.CSSProperties;
   onContextMenu?: (e: React.MouseEvent) => void;
 }) {
-  const prec = (raw as any)?.display?.precision ?? fallbackPrec;
+  const prec = forcePrecision ?? ((raw as any)?.display?.precision ?? fallbackPrec);
   return <RbvBox value={toDouble(raw)} prec={prec} width={width} style={style} onContextMenu={onContextMenu} />;
 }
 
 // ── ChanSpBox ─────────────────────────────────────────────────────────────────
 
 /** SpBox that reads value and precision directly from raw channel data. Prefer this over SpBox for PV-backed displays. */
-export function ChanSpBox({ raw, fallbackPrec = 4, width, onCommit, disabled, onContextMenu }: {
+export function ChanSpBox({ raw, fallbackPrec = 4, forcePrecision, width, onCommit, disabled, onContextMenu, style }: {
   raw: unknown;
   fallbackPrec?: number;
+  forcePrecision?: number;
   width?: number;
   onCommit: (n: number) => void;
   disabled?: boolean;
   onContextMenu?: (e: React.MouseEvent) => void;
+  style?: React.CSSProperties;
 }) {
-  const prec = (raw as any)?.display?.precision ?? fallbackPrec;
-  return <SpBox value={toDouble(raw)} prec={prec} width={width} onCommit={onCommit} disabled={disabled} onContextMenu={onContextMenu} />;
+  const prec = forcePrecision ?? ((raw as any)?.display?.precision ?? fallbackPrec);
+  return <SpBox value={toDouble(raw)} prec={prec} width={width} onCommit={onCommit} disabled={disabled} onContextMenu={onContextMenu} style={style} />;
 }
 
 // ── Row ───────────────────────────────────────────────────────────────────────
