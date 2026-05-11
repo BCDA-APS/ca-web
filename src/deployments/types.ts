@@ -17,5 +17,6 @@ export interface DeploymentConfig {
   title: string;
   tabs: Tab[];
   panelDefaults: Record<string, { x: number; y: number }>;
+  defaultHiddenPanels?: string[];
   tabPanels: Record<number, PanelConfig[]>;
 }

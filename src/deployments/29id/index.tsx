@@ -125,13 +125,14 @@ export const config: DeploymentConfig = {
     "29idc-arpes":   { x: 100, y: 1000 },
     "29idc-energy":  { x: 100, y: 500 },
     "29idd-kappa":   { x: 100, y:  55 },
-    "29id-beamline-layout": { x: 100, y:  55 },
+    "29id-energy-a":        { x:  85, y:  55 },
+    "29id-beamline-layout": { x:  85, y: 530 },
     "29id-mirrors":         { x: 600, y:  55 },
-    "29id-energy-a":        { x: 100, y: 500 },
     "29id-bllayout-d":      { x: 100, y: 200 },
     "29id-bllayout-e":      { x: 100, y: 400 },
     "29id-slits":           { x: 400, y:  55 },
   },
+  defaultHiddenPanels: ["29id-mirrors", "29id-bllayout-d", "29id-bllayout-e", "29id-slits"],
   tabPanels: {
     1: [
       { id: "29idc-chamber-v2", title: "Chamber",  Content: ChamberDiagramV2 },

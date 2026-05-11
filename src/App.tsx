@@ -669,6 +669,15 @@ export default function App() {
     window.addEventListener("pv-context", handler);
     return () => window.removeEventListener("pv-context", handler);
   }, []);
+
+  useEffect(() => {
+    function handler(e: Event) {
+      const { id } = (e as CustomEvent<{ id: string }>).detail;
+      setHiddenPanels(prev => { const next = new Set(prev); next.delete(id); return next; });
+    }
+    window.addEventListener("show-panel", handler);
+    return () => window.removeEventListener("show-panel", handler);
+  }, []);
   const counter = useRef(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -680,7 +689,7 @@ export default function App() {
       const s = localStorage.getItem("panel-hidden");
       if (s) return new Set(JSON.parse(s));
     } catch { /* ignore */ }
-    return new Set();
+    return new Set(config.defaultHiddenPanels ?? []);
   });
 
   useEffect(() => {
@@ -764,7 +773,7 @@ export default function App() {
           >
             ⚙
           </button>
-          {settingsOpen && createPortal(<SettingsPanel panelDefaults={config.panelDefaults} onClose={() => setSettingsOpen(false)} onReset={() => { setLayoutKey(k => k + 1); setHiddenPanels(new Set()); }} />, document.body)}
+          {settingsOpen && createPortal(<SettingsPanel panelDefaults={config.panelDefaults} onClose={() => setSettingsOpen(false)} onReset={() => { setLayoutKey(k => k + 1); setHiddenPanels(new Set(config.defaultHiddenPanels ?? [])); }} />, document.body)}
         </div>
         </div>
       </div>
