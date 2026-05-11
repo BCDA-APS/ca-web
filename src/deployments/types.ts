@@ -13,10 +13,17 @@ export interface PanelConfig {
   Content: ComponentType;
 }
 
+export interface QuickLink {
+  label: string;
+  file: string;
+  macros?: Record<string, string>;
+}
+
 export interface DeploymentConfig {
   title: string;
   tabs: Tab[];
   panelDefaults: Record<string, { x: number; y: number }>;
   defaultHiddenPanels?: string[];
+  quickLinks?: QuickLink[];
   tabPanels: Record<number, PanelConfig[]>;
 }

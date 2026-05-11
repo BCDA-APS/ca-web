@@ -114,6 +114,9 @@ function KappaContent() {
 
 export const config: DeploymentConfig = {
   title: "29ID Beamline",
+  quickLinks: [
+    { label: "29ID", file: "/ui/29id/29id.ui", macros: {} },
+  ],
   tabs: [
     { id: 3, icon: "✴️", label: "29ID-A", color: "rgb(174,203,255)" },
     { id: 1, icon: "⚛",  label: "29ID-C", color: "rgb(170,170,255)" },

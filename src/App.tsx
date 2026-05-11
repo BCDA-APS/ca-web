@@ -261,13 +261,14 @@ function Sidebar({ tabs, active, onSelect }: { tabs: Tab[]; active: number; onSe
 
 // ── Settings panel ────────────────────────────────────────────────────────────
 
-type SavedLayout = { name: string; positions: Record<string, { x: number; y: number; locked: boolean }>; hidden?: string[] };
+type SavedOverlay = { file: string; macros: Record<string, string>; label: string; pos: { x: number; y: number }; locked?: boolean };
+type SavedLayout = { name: string; positions: Record<string, { x: number; y: number; locked: boolean }>; hidden?: string[]; overlays?: SavedOverlay[] };
 
 function loadSavedLayouts(): SavedLayout[] {
   try { return JSON.parse(localStorage.getItem("panel:layouts") ?? "[]"); } catch { return []; }
 }
 
-function SettingsPanel({ panelDefaults, hiddenPanels, onClose, onBumpLayout, onResetHidden, onRestoreHidden }: { panelDefaults: Record<string, { x: number; y: number }>; hiddenPanels: Set<string>; onClose: () => void; onBumpLayout: () => void; onResetHidden: () => void; onRestoreHidden: (hidden: string[]) => void }) {
+function SettingsPanel({ panelDefaults, hiddenPanels, overlays, onClose, onBumpLayout, onResetHidden, onRestoreHidden, onRestoreOverlays }: { panelDefaults: Record<string, { x: number; y: number }>; hiddenPanels: Set<string>; overlays: AppOverlay[]; onClose: () => void; onBumpLayout: () => void; onResetHidden: () => void; onRestoreHidden: (hidden: string[]) => void; onRestoreOverlays: (ovs: SavedOverlay[]) => void }) {
   const panelIds = Object.keys(panelDefaults);
   const [naming, setNaming] = useState(false);
   const [nameInput, setNameInput] = useState("");
@@ -286,7 +287,16 @@ function SettingsPanel({ panelDefaults, hiddenPanels, onClose, onBumpLayout, onR
       const s = localStorage.getItem(`panel:${id}`);
       if (s) try { positions[id] = JSON.parse(s); } catch { /* skip */ }
     });
-    persistLayouts([...layouts.filter(l => l.name !== name), { name, positions, hidden: [...hiddenPanels] }]);
+    const savedOverlays: SavedOverlay[] = overlays.map(ov => {
+      let pos = ov.pos;
+      let locked = false;
+      try {
+        const s = localStorage.getItem(`overlay:${ov.file}`);
+        if (s) { const p = JSON.parse(s); pos = { x: p.x, y: p.y }; locked = p.locked ?? false; }
+      } catch { /* skip */ }
+      return { file: ov.file, macros: ov.macros, label: ov.label, pos, locked };
+    });
+    persistLayouts([...layouts.filter(l => l.name !== name), { name, positions, hidden: [...hiddenPanels], overlays: savedOverlays }]);
     setNaming(false);
     setNameInput("");
   }
@@ -297,6 +307,7 @@ function SettingsPanel({ panelDefaults, hiddenPanels, onClose, onBumpLayout, onR
         localStorage.setItem(`panel:${id}`, JSON.stringify(layout.positions[id]));
     });
     onRestoreHidden(layout.hidden ?? []);
+    onRestoreOverlays(layout.overlays ?? []);
     onBumpLayout();
     onClose();
   }
@@ -307,6 +318,7 @@ function SettingsPanel({ panelDefaults, hiddenPanels, onClose, onBumpLayout, onR
       localStorage.setItem(`panel:${id}`, JSON.stringify({ ...def, locked: false }));
     });
     onResetHidden();
+    onRestoreOverlays([]);
     onBumpLayout();
     onClose();
   }
@@ -320,7 +332,7 @@ function SettingsPanel({ panelDefaults, hiddenPanels, onClose, onBumpLayout, onR
   const hoverOff = (e: React.MouseEvent) => { (e.currentTarget as HTMLElement).style.background = "none"; };
 
   return (
-    <div style={{ position: "fixed", top: 44, right: 16, zIndex: 9000, background: "#0f2035", border: "1px solid #1e3a5f", borderRadius: 6, boxShadow: "0 4px 16px rgba(0,0,0,0.6)", minWidth: 220, padding: "8px 0" }}>
+    <div style={{ position: "fixed", top: 44, right: 16, zIndex: 10000, background: "#0f2035", border: "1px solid #1e3a5f", borderRadius: 6, boxShadow: "0 4px 16px rgba(0,0,0,0.6)", minWidth: 220, padding: "8px 0" }}>
 
       {/* Section header */}
       <div style={{ padding: "4px 14px 6px", color: "#546e8a", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>Layout</div>
@@ -761,6 +773,17 @@ export default function App() {
       <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 2001, background: activeTabColor, borderBottom: "1px solid rgba(0,0,0,0.15)", padding: "8px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", transition: "background 0.3s" }}>
         <span style={{ color: "#ffffff", fontSize: 16, fontWeight: 700, letterSpacing: 0.5 }}>{config.title}</span>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }} onClick={e => e.stopPropagation()}>
+          {(config.quickLinks ?? []).map(ql => (
+            <button
+              key={ql.label}
+              onClick={() => window.dispatchEvent(new CustomEvent("open-ui", {
+                detail: { file: ql.file, macros: ql.macros ?? {}, label: ql.label }
+              }))}
+              style={{ background: "none", border: "1px solid rgba(255,255,255,0.3)", borderRadius: 4, color: "#ffffff", cursor: "pointer", fontSize: 13, padding: "3px 10px" }}
+            >
+              {ql.label}
+            </button>
+          ))}
           <button
             onClick={() => setPickerOpen(true)}
             style={{ background: "none", border: "1px solid transparent", borderRadius: 4, color: "#ffffff", cursor: "pointer", fontSize: 13, padding: "3px 10px" }}
@@ -775,7 +798,20 @@ export default function App() {
           >
             ⚙
           </button>
-          {settingsOpen && createPortal(<SettingsPanel panelDefaults={config.panelDefaults} hiddenPanels={hiddenPanels} onClose={() => setSettingsOpen(false)} onBumpLayout={() => setLayoutKey(k => k + 1)} onResetHidden={() => setHiddenPanels(new Set(config.defaultHiddenPanels ?? []))} onRestoreHidden={hidden => setHiddenPanels(new Set(hidden))} />, document.body)}
+          {settingsOpen && createPortal(<SettingsPanel
+            panelDefaults={config.panelDefaults}
+            hiddenPanels={hiddenPanels}
+            overlays={overlays}
+            onClose={() => setSettingsOpen(false)}
+            onBumpLayout={() => setLayoutKey(k => k + 1)}
+            onResetHidden={() => setHiddenPanels(new Set(config.defaultHiddenPanels ?? []))}
+            onRestoreHidden={hidden => setHiddenPanels(new Set(hidden))}
+            onRestoreOverlays={saved => {
+              saved.forEach(ov => localStorage.setItem(`overlay:${ov.file}`, JSON.stringify({ x: ov.pos.x, y: ov.pos.y, locked: ov.locked ?? false })));
+              const tabId = activeTabRef.current;
+              setOverlays(saved.map(ov => ({ id: ++counter.current, file: ov.file, macros: ov.macros, label: ov.label, pos: ov.pos, tabId })));
+            }}
+          />, document.body)}
         </div>
         </div>
       </div>
