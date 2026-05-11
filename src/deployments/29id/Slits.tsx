@@ -128,20 +128,24 @@ function Schematic() {
   const fTop    = cy - ah/2 - bt;   // 30
   const fBot    = cy + ah/2 + bt;   // 126
 
-  // Back L: Top+In — lighter pink, Out blade is taller (full height), In is shorter
-  const backPts  = `${apLeft},${fTop}  ${fRight},${fTop}  ${fRight},${fBot}  ${apRight},${fBot}  ${apRight},${apTop}  ${apLeft},${apTop}`;
-  // Front L: Out+Bottom — darker pink, rendered on top; Out full height, Bottom shorter width
-  const frontPts = `${fLeft},${fTop}  ${apLeft},${fTop}  ${apLeft},${apBot}  ${fRight},${apBot}  ${fRight},${fBot}  ${fLeft},${fBot}`;
+  // V blades (Top/Bottom) claim full width including corners
+  const vColor = "rgb(215,175,215)";
+  // H blades (In/Out) fill the middle section between V blades
+  const hColor = "rgb(180,110,180)";
 
   return (
     <div style={{ padding: 10 }}>
       <svg width={W} height={H} style={{ display: "block", fontFamily: "sans-serif" }}>
 
-        {/* ── Blades ── */}
-        {/* Back L: Top+In (lighter, behind) */}
-        <polygon points={backPts}  fill="rgb(180,110,180)" stroke={stroke} strokeWidth={sw} />
-        {/* Front L: Out+Bottom (lighter, in front) */}
-        <polygon points={frontPts} fill="rgb(215,175,215)" stroke={stroke} strokeWidth={sw} />
+        {/* ── 4 independent blade rectangles ── */}
+        {/* Out: full height left strip — owns TL and BL corners */}
+        <rect x={fLeft}   y={fTop}  width={apLeft-fLeft}   height={fBot-fTop}  fill={hColor} stroke={stroke} strokeWidth={sw} />
+        {/* In: right strip top-to-apBot — owns TR corner, not BR */}
+        <rect x={apRight} y={fTop}  width={fRight-apRight} height={apBot-fTop} fill={hColor} stroke={stroke} strokeWidth={sw} />
+        {/* Bottom: bottom strip apLeft-to-fRight — owns BR corner, not BL */}
+        <rect x={apLeft}  y={apBot} width={fRight-apLeft}  height={fBot-apBot} fill={vColor} stroke={stroke} strokeWidth={sw} />
+        {/* Top: middle top strip only — no corners */}
+        <rect x={apLeft}  y={fTop}  width={aw}             height={apTop-fTop} fill={vColor} stroke={stroke} strokeWidth={sw} />
 
         {/* ── Aperture outline ── */}
         <rect x={apLeft} y={apTop} width={aw} height={ah} fill="none" stroke="#555" strokeWidth={1} />
@@ -168,13 +172,14 @@ function Schematic() {
               {/* x arrow */}
               <line x1={ox} y1={oy} x2={ox + al} y2={oy} stroke="rgb(0,160,0)" strokeWidth={1.5} markerEnd="url(#ah-x)" />
               {/* y arrow */}
-              <line x1={ox} y1={oy} x2={ox}      y2={oy - al} stroke="rgb(0,160,0)" strokeWidth={1.5} markerEnd="url(#ah-y)" />
-              {/* z dot (beam into page) */}
-              <circle cx={ox} cy={oy} r={5} fill="none" stroke="red" strokeWidth={1} />
-              <circle cx={ox} cy={oy} r={1.5} fill="red" />
-              <text x={ox + al + 3} y={oy + 4}    fontSize={8} fill="rgb(0,130,0)">x</text>
-              <text x={ox - 3}      y={oy - al - 2} fontSize={8} fill="rgb(0,130,0)" textAnchor="end">y</text>
-              <text x={ox + 7}      y={oy + 4}    fontSize={8} fill="red">z</text>
+              <line x1={ox} y1={oy} x2={ox}      y2={oy - al} stroke="red" strokeWidth={1.5} markerEnd="url(#ah-y)" />
+              {/* z cross (beam into page) */}
+              <circle cx={ox} cy={oy} r={5} fill="none" stroke="blue" strokeWidth={1} />
+              <line x1={ox - 3} y1={oy - 3} x2={ox + 3} y2={oy + 3} stroke="blue" strokeWidth={1} />
+              <line x1={ox - 3} y1={oy + 3} x2={ox + 3} y2={oy - 3} stroke="blue" strokeWidth={1} />
+              <text x={ox + al + 8} y={oy + 4}      fontSize={8} fill="rgb(0,130,0)">x</text>
+              <text x={ox - 3}      y={oy - al - 2} fontSize={8} fill="red" textAnchor="end">y</text>
+              <text x={ox - 8}      y={oy + 4}      fontSize={8} fill="blue" textAnchor="end">z</text>
             </g>
           );
         })()}
@@ -185,7 +190,7 @@ function Schematic() {
             <path d="M0,0 L0,6 L6,3 z" fill="rgb(0,160,0)" />
           </marker>
           <marker id="ah-y" markerWidth={6} markerHeight={6} refX={3} refY={3} orient="auto">
-            <path d="M0,0 L0,6 L6,3 z" fill="rgb(0,160,0)" />
+            <path d="M0,0 L0,6 L6,3 z" fill="red" />
           </marker>
         </defs>
 
