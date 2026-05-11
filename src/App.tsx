@@ -261,13 +261,13 @@ function Sidebar({ tabs, active, onSelect }: { tabs: Tab[]; active: number; onSe
 
 // ── Settings panel ────────────────────────────────────────────────────────────
 
-type SavedLayout = { name: string; positions: Record<string, { x: number; y: number; locked: boolean }> };
+type SavedLayout = { name: string; positions: Record<string, { x: number; y: number; locked: boolean }>; hidden?: string[] };
 
 function loadSavedLayouts(): SavedLayout[] {
   try { return JSON.parse(localStorage.getItem("panel:layouts") ?? "[]"); } catch { return []; }
 }
 
-function SettingsPanel({ panelDefaults, onClose, onReset }: { panelDefaults: Record<string, { x: number; y: number }>; onClose: () => void; onReset: () => void }) {
+function SettingsPanel({ panelDefaults, hiddenPanels, onClose, onBumpLayout, onResetHidden, onRestoreHidden }: { panelDefaults: Record<string, { x: number; y: number }>; hiddenPanels: Set<string>; onClose: () => void; onBumpLayout: () => void; onResetHidden: () => void; onRestoreHidden: (hidden: string[]) => void }) {
   const panelIds = Object.keys(panelDefaults);
   const [naming, setNaming] = useState(false);
   const [nameInput, setNameInput] = useState("");
@@ -286,7 +286,7 @@ function SettingsPanel({ panelDefaults, onClose, onReset }: { panelDefaults: Rec
       const s = localStorage.getItem(`panel:${id}`);
       if (s) try { positions[id] = JSON.parse(s); } catch { /* skip */ }
     });
-    persistLayouts([...layouts.filter(l => l.name !== name), { name, positions }]);
+    persistLayouts([...layouts.filter(l => l.name !== name), { name, positions, hidden: [...hiddenPanels] }]);
     setNaming(false);
     setNameInput("");
   }
@@ -296,7 +296,8 @@ function SettingsPanel({ panelDefaults, onClose, onReset }: { panelDefaults: Rec
       if (layout.positions[id])
         localStorage.setItem(`panel:${id}`, JSON.stringify(layout.positions[id]));
     });
-    onReset();
+    onRestoreHidden(layout.hidden ?? []);
+    onBumpLayout();
     onClose();
   }
 
@@ -305,7 +306,8 @@ function SettingsPanel({ panelDefaults, onClose, onReset }: { panelDefaults: Rec
       const def = panelDefaults[id] ?? { x: 60, y: 60 };
       localStorage.setItem(`panel:${id}`, JSON.stringify({ ...def, locked: false }));
     });
-    onReset();
+    onResetHidden();
+    onBumpLayout();
     onClose();
   }
 
@@ -773,7 +775,7 @@ export default function App() {
           >
             ⚙
           </button>
-          {settingsOpen && createPortal(<SettingsPanel panelDefaults={config.panelDefaults} onClose={() => setSettingsOpen(false)} onReset={() => { setLayoutKey(k => k + 1); setHiddenPanels(new Set(config.defaultHiddenPanels ?? [])); }} />, document.body)}
+          {settingsOpen && createPortal(<SettingsPanel panelDefaults={config.panelDefaults} hiddenPanels={hiddenPanels} onClose={() => setSettingsOpen(false)} onBumpLayout={() => setLayoutKey(k => k + 1)} onResetHidden={() => setHiddenPanels(new Set(config.defaultHiddenPanels ?? []))} onRestoreHidden={hidden => setHiddenPanels(new Set(hidden))} />, document.body)}
         </div>
         </div>
       </div>
