@@ -1,4 +1,5 @@
 import { useConnection } from "@diamondlightsource/cs-web-lib";
+import { useState, useEffect, useRef } from "react";
 import { BLLayoutC } from "./BLLayoutC";
 import { BLLayoutAB } from "./BLLayoutAB";
 import { BLLayoutD } from "./BLLayoutD";
@@ -18,6 +19,59 @@ const shortcutBtn: React.CSSProperties = {
   padding: "2px 8px", fontSize: fontSize.label,
   cursor: "pointer", fontFamily: "sans-serif",
 };
+
+function MoreMenu() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onDown(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  const items: { label: string; action: () => void }[] = [
+    { label: "Mirrors",     action: () => { showPanel("29id-mirrors"); setOpen(false); } },
+    { label: "Slits",       action: () => { showPanel("29id-slits");   setOpen(false); } },
+    { label: "DiaGon",      action: () => { showPanel("29id-diagon");  setOpen(false); } },
+    { label: "Diagnostics", action: () => {
+      window.dispatchEvent(new CustomEvent("open-ui", {
+        detail: { file: "/ui/29id/29id_Diagnostics.ui", macros: {}, label: "Diagnostics" },
+      }));
+      setOpen(false);
+    }},
+  ];
+
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <button style={shortcutBtn} onClick={() => setOpen(v => !v)}>More {open ? "▴" : "▾"}</button>
+      {open && (
+        <div style={{
+          position: "absolute", right: 0, top: "100%", marginTop: 2,
+          background: "#fff", border: `1px solid ${colors.relatedBorder}`,
+          borderRadius: 4, boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+          zIndex: 100, minWidth: 110,
+        }}>
+          {items.map(item => (
+            <div key={item.label}
+              onClick={item.action}
+              style={{
+                padding: "4px 10px", fontSize: fontSize.label,
+                fontFamily: "sans-serif", cursor: "pointer",
+                color: colors.relatedFg,
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = colors.relatedBg)}
+              onMouseLeave={e => (e.currentTarget.style.background = "")}
+            >{item.label}</div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ── Mini slit widget ──────────────────────────────────────────────────────────
 
@@ -128,9 +182,8 @@ export function BeamlineLayout() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 0, position: "relative" }}>
       {/* Shortcut buttons — top right corner */}
-      <div style={{ position: "absolute", top: 0, right: 0, display: "flex", gap: 4 }}>
-        <button style={shortcutBtn} onClick={() => showPanel("29id-mirrors")}>Mirrors</button>
-        <button style={shortcutBtn} onClick={() => showPanel("29id-slits")}>Slits</button>
+      <div style={{ position: "absolute", top: 0, right: 0 }}>
+        <MoreMenu />
       </div>
       {/* Top row: E + D (beam goes right-to-left: D right-angle at x=405 from row left) */}
       <div style={{ display: "flex", alignItems: "flex-start", gap: 0 }}>
