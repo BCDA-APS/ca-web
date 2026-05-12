@@ -16,9 +16,36 @@ export function toDouble(d: unknown): number | null {
 /** Extract a string value from a cs-web-lib raw data object. */
 export function toStr(d: unknown): string | null {
   if (!d) return null;
-  const val = (d as { value?: { stringValue?: string; doubleValue?: number } }).value;
-  if (val?.stringValue !== undefined && val.stringValue !== "") return val.stringValue;
-  if (val?.doubleValue !== undefined) return String(val.doubleValue);
+  const val = (d as { value?: unknown }).value as Record<string, unknown> | number[] | undefined;
+  if (!val) return null;
+
+  // Scalar string
+  if (typeof (val as Record<string, unknown>).stringValue === "string") {
+    const s = (val as Record<string, unknown>).stringValue as string;
+    return s !== "" ? s : null;
+  }
+
+  // Scalar double
+  if ((val as Record<string, unknown>).doubleValue !== undefined)
+    return String((val as Record<string, unknown>).doubleValue);
+
+  // Char waveform: pvws sends as arrayValue object {"0":47,"1":110,...}
+  const arrayValue = (val as Record<string, unknown>).arrayValue;
+  if (arrayValue && typeof arrayValue === "object" && !Array.isArray(arrayValue)) {
+    const codes = Object.values(arrayValue as Record<string, number>).filter(n => n > 0);
+    const s = String.fromCharCode(...codes);
+    return s || null;
+  }
+
+  // Fallback: plain JS array
+  const arr: number[] | undefined =
+    (val as Record<string, unknown>).byteArray as number[] ??
+    (Array.isArray(val) ? (val as number[]) : undefined);
+  if (arr) {
+    const s = String.fromCharCode(...arr.filter(n => n > 0));
+    return s || null;
+  }
+
   return null;
 }
 

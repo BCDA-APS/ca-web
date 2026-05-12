@@ -12,6 +12,7 @@ import { BLLayoutE } from "./BLLayoutE";
 import { Mirrors } from "./Mirrors";
 import { Slits } from "./Slits";
 import { Diagon } from "./Diagon";
+import { ScanRecords } from "./ScanRecords";
 import { pvwsWriter } from "../../lib/pvwsWriter";
 import type { DeploymentConfig } from "../types";
 
@@ -136,8 +137,9 @@ export const config: DeploymentConfig = {
     "29id-bllayout-e":      { x: 100, y: 400 },
     "29id-slits":           { x: 400, y:  55 },
     "29id-diagon":          { x: 100, y: 200 },
+    "29id-scan-records":    { x: 700, y:  55 },
   },
-  defaultHiddenPanels: ["29id-mirrors", "29id-bllayout-d", "29id-bllayout-e", "29id-slits", "29id-diagon"],
+  defaultHiddenPanels: ["29id-mirrors", "29id-bllayout-d", "29id-bllayout-e", "29id-slits", "29id-diagon", "29id-scan-records"],
   tabPanels: {
     1: [
       { id: "29idc-chamber-v2", title: "Chamber",  Content: ChamberDiagramV2 },
@@ -154,6 +156,7 @@ export const config: DeploymentConfig = {
       { id: "29id-bllayout-e",      title: "E Layout",        Content: BLLayoutE },
       { id: "29id-slits",           title: "Slits",           Content: Slits },
       { id: "29id-diagon",          title: "DiaGon",          Content: Diagon },
+      { id: "29id-scan-records",    title: "ScanRecords",    Content: ScanRecords },
     ],
   },
 };
