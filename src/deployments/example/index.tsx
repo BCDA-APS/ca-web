@@ -10,6 +10,7 @@ import { ReadbackRow } from "../../widgets/ReadbackRow";
 import { StripChart } from "../../widgets/StripChart";
 import { UiRenderer } from "../../lib/UiRenderer";
 import type { DeploymentConfig } from "../../lib/deployment";
+import rawConfig from "./config.json";
 
 const MOTOR_DISPLAYS = [
   { label: "Tiny",  file: "/ui/motors/motorx_tiny.ui" },
@@ -119,38 +120,22 @@ function MotorCardRowTestContent() {
   );
 }
 
-export const config: DeploymentConfig = {
-  id: "example",
-  title: "Example Deployment",
-  pvws: { socket: "localhost:8080", ssl: false },
-  tabs: [
-    { id: 1, icon: "⌂",  label: "Home" },
-    { id: 2, icon: "🔬", label: "Test" },
+const tabPanels: DeploymentConfig["tabPanels"] = {
+  1: [
+    { id: "motors",        title: "Motors",                          Content: MotorsContent },
+    { id: "lorentzian",    title: "Detector — Simulated Lorentzian", Content: LorentzianContent },
+    { id: "area-detector", title: "Area Detector — myad:cam1",       Content: AreaDetectorContent },
   ],
-  panelDefaults: {
-    motors:            { x: 108, y:  56 },
-    lorentzian:        { x: 108, y: 460 },
-    "area-detector":   { x: 108, y: 800 },
-    test:                  { x: 108, y:  56 },
-    "motor-card-test":     { x: 108, y: 400 },
-    "motor-card-row-test":  { x: 500, y: 400 },
-    "motor-card-flat-test": { x: 108, y: 700 },
-  },
-  tabPanels: {
-    1: [
-      { id: "motors",        title: "Motors",                           Content: MotorsContent },
-      { id: "lorentzian",    title: "Detector — Simulated Lorentzian", Content: LorentzianContent },
-      { id: "area-detector", title: "Area Detector — myad:cam1",       Content: AreaDetectorContent },
-    ],
-    2: [
-      { id: "test",                  title: "Widget Test",      Content: TestContent },
-      { id: "motor-card-test",       title: "Motor Cards",      Content: MotorCardTestContent },
-      { id: "motor-card-row-test",   title: "Motor Cards (row)",  Content: MotorCardRowTestContent },
-      { id: "motor-card-flat-test",  title: "Motor Cards (flat)", Content: () => (
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          {["m1","m2","m3","m4","m5","m6"].map(m => <MotorCardFlat key={m} pv={`fr:${m}`} />)}
-        </div>
-      )},
-    ],
-  },
+  2: [
+    { id: "test",                 title: "Widget Test",        Content: TestContent },
+    { id: "motor-card-test",      title: "Motor Cards",        Content: MotorCardTestContent },
+    { id: "motor-card-row-test",  title: "Motor Cards (row)",  Content: MotorCardRowTestContent },
+    { id: "motor-card-flat-test", title: "Motor Cards (flat)", Content: () => (
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        {["m1","m2","m3","m4","m5","m6"].map(m => <MotorCardFlat key={m} pv={`fr:${m}`} />)}
+      </div>
+    )},
+  ],
 };
+
+export const config: DeploymentConfig = { ...rawConfig, tabPanels };
