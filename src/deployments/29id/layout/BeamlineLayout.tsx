@@ -4,10 +4,10 @@ import { BLLayoutC } from "./BLLayoutC";
 import { BLLayoutAB } from "./BLLayoutAB";
 import { BLLayoutD } from "./BLLayoutD";
 import { BLLayoutE } from "./BLLayoutE";
-import { pvwsWriter } from "../../lib/pvwsWriter";
-import { toDouble, pvCtx } from "../../lib/epics";
-import { colors, fontSize } from "../../lib/theme";
-import { ChanRbvBox, ChanSpBox, TweakValue, TweakButton } from "../../widgets/EpicsWidgets";
+import { pvwsWriter } from "../../../lib/pvwsWriter";
+import { toDouble, pvCtx } from "../../../lib/epics";
+import { colors, fontSize } from "../../../lib/theme";
+import { ChanRbvBox, ChanSpBox, TweakValue, TweakButton } from "../../../widgets/EpicsWidgets";
 
 function showPanel(id: string) {
   window.dispatchEvent(new CustomEvent("show-panel", { detail: { id } }));

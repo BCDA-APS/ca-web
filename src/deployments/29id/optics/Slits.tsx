@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useConnection } from "@diamondlightsource/cs-web-lib";
-import { pvwsWriter } from "../../lib/pvwsWriter";
-import { toDouble, pvCtx } from "../../lib/epics";
-import { colors, fontSize } from "../../lib/theme";
-import { ChanRbvBox, ChanSpBox, TweakValue, TweakButton } from "../../widgets/EpicsWidgets";
+import { pvwsWriter } from "../../../lib/pvwsWriter";
+import { toDouble, pvCtx } from "../../../lib/epics";
+import { colors, fontSize } from "../../../lib/theme";
+import { ChanRbvBox, ChanSpBox, TweakValue, TweakButton } from "../../../widgets/EpicsWidgets";
 
 // ── Layout constants ──────────────────────────────────────────────────────────
 

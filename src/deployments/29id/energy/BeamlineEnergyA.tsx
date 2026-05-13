@@ -1,8 +1,8 @@
 import { useConnection } from "@diamondlightsource/cs-web-lib";
-import { pvwsWriter } from "../../lib/pvwsWriter";
-import { toDouble, toStr, toBool, pvCtx } from "../../lib/epics";
-import { colors, fontSize } from "../../lib/theme";
-import { ChanRbvBox, ChanSpBox, Row } from "../../widgets/EpicsWidgets";
+import { pvwsWriter } from "../../../lib/pvwsWriter";
+import { toDouble, toStr, toBool, pvCtx } from "../../../lib/epics";
+import { colors, fontSize } from "../../../lib/theme";
+import { ChanRbvBox, ChanSpBox, Row } from "../../../widgets/EpicsWidgets";
 import { MonoSection, IdSection, SectionHead, rbvStyle, labelStyle } from "./EnergyShared";
 
 

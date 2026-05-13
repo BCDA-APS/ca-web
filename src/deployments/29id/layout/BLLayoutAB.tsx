@@ -1,7 +1,7 @@
 import { useConnection } from "@diamondlightsource/cs-web-lib";
-import { pvwsWriter } from "../../lib/pvwsWriter";
-import { toDouble } from "../../lib/epics";
-import { colors } from "../../lib/theme";
+import { pvwsWriter } from "../../../lib/pvwsWriter";
+import { toDouble } from "../../../lib/epics";
+import { colors } from "../../../lib/theme";
 
 const C_BEAM   = "#7aabff"; // static beam path (no photons)
 const C_PHOTON = "#4caf50"; // photons flowing

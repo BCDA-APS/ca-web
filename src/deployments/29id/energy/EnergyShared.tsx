@@ -1,10 +1,10 @@
 import { useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useConnection } from "@diamondlightsource/cs-web-lib";
-import { pvwsWriter } from "../../lib/pvwsWriter";
-import { toDouble, toStr, toBool, pvCtx } from "../../lib/epics";
-import { colors, fontSize } from "../../lib/theme";
-import { ChanRbvBox, ChanSpBox, TweakValue, Row } from "../../widgets/EpicsWidgets";
+import { pvwsWriter } from "../../../lib/pvwsWriter";
+import { toDouble, toStr, toBool, pvCtx } from "../../../lib/epics";
+import { colors, fontSize } from "../../../lib/theme";
+import { ChanRbvBox, ChanSpBox, TweakValue, Row } from "../../../widgets/EpicsWidgets";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 

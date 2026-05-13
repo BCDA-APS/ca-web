@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useConnection } from "@diamondlightsource/cs-web-lib";
-import { pvwsWriter } from "../../lib/pvwsWriter";
-import { toDouble, toStr, pvCtx } from "../../lib/epics";
+import { pvwsWriter } from "../../../lib/pvwsWriter";
+import { toDouble, toStr, pvCtx } from "../../../lib/epics";
 
 function openStripChart(pv: string, label: string) {
   window.dispatchEvent(new CustomEvent("open-ui", {

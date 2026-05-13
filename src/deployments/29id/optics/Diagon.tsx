@@ -1,6 +1,6 @@
-import { pvwsWriter } from "../../lib/pvwsWriter";
-import { colors, fontSize } from "../../lib/theme";
-import { MotorGrid } from "../../widgets/MotorGrid";
+import { pvwsWriter } from "../../../lib/pvwsWriter";
+import { colors, fontSize } from "../../../lib/theme";
+import { MotorGrid } from "../../../widgets/MotorGrid";
 
 function openUi(file: string, macros: Record<string, string>, label: string) {
   window.dispatchEvent(new CustomEvent("open-ui", { detail: { file, macros, label } }));

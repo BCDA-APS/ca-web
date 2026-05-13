@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { useConnection } from "@diamondlightsource/cs-web-lib";
-import { pvwsWriter } from "../../lib/pvwsWriter";
-import { toDouble, toStr, pvCtx } from "../../lib/epics";
-import { colors, fontSize } from "../../lib/theme";
-import { ChanRbvBox, ChanSpBox } from "../../widgets/EpicsWidgets";
+import { pvwsWriter } from "../../../lib/pvwsWriter";
+import { toDouble, toStr, pvCtx } from "../../../lib/epics";
+import { colors, fontSize } from "../../../lib/theme";
+import { ChanRbvBox, ChanSpBox } from "../../../widgets/EpicsWidgets";
 
 function StrSpBox({ raw, pv, width, style, onContextMenu }: {
   raw: unknown; pv: string; width?: number; style?: React.CSSProperties;
