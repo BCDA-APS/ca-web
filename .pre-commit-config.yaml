@@ -1,0 +1,24 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=1024]
+      - id: detect-private-key
+
+  # Local quality gate -- tsc + eslint scoped to staged TS/TSX files
+  - repo: local
+    hooks:
+      - id: quality-gate
+        name: quality-gate
+        entry: bash .claude/hooks/quality-gate.sh
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]

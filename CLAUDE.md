@@ -20,6 +20,9 @@ ca-web — a browser-based control panel for beamline instruments
 - Trunk-based on `main` by default. Cut a branch only for risky / multi-day / PR-review work.
 - WCAG 2.1 AA enforced. Semantic HTML, alt text, labels, keyboard navigation mandatory.
 - `docs/` is human-authored. Bots MUST NOT modify it without explicit instruction.
+- Pre-commit runs format checks and the local quality-gate (tsc + ESLint) automatically. Override with `SKIP=quality-gate git commit ...` only when the user requests it.
+- When editing source under `src/lib/`, `src/widgets/`, or `src/deployments/`, update `bot_vault/CHANGELOG.md`, `bot_vault/architecture/overview.md`, or the relevant page under `docs/` if the change is architecturally visible. The doc-sync hook will warn if you forget.
+- Use procedural skills under `bot_vault/skills/` (e.g. `running-the-quality-gate.md`, `verifying-before-completion.md`) when extending the repo so conventions stay consistent.
 
 ## Stack
 
@@ -47,6 +50,7 @@ If your Node toolchain is provided by conda (e.g. on beamline hosts), activate t
 - Architecture: [bot_vault/architecture/overview.md](bot_vault/architecture/overview.md)
 - Rules: [bot_vault/entry.md](bot_vault/entry.md)
 - ADRs: [bot_vault/architecture/adr/](bot_vault/architecture/adr/)
+- Skills: [bot_vault/skills/](bot_vault/skills/)
 - Changelog: [bot_vault/CHANGELOG.md](bot_vault/CHANGELOG.md)
 
 ## Status

@@ -8,6 +8,7 @@ a browser-based control panel for beamline instruments
 - [Architecture overview](architecture/overview.md)
 - [Agent workflow](architecture/agent_workflow.md)
 - [ADRs](architecture/adr/)
+- [Skills](skills/) -- how to extend the repo
 - [Changelog](CHANGELOG.md)
 
 ## Status

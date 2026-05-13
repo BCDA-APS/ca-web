@@ -30,10 +30,14 @@ bot_vault/
 ├── entry.md              # this file
 ├── README.md             # navigation hub
 ├── CHANGELOG.md          # version history
-└── architecture/
-    ├── overview.md       # stack, layout, subsystems
-    ├── agent_workflow.md # mandatory pre-work reading
-    └── adr/              # decision records (000-NNN)
+├── architecture/
+│   ├── overview.md       # stack, layout, subsystems
+│   ├── agent_workflow.md # mandatory pre-work reading
+│   └── adr/              # decision records (000-NNN)
+└── skills/               # procedural how-to-extend-the-repo docs
+    ├── README.md
+    ├── running-the-quality-gate.md
+    └── verifying-before-completion.md
 ```
 
 Other subdirs (`plans/`, `audits/`, `research/`, `knowledge/`,
