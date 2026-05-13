@@ -8,10 +8,10 @@ import { spawnSync } from "child_process";
 
 // ── Per-deployment external paths ─────────────────────────────────────────────
 //
-// Each src/deployments/<id>/paths.json may declare:
-//   uiDirs:        Record<key, absolute target>   — /ui/<key>/* serves from target
-//   startupScript: absolute path                  — caQtDM startup script to parse
-//   adl2ui:        absolute path                  — converter binary
+// Each src/deployments/<id>/config.json may declare a "paths" block:
+//   paths.uiDirs:        Record<key, absolute target>   — /ui/<key>/* serves from target
+//   paths.startupScript: absolute path                  — caQtDM startup script to parse
+//   paths.adl2ui:        absolute path                  — converter binary
 //
 // All fields optional. Missing targets are tolerated; conflicts on uiDirs keys
 // across deployments throw. Lets the package run on hosts without 29ID NFS.
@@ -47,7 +47,7 @@ function loadDeploymentPaths(): LoadedPaths {
   for (const entry of entries) {
     if (!entry.isDirectory()) continue;
     const id = entry.name;
-    const file = path.join(DEPLOYMENTS_DIR, id, "paths.json");
+    const file = path.join(DEPLOYMENTS_DIR, id, "config.json");
     if (!fs.existsSync(file)) continue;
 
     let parsed: Record<string, unknown>;
@@ -57,21 +57,26 @@ function loadDeploymentPaths(): LoadedPaths {
       throw new Error(`[deployments] failed to parse ${file}: ${e}`);
     }
 
-    for (const k of Object.keys(parsed)) {
+    const pathsBlock =
+      parsed.paths && typeof parsed.paths === "object" && !Array.isArray(parsed.paths)
+        ? (parsed.paths as Record<string, unknown>)
+        : {};
+
+    for (const k of Object.keys(pathsBlock)) {
       if (!VALID_KEYS.has(k)) {
         throw new Error(
-          `[deployments] ${file}: unknown key "${k}". Allowed: ${[...VALID_KEYS].join(", ")}`
+          `[deployments] ${file}: unknown key "paths.${k}". Allowed: ${[...VALID_KEYS].join(", ")}`
         );
       }
     }
 
     const missing: string[] = [];
 
-    const ud = parsed.uiDirs;
+    const ud = pathsBlock.uiDirs;
     if (ud && typeof ud === "object") {
       for (const [key, target] of Object.entries(ud as Record<string, unknown>)) {
         if (typeof target !== "string") {
-          throw new Error(`[deployments] ${file}: uiDirs.${key} must be a string`);
+          throw new Error(`[deployments] ${file}: paths.uiDirs.${key} must be a string`);
         }
         const existing = uiDirs[key];
         if (existing && existing.target !== target) {
@@ -85,17 +90,17 @@ function loadDeploymentPaths(): LoadedPaths {
       }
     }
 
-    if (typeof parsed.startupScript === "string") {
-      if (fs.existsSync(parsed.startupScript)) {
-        if (!startupScripts.includes(parsed.startupScript)) startupScripts.push(parsed.startupScript);
+    if (typeof pathsBlock.startupScript === "string") {
+      if (fs.existsSync(pathsBlock.startupScript)) {
+        if (!startupScripts.includes(pathsBlock.startupScript)) startupScripts.push(pathsBlock.startupScript);
       } else {
         missing.push("startupScript");
       }
     }
 
-    if (typeof parsed.adl2ui === "string") {
-      if (fs.existsSync(parsed.adl2ui)) {
-        if (adl2ui === null) adl2ui = parsed.adl2ui;
+    if (typeof pathsBlock.adl2ui === "string") {
+      if (fs.existsSync(pathsBlock.adl2ui)) {
+        if (adl2ui === null) adl2ui = pathsBlock.adl2ui;
       } else {
         missing.push("adl2ui");
       }
