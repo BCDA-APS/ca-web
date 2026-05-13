@@ -15,7 +15,7 @@ import { Diagon } from "./optics/Diagon";
 import { ScanRecords } from "./scan/ScanRecords";
 import { StripChart, type TraceConfig } from "../../widgets/StripChart";
 import { pvwsWriter } from "../../lib/pvwsWriter";
-import type { DeploymentConfig } from "../types";
+import type { DeploymentConfig } from "../../lib/deployment";
 
 const CA_PVS: TraceConfig[] = [
   { pv: "29idb:ca1:read",  label: "CA1"  },
@@ -130,7 +130,9 @@ function KappaContent() {
 }
 
 export const config: DeploymentConfig = {
+  id: "29id",
   title: "29ID Beamline",
+  pvws: { socket: "mite:8080", ssl: false },
   quickLinks: [
     { label: "29ID", file: "/ui/29id/29id.ui", macros: {} },
   ],

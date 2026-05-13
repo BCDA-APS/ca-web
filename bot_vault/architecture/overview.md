@@ -17,9 +17,11 @@ MUI for UI components, Redux Toolkit (re-exported by `cs-web-lib`) for state.
 ```
 src/
 ├── App.tsx                  # panel/overlay manager + error boundary
-├── main.tsx                 # Redux + OutlineProvider wrapping
+├── main.tsx                 # picker vs App boot; Redux + OutlineProvider wrapping
+├── DeploymentPicker.tsx     # full-screen selector shown when no deployment is chosen
 ├── index.css                # global styles
 ├── lib/
+│   ├── deployment.ts        # DeploymentConfig types + glob registry + resolveActiveId + context
 │   ├── epics.ts             # PV value extractors (toDouble/toStr/fmt/toBool) + pvCtx menu
 │   ├── pvwsWriter.ts        # pvws WebSocket write client
 │   ├── theme.ts             # colors, font sizes
@@ -34,10 +36,9 @@ src/
 │   ├── MotorRow.tsx         # PV-based motor row
 │   ├── ReadbackRow.tsx      # simple readback row
 │   └── StripChart.tsx       # multi-PV rolling time-series chart
-└── deployments/
-    ├── types.ts             # DeploymentConfig / Tab / PanelConfig / QuickLink
-    ├── index.ts             # VITE_DEPLOYMENT selector
-    ├── nefarian.tsx         # default simulated-IOC deployment
+└── deployments/             # one self-contained folder per deployment
+    ├── example/index.tsx    # copy-paste template
+    ├── nefarian/index.tsx   # default simulated-IOC deployment
     └── 29id/                # 29ID beamline panels (grouped by domain)
 ```
 
@@ -85,14 +86,25 @@ values, and metadata flow through that store. No local slices.
 
 ## Deployments
 
-`src/deployments/index.ts` picks the `DeploymentConfig` at build time
-based on `VITE_DEPLOYMENT`. Each deployment provides tabs, default panel
-positions, hidden-panel defaults, quick-link `.ui` files, and a
-`tabPanels` map (tab id → panel list). Add a deployment by exporting a
-new `DeploymentConfig`, adding `.env.<name>` with `VITE_DEPLOYMENT`, and
-registering it in `src/deployments/index.ts`.
+`src/deployments/` contains one folder per deployment, each with an
+`index.tsx` exporting a `DeploymentConfig` (`id`, `title`,
+`pvws: { socket, ssl }`, tabs, default panel positions, hidden-panel
+defaults, quick-link `.ui` files, `tabPanels`). The folder name must
+match `config.id`.
 
-Current deployments: `nefarian` (default, simulated IOC) and `29id`
+`src/lib/deployment.ts` auto-discovers every `src/deployments/*/index.tsx`
+with `import.meta.glob` at build time and exposes a `REGISTRY` keyed by id.
+`main.tsx` calls `resolveActiveId()` (URL `?deployment=<id>` wins, then
+`localStorage`); if none matches, `<DeploymentPicker />` renders instead
+of `<App />`. The chosen config flows through `DeploymentContext` and is
+read by `App.tsx` via `useContext`. PVWS socket/SSL come from the chosen
+`config.pvws`, so one build serves every deployment.
+
+To add a deployment: copy `src/deployments/example/` to
+`src/deployments/<your-id>/` and edit `id`, `title`, `pvws`, and
+`tabPanels`. No registration step.
+
+Current deployments: `example` (template), `nefarian` (simulated IOC), `29id`
 (beamline).
 
 ## Error boundary
@@ -107,8 +119,8 @@ also exposed. This is whole-app recovery, not per-panel isolation.
 ## External dependencies
 
 - EPICS / Channel Access via `@diamondlightsource/cs-web-lib` (npm).
-- `pvws` WebSocket service (Podman container) for PV transport. URL via
-  `VITE_PVWS_SOCKET` (default `localhost:8080`).
+- `pvws` WebSocket service (Podman container) for PV transport. URL set
+  by the active deployment's `config.pvws.socket`.
 - On-the-fly MEDM-to-`.ui` conversion via `/APSshare/bin/adl2ui` (dev
   server only; results cached in `.ui-cache/`).
 

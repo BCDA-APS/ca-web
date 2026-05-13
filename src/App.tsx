@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef, Component } from "react";
+import { useState, useEffect, useRef, useContext, Component } from "react";
 import type { ErrorInfo } from "react";
 import { createPortal } from "react-dom";
 import { UiRenderer, parseArgs } from "./lib/UiRenderer";
-import { config } from "./deployments";
-import type { Tab } from "./deployments";
+import { DeploymentContext } from "./lib/deployment";
+import type { Tab } from "./lib/deployment";
 
 // ── Top-level error boundary ──────────────────────────────────────────────────
 // Catches crashes caused by unexpected PV data during IOC reconnection.
@@ -675,6 +675,7 @@ function PvContextMenu({ ctx, onClose }: { ctx: PvContextEvent; onClose: () => v
 // ── App ───────────────────────────────────────────────────────────────────────
 
 export default function App() {
+  const config = useContext(DeploymentContext)!;
   const [overlays, setOverlays] = useState<AppOverlay[]>([]);
   const [pvContext, setPvContext] = useState<PvContextEvent | null>(null);
 

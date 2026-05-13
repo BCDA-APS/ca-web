@@ -23,8 +23,18 @@
 - Top-level `AppErrorBoundary` with auto-reset.
 
 ### Deployments
-- `VITE_DEPLOYMENT` build-time selector; targets `nefarian` (default) and
-  `29id`.
+- Self-contained deployment folders under `src/deployments/<id>/`, each
+  with its own `index.tsx` exporting a `DeploymentConfig` (including `id`
+  and `pvws`). Framework moved to `src/lib/deployment.ts` (types, glob
+  registry, resolver, React context). `src/deployments/` now contains
+  only deployment folders.
+- Runtime selection: `?deployment=<id>` URL param or first-run picker
+  screen (`src/DeploymentPicker.tsx`); choice persisted in `localStorage`.
+  One build serves every deployment.
+- New `example` deployment as a copy-paste template. `nefarian` and `29id`
+  preserved with their previous behavior.
+- Replaces the prior `VITE_DEPLOYMENT` build-time selector and per-mode
+  `.env.<name>` files (deleted).
 - `29id/` deployment: tabs for 29ID-A, 29ID-C ARPES, 29ID-D Kappa, with
   BeamlineLayout, BeamlineEnergy / BeamlineEnergyA, Mirrors, Slits,
   DiaGon, ScanRecords, and ChamberDiagram panels.

@@ -3,18 +3,25 @@ import "./index.css";
 import { Provider } from "react-redux";
 import { OutlineProvider, store } from "@diamondlightsource/cs-web-lib";
 import { pvwsWriter } from "./lib/pvwsWriter";
+import { REGISTRY, resolveActiveId, DeploymentContext } from "./lib/deployment";
+import { DeploymentPicker } from "./DeploymentPicker";
 import App from "./App";
 
-pvwsWriter.connect();
+const root = createRoot(document.getElementById("root")!);
+const activeId = resolveActiveId();
 
-const pvwsSocket = import.meta.env.VITE_PVWS_SOCKET ?? "localhost:8080";
-const pvwsSsl    = import.meta.env.VITE_PVWS_SSL === "true";
-
-const container = document.getElementById("root")!;
-createRoot(container).render(
-  <Provider store={store({ PVWS_SOCKET: pvwsSocket, PVWS_SSL: pvwsSsl } as Parameters<typeof store>[0])}>
-    <OutlineProvider>
-      <App />
-    </OutlineProvider>
-  </Provider>
-);
+if (!activeId) {
+  root.render(<DeploymentPicker />);
+} else {
+  const cfg = REGISTRY[activeId];
+  pvwsWriter.connect(cfg.pvws.socket, cfg.pvws.ssl);
+  root.render(
+    <Provider store={store({ PVWS_SOCKET: cfg.pvws.socket, PVWS_SSL: cfg.pvws.ssl } as Parameters<typeof store>[0])}>
+      <OutlineProvider>
+        <DeploymentContext.Provider value={cfg}>
+          <App />
+        </DeploymentContext.Provider>
+      </OutlineProvider>
+    </Provider>
+  );
+}

@@ -1,11 +1,15 @@
-import { MotorRow } from "../widgets/MotorRow";
-import { MotorGrid } from "../widgets/MotorGrid";
-import { MotorCardRow } from "../widgets/MotorCardRow";
-import { MotorCardFlat } from "../widgets/MotorCardFlat";
-import { ReadbackRow } from "../widgets/ReadbackRow";
-import { StripChart } from "../widgets/StripChart";
-import { UiRenderer } from "../lib/UiRenderer";
-import type { DeploymentConfig } from "./types";
+// Template deployment. Copy this folder to src/deployments/<your-id>/ and edit:
+// the `id` must match the new folder name; set `title`, `pvws.socket`, and rewrite
+// tabs / panelDefaults / tabPanels for your beamline.
+
+import { MotorRow } from "../../widgets/MotorRow";
+import { MotorGrid } from "../../widgets/MotorGrid";
+import { MotorCardRow } from "../../widgets/MotorCardRow";
+import { MotorCardFlat } from "../../widgets/MotorCardFlat";
+import { ReadbackRow } from "../../widgets/ReadbackRow";
+import { StripChart } from "../../widgets/StripChart";
+import { UiRenderer } from "../../lib/UiRenderer";
+import type { DeploymentConfig } from "../../lib/deployment";
 
 const MOTOR_DISPLAYS = [
   { label: "Tiny",  file: "/ui/motors/motorx_tiny.ui" },
@@ -68,7 +72,7 @@ function LorentzianContent() {
           <ReadbackRow label="Noisy" pv="fr:userCalc1.VAL" />
         </tbody>
       </table>
-      <StripChart id="nefarian-lorentzian"
+      <StripChart id="example-lorentzian"
         initialPvs={[{ pv: "fr:userCalc1.VAL", label: "Noisy", enabled: true }]} />
     </div>
   );
@@ -116,7 +120,9 @@ function MotorCardRowTestContent() {
 }
 
 export const config: DeploymentConfig = {
-  title: "Nefarian",
+  id: "example",
+  title: "Example Deployment",
+  pvws: { socket: "localhost:8080", ssl: false },
   tabs: [
     { id: 1, icon: "⌂",  label: "Home" },
     { id: 2, icon: "🔬", label: "Test" },

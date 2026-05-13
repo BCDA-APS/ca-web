@@ -32,52 +32,51 @@ Then install deps:
 npm install
 ```
 
-### Local mode (default)
-
-Run Vite and pvws on the same machine; open the app in a browser on that machine.
-The default `.env` uses `localhost:8080` so each machine connects to its own pvws:
+### Running the app
 
 ```bash
 cd ~/workspace/ca-web
 npm run dev
 ```
 
-Then open `http://localhost:4200` in a browser on the same machine.
+Then open `http://localhost:4200` in a browser. The first visit shows a
+**deployment picker** listing every folder in `src/deployments/`. Click one to
+enter it — the choice is remembered in `localStorage`, and you can deep-link
+straight in with `?deployment=<id>` (for example
+`http://localhost:4200/?deployment=29id`).
 
-### Deployment modes
+### Deployments
 
-Tab layouts and pvws addresses are configured per deployment using Vite's mode system.
-Two deployment env files are committed:
+Each subfolder under `src/deployments/` is a self-contained deployment. The
+folder name **must** match the `id` exported by its `index.tsx`. Committed
+deployments:
 
-| Mode | File | pvws | Tabs |
+| id | Title | pvws | Tabs |
 |------|------|------|------|
-| `nefarian` (default) | `.env.nefarian` | `localhost:8080` | Motors, Lorentzian, Area Detector |
-| `29id` | `.env.29id` | `mite:8080` | 29ID-C ARPES, 29ID-D Kappa |
+| `example` | Example Deployment | `localhost:8080` | Home, Test (template) |
+| `nefarian` | Nefarian | `localhost:8080` | Home, Test (simulated IOC) |
+| `29id` | 29ID Beamline | `mite:8080` | 29ID-A, 29ID-C, 29ID-D |
 
-```bash
-npm run dev -- --mode nefarian   # simulated IOC (default)
-npm run dev -- --mode 29id       # 29ID beamline on mite
-```
+To add a new deployment:
 
-Running `npm run dev` without `--mode` uses the gitignored `.env` (localhost pvws,
-nefarian tabs). Deployment files contain no secrets and are committed.
+1. Copy `src/deployments/example/` to `src/deployments/<your-id>/`.
+2. In the new `index.tsx`, set `id` to match the folder name, set `title`,
+   and adjust `pvws.socket` for your PVWS server.
+3. Replace `tabs`, `panelDefaults`, and `tabPanels` with your own panels.
 
-To add a new deployment, create `src/deployments/<name>.tsx` exporting a
-`DeploymentConfig`, add a `.env.<name>` file, and register it in
-`src/deployments/index.ts`.
+That's it — the picker auto-discovers it. No registration step.
 
 ### Distributed mode (beamline access)
 
-Run the app on `mite` (beamline subnet machine) with the `29id` mode so any subnet
-browser can reach real 29ID PVs. Because the workspace is NFS-mounted, no code
-duplication is needed:
+Run the app on `mite` (beamline subnet machine); any subnet browser can reach
+it. Because the workspace is NFS-mounted, no code duplication is needed:
 
 ```bash
-npm run dev -- --mode 29id
+npm run dev
 ```
 
-Then open `http://mite:4200` from any machine on the subnet. pvws must also be running
-on `mite` (see pvws Setup below).
+Then open `http://mite:4200/?deployment=29id` from any machine on the subnet.
+pvws must also be running on `mite` (see pvws Setup below).
 
 ## pvws Setup
 

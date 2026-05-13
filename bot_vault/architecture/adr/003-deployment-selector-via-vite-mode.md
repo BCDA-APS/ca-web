@@ -1,7 +1,7 @@
 # ADR 003 -- Deployment selector via Vite mode
 
 Date: 2026-05-13
-Status: Accepted
+Status: Superseded by ADR 004
 
 ## Context
 

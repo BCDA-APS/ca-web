@@ -2,17 +2,18 @@
 // cs-web-lib handles subscriptions (reads); we handle writes directly.
 // pvws requires a PV to be subscribed on the same connection before it can be written.
 
-const PVWS_URL = `ws://${import.meta.env.VITE_PVWS_SOCKET ?? "localhost:8080"}/pvws/pv`;
-
 class PvwsWriter {
   private ws: WebSocket | null = null;
   private queue: string[] = [];
   private subscribed = new Set<string>();
+  private url: string | null = null;
 
-  connect() {
+  connect(socket?: string, ssl?: boolean) {
+    if (socket) this.url = `${ssl ? "wss" : "ws"}://${socket}/pvws/pv`;
+    if (!this.url) throw new Error("pvwsWriter.connect: socket not configured");
     if (this.ws) return;
-    console.log("[pvwsWriter] connecting to", PVWS_URL);
-    this.ws = new WebSocket(PVWS_URL);
+    console.log("[pvwsWriter] connecting to", this.url);
+    this.ws = new WebSocket(this.url);
     this.ws.onopen = () => {
       console.log("[pvwsWriter] connected");
       this.queue.forEach(msg => this.ws!.send(msg));
