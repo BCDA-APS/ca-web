@@ -15,8 +15,13 @@ import { Diagon } from "./optics/Diagon";
 import { ScanRecords } from "./scan/ScanRecords";
 import { StripChart, type TraceConfig } from "../../widgets/StripChart";
 import { pvwsWriter } from "../../lib/pvwsWriter";
-import type { DeploymentConfig } from "../../lib/deployment";
+import type { DeploymentConfig, DeploymentConfigData } from "../../lib/deployment";
 import rawConfig from "./config.json";
+
+// Drop the build-time-only `paths` block; vite.config.ts reads it directly
+// from config.json and it has no business in the runtime config bundle.
+const { paths: _paths, ...deploymentFields } = rawConfig as DeploymentConfigData;
+void _paths;
 
 const tabPanels: DeploymentConfig["tabPanels"] = {
   1: [
@@ -39,7 +44,7 @@ const tabPanels: DeploymentConfig["tabPanels"] = {
   ],
 };
 
-export const config: DeploymentConfig = { ...rawConfig, tabPanels };
+export const config: DeploymentConfig = { ...deploymentFields, tabPanels };
 
 const CA_PVS: TraceConfig[] = [
   { pv: "29idb:ca1:read",  label: "CA1"  },

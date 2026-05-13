@@ -31,6 +31,13 @@ export interface DeploymentConfig {
   tabPanels: Record<number, PanelConfig[]>;
 }
 
+// Shape of a deployment's config.json on disk. tabPanels lives in TSX (it
+// carries component references); paths is build-time-only (read by
+// vite.config.ts) and stripped before producing the runtime DeploymentConfig.
+export type DeploymentConfigData = Omit<DeploymentConfig, "tabPanels"> & {
+  paths?: unknown;
+};
+
 type DeploymentLoader = () => Promise<{ config: DeploymentConfig }>;
 
 const modules = import.meta.glob<{ config: DeploymentConfig }>(

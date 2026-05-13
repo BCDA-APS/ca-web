@@ -57,10 +57,13 @@ function loadDeploymentPaths(): LoadedPaths {
       throw new Error(`[deployments] failed to parse ${file}: ${e}`);
     }
 
-    const pathsBlock =
-      parsed.paths && typeof parsed.paths === "object" && !Array.isArray(parsed.paths)
-        ? (parsed.paths as Record<string, unknown>)
-        : {};
+    let pathsBlock: Record<string, unknown> = {};
+    if (parsed.paths !== undefined) {
+      if (typeof parsed.paths !== "object" || parsed.paths === null || Array.isArray(parsed.paths)) {
+        throw new Error(`[deployments] ${file}: "paths" must be an object`);
+      }
+      pathsBlock = parsed.paths as Record<string, unknown>;
+    }
 
     for (const k of Object.keys(pathsBlock)) {
       if (!VALID_KEYS.has(k)) {

@@ -5,8 +5,13 @@ import { MotorCardFlat } from "../../widgets/MotorCardFlat";
 import { ReadbackRow } from "../../widgets/ReadbackRow";
 import { StripChart } from "../../widgets/StripChart";
 import { UiRenderer } from "../../lib/UiRenderer";
-import type { DeploymentConfig } from "../../lib/deployment";
+import type { DeploymentConfig, DeploymentConfigData } from "../../lib/deployment";
 import rawConfig from "./config.json";
+
+// Drop the build-time-only `paths` block; vite.config.ts reads it directly
+// from config.json and it has no business in the runtime config bundle.
+const { paths: _paths, ...deploymentFields } = rawConfig as DeploymentConfigData;
+void _paths;
 
 const tabPanels: DeploymentConfig["tabPanels"] = {
   1: [
@@ -26,7 +31,7 @@ const tabPanels: DeploymentConfig["tabPanels"] = {
   ],
 };
 
-export const config: DeploymentConfig = { ...rawConfig, tabPanels };
+export const config: DeploymentConfig = { ...deploymentFields, tabPanels };
 
 const MOTOR_DISPLAYS = [
   { label: "Tiny",  file: "/ui/motors/motorx_tiny.ui" },
