@@ -40,6 +40,8 @@ src/
     ├── example/index.tsx    # copy-paste template
     ├── nefarian/index.tsx   # default simulated-IOC deployment
     └── 29id/                # 29ID beamline panels (grouped by domain)
+        ├── index.tsx
+        └── paths.json       # optional: external uiDirs/startupScript/adl2ui
 ```
 
 ## Rendering pipeline
@@ -103,6 +105,15 @@ read by `App.tsx` via `useContext`. PVWS socket/SSL come from the chosen
 To add a deployment: copy `src/deployments/example/` to
 `src/deployments/<your-id>/` and edit `id`, `title`, `pvws`, and
 `tabPanels`. No registration step.
+
+If the deployment needs to serve `.ui` files from external directories
+(e.g. site NFS mounts), add an optional `paths.json` next to `index.tsx`
+declaring `uiDirs`, `startupScript`, and/or `adl2ui`. `vite.config.ts`
+unions these across all deployments at config-load time. `uiDirs[key]`
+makes `/ui/<key>/foo.ui` resolve against `<target>/foo.ui` (replaces
+the old `public/ui/<key>` symlinks). Targets missing on the current
+host are tolerated and surfaced to the picker through a virtual module
+(`virtual:deployment-path-status`) as a "paths unreachable" hint.
 
 Current deployments: `example` (template), `nefarian` (simulated IOC), `29id`
 (beamline).

@@ -63,8 +63,34 @@ To add a new deployment:
 2. In the new `index.tsx`, set `id` to match the folder name, set `title`,
    and adjust `pvws.socket` for your PVWS server.
 3. Replace `tabs`, `panelDefaults`, and `tabPanels` with your own panels.
+4. (Optional) If the deployment needs to serve `.ui` files from external
+   directories (e.g. NFS-mounted caQtDM display paths), add a
+   `paths.json` alongside `index.tsx`:
+
+   ```json
+   {
+     "uiDirs": { "mybeamline": "/net/host/path/to/ui" },
+     "startupScript": "/net/host/path/to/start_epics_X",
+     "adl2ui": "/APSshare/bin/adl2ui"
+   }
+   ```
+
+   All fields are optional. `uiDirs[key]` makes `/ui/<key>/foo.ui` resolve
+   against `<target>/foo.ui`. `startupScript` is a caQtDM startup script
+   parsed to derive the display search path. `adl2ui` is the converter for
+   on-the-fly `.adl` → `.ui`. Targets that don't exist on the current host
+   are tolerated — the picker shows a "paths unreachable" hint for affected
+   deployments.
 
 That's it — the picker auto-discovers it. No registration step.
+
+### Running on a laptop without beamline NFS
+
+The repo has no machine-specific paths in trunk. `npm install && npm run build`
+works on any host. In dev, deployments that declare unreachable external paths
+(e.g. `29id` away from the beamline subnet) are still selectable; their
+`/ui/*` requests cleanly 404 in the browser network panel. The picker shows
+a small "N external paths unreachable" hint for those entries.
 
 ### Distributed mode (beamline access)
 

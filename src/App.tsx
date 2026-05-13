@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useContext, Component } from "react";
 import type { ErrorInfo } from "react";
 import { createPortal } from "react-dom";
 import { UiRenderer, parseArgs } from "./lib/UiRenderer";
-import { DeploymentContext } from "./lib/deployment";
+import { DeploymentContext, clearActive } from "./lib/deployment";
 import type { Tab } from "./lib/deployment";
 
 // ── Top-level error boundary ──────────────────────────────────────────────────
@@ -785,6 +785,18 @@ export default function App() {
               {ql.label}
             </button>
           ))}
+          <button
+            onClick={() => {
+              clearActive();
+              const url = new URL(window.location.href);
+              url.searchParams.delete("deployment");
+              window.location.assign(url.toString());
+            }}
+            title="Return to deployment picker"
+            style={{ background: "none", border: "1px solid transparent", borderRadius: 4, color: "#ffffff", cursor: "pointer", fontSize: 13, padding: "3px 10px" }}
+          >
+            Switch deployment…
+          </button>
           <button
             onClick={() => setPickerOpen(true)}
             style={{ background: "none", border: "1px solid transparent", borderRadius: 4, color: "#ffffff", cursor: "pointer", fontSize: 13, padding: "3px 10px" }}

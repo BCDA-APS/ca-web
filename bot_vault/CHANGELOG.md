@@ -22,6 +22,17 @@
 - UI overlays save/restore as part of layouts; 29ID quick-link button.
 - Top-level `AppErrorBoundary` with auto-reset.
 
+### Portability
+- Pulled 29ID-site paths out of trunk: deleted `public/ui/{29id,ADCore,motors}`
+  symlinks and `vite.config.ts` STARTUP_SCRIPT / ADL2UI constants. Each
+  deployment may now declare external paths in an optional
+  `src/deployments/<id>/paths.json` (uiDirs / startupScript / adl2ui).
+- Vite unions these at config-load time; conflicting `uiDirs` keys throw.
+- A virtual module `virtual:deployment-path-status` feeds the picker a
+  "N external paths unreachable" hint per deployment.
+- `npm install && npm run build` now works on any host. ADR 005.
+- New "Switch deployment…" header button (calls `clearActive()` + reload).
+
 ### Deployments
 - Self-contained deployment folders under `src/deployments/<id>/`, each
   with its own `index.tsx` exporting a `DeploymentConfig` (including `id`

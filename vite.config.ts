@@ -5,20 +5,111 @@ import fs from "fs";
 import path from "path";
 import { spawnSync } from "child_process";
 
-// ── synApps display path resolution ───────────────────────────────────────────
+// ── Per-deployment external paths ─────────────────────────────────────────────
 //
-// Parses the caQtDM startup script directly to build CAQTDM_DISPLAY_PATH,
-// including the sourced release file and all append_QDP* calls.
-// No paths are hardcoded here — upgrading synApps or adding new directories
-// to the startup script is picked up automatically.
+// Each src/deployments/<id>/paths.json may declare:
+//   uiDirs:        Record<key, absolute target>   — /ui/<key>/* serves from target
+//   startupScript: absolute path                  — caQtDM startup script to parse
+//   adl2ui:        absolute path                  — converter binary
+//
+// All fields optional. Missing targets are tolerated; conflicts on uiDirs keys
+// across deployments throw. Lets the package run on hosts without 29ID NFS.
 
-const STARTUP_SCRIPT = "/net/s29dserv/xorApps/ui/start_epics_29id";
-const ADL2UI        = "/APSshare/bin/adl2ui";
-const CACHE_DIR     = path.join(process.cwd(), ".ui-cache");
+const CACHE_DIR       = path.join(process.cwd(), ".ui-cache");
+const DEPLOYMENTS_DIR = path.join(process.cwd(), "src", "deployments");
+const VIRTUAL_MODULE  = "virtual:deployment-path-status";
+const RESOLVED_ID     = "\0" + VIRTUAL_MODULE;
+const VALID_KEYS      = new Set(["uiDirs", "startupScript", "adl2ui"]);
 
-// Convert an .adl file to .ui, cache the result in CACHE_DIR, return the
-// cached path. Returns null if conversion fails.
-function convertAdl(adlPath: string): string | null {
+type UiDirEntry = { target: string; deploymentId: string };
+
+type LoadedPaths = {
+  uiDirs: Record<string, UiDirEntry>;
+  startupScripts: string[];
+  adl2ui: string | null;
+  perDeploymentStatus: Record<string, { missing: string[] }>;
+};
+
+function loadDeploymentPaths(): LoadedPaths {
+  const uiDirs: Record<string, UiDirEntry> = {};
+  const startupScripts: string[] = [];
+  let adl2ui: string | null = null;
+  const perDeploymentStatus: Record<string, { missing: string[] }> = {};
+
+  let entries: fs.Dirent[];
+  try {
+    entries = fs.readdirSync(DEPLOYMENTS_DIR, { withFileTypes: true });
+  } catch {
+    return { uiDirs, startupScripts, adl2ui, perDeploymentStatus };
+  }
+
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const id = entry.name;
+    const file = path.join(DEPLOYMENTS_DIR, id, "paths.json");
+    if (!fs.existsSync(file)) continue;
+
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(fs.readFileSync(file, "utf8"));
+    } catch (e) {
+      throw new Error(`[deployments] failed to parse ${file}: ${e}`);
+    }
+
+    for (const k of Object.keys(parsed)) {
+      if (!VALID_KEYS.has(k)) {
+        throw new Error(
+          `[deployments] ${file}: unknown key "${k}". Allowed: ${[...VALID_KEYS].join(", ")}`
+        );
+      }
+    }
+
+    const missing: string[] = [];
+
+    const ud = parsed.uiDirs;
+    if (ud && typeof ud === "object") {
+      for (const [key, target] of Object.entries(ud as Record<string, unknown>)) {
+        if (typeof target !== "string") {
+          throw new Error(`[deployments] ${file}: uiDirs.${key} must be a string`);
+        }
+        const existing = uiDirs[key];
+        if (existing && existing.target !== target) {
+          throw new Error(
+            `[deployments] uiDirs conflict on key "${key}": ` +
+            `${existing.deploymentId} -> ${existing.target} vs ${id} -> ${target}`
+          );
+        }
+        uiDirs[key] = { target, deploymentId: id };
+        if (!fs.existsSync(target)) missing.push(`uiDirs.${key}`);
+      }
+    }
+
+    if (typeof parsed.startupScript === "string") {
+      if (fs.existsSync(parsed.startupScript)) {
+        if (!startupScripts.includes(parsed.startupScript)) startupScripts.push(parsed.startupScript);
+      } else {
+        missing.push("startupScript");
+      }
+    }
+
+    if (typeof parsed.adl2ui === "string") {
+      if (fs.existsSync(parsed.adl2ui)) {
+        if (adl2ui === null) adl2ui = parsed.adl2ui;
+      } else {
+        missing.push("adl2ui");
+      }
+    }
+
+    perDeploymentStatus[id] = { missing };
+  }
+
+  return { uiDirs, startupScripts, adl2ui, perDeploymentStatus };
+}
+
+// Convert an .adl file to .ui via adl2ui, cache the result. Returns null if
+// adl2ui isn't available or conversion fails.
+function convertAdl(adlPath: string, adl2ui: string | null): string | null {
+  if (!adl2ui) return null;
   if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR, { recursive: true });
 
   const baseName   = path.basename(adlPath, ".adl");
@@ -30,7 +121,7 @@ function convertAdl(adlPath: string): string | null {
   }
 
   console.log(`[ui-search-path] converting: ${adlPath}`);
-  const result = spawnSync(ADL2UI, [adlPath], { cwd: CACHE_DIR, timeout: 15000 });
+  const result = spawnSync(adl2ui, [adlPath], { cwd: CACHE_DIR, timeout: 15000 });
 
   if (result.status !== 0) {
     console.error(`[ui-search-path] conversion failed for ${adlPath}: ${result.stderr?.toString()}`);
@@ -40,90 +131,89 @@ function convertAdl(adlPath: string): string | null {
   return fs.existsSync(cachedPath) ? cachedPath : null;
 }
 
-function buildSearchPaths(): string[] {
-  if (!fs.existsSync(STARTUP_SCRIPT)) {
-    console.warn(`[ui-search-path] Startup script not found: ${STARTUP_SCRIPT}`);
-    return [];
-  }
+// Parse caQtDM startup scripts (one or more) and union the resulting search paths.
+function buildSearchPaths(scripts: string[]): string[] {
+  if (scripts.length === 0) return [];
 
-  const lines = fs.readFileSync(STARTUP_SCRIPT, "utf8").split("\n");
-  const vars: Record<string, string> = {};
+  const allPaths: string[] = [];
 
-  // Pass 1: collect simple KEY=VALUE assignments (no shell substitution).
-  for (const line of lines) {
-    const m = line.match(/^([A-Z_][A-Z0-9_]*)=([^$({\s][^\s]*)$/);
-    if (m) vars[m[1]] = m[2];
-  }
+  for (const script of scripts) {
+    const lines = fs.readFileSync(script, "utf8").split("\n");
+    const vars: Record<string, string> = {};
 
-  // Pass 2: find and parse the sourced release file (`. ${UI_DIR}/release_X.Y`).
-  for (const line of lines) {
-    const m = line.trim().match(/^\.\s+(.+)$/);
-    if (!m) continue;
-    const releasePath = m[1].replace(/\$\{?([A-Z_][A-Z0-9_]*)\}?/g, (_, k) => vars[k] ?? "");
-    if (!fs.existsSync(releasePath)) continue;
-    for (const rl of fs.readFileSync(releasePath, "utf8").split("\n")) {
-      const rv = rl.match(/^([A-Z_][A-Z0-9_]*)=([^#\s].*)$/);
-      if (rv) vars[rv[1]] = rv[2].trim();
-    }
-    break;
-  }
-
-  function subst(s: string): string {
-    return s.replace(/\$\{?([A-Z_][A-Z0-9_]*)\}?/g, (_, k) => vars[k] ?? "");
-  }
-
-  const paths: string[] = [];
-
-  // Pass 3: process append_QDP*, append_QDP_module, append_QDP_uidir calls
-  // and the final CAQTDM_DISPLAY_PATH=... line.
-  for (const line of lines) {
-    const t = line.trim();
-
-    // append_QDP /some/path
-    let m = t.match(/^append_QDP\s+(\S+)$/);
-    if (m) {
-      const p = subst(m[1]);
-      if (p && p !== ".") paths.push(p);
-      continue;
+    // Pass 1: collect simple KEY=VALUE assignments (no shell substitution).
+    for (const line of lines) {
+      const m = line.match(/^([A-Z_][A-Z0-9_]*)=([^$({\s][^\s]*)$/);
+      if (m) vars[m[1]] = m[2];
     }
 
-    // append_QDP_module VAR subdir
-    m = t.match(/^append_QDP_module\s+(\S+)\s+(\S+)$/);
-    if (m) {
-      const base = vars[m[1]];
-      if (base) {
-        paths.push(path.join(base, m[2]));
-        paths.push(path.join(base, m[2], "autoconvert"));
+    // Pass 2: find and parse the sourced release file (`. ${UI_DIR}/release_X.Y`).
+    for (const line of lines) {
+      const m = line.trim().match(/^\.\s+(.+)$/);
+      if (!m) continue;
+      const releasePath = m[1].replace(/\$\{?([A-Z_][A-Z0-9_]*)\}?/g, (_, k) => vars[k] ?? "");
+      if (!fs.existsSync(releasePath)) continue;
+      for (const rl of fs.readFileSync(releasePath, "utf8").split("\n")) {
+        const rv = rl.match(/^([A-Z_][A-Z0-9_]*)=([^#\s].*)$/);
+        if (rv) vars[rv[1]] = rv[2].trim();
       }
-      continue;
+      break;
     }
 
-    // append_QDP_uidir subdir
-    m = t.match(/^append_QDP_uidir\s+(\S+)$/);
-    if (m) {
-      const uiDir = vars["UI_DIR"] ?? "";
-      const uiSubdir = vars["UI_SUBDIR"] ?? "";
-      paths.push(path.join(uiDir, uiSubdir, m[1]));
-      paths.push(path.join(`${uiDir}-autoconvert`, uiSubdir, m[1]));
-      continue;
+    function subst(s: string): string {
+      return s.replace(/\$\{?([A-Z_][A-Z0-9_]*)\}?/g, (_, k) => vars[k] ?? "");
     }
 
-    // Final CAQTDM_DISPLAY_PATH=$CAQTDM_DISPLAY_PATH:extra_path
-    m = t.match(/^CAQTDM_DISPLAY_PATH=\$CAQTDM_DISPLAY_PATH:(.+)$/);
-    if (m) {
-      paths.push(subst(m[1]));
-      continue;
+    // Pass 3: process append_QDP*, append_QDP_module, append_QDP_uidir calls
+    // and the final CAQTDM_DISPLAY_PATH=... line.
+    for (const line of lines) {
+      const t = line.trim();
+
+      let m = t.match(/^append_QDP\s+(\S+)$/);
+      if (m) {
+        const p = subst(m[1]);
+        if (p && p !== ".") allPaths.push(p);
+        continue;
+      }
+
+      m = t.match(/^append_QDP_module\s+(\S+)\s+(\S+)$/);
+      if (m) {
+        const base = vars[m[1]];
+        if (base) {
+          allPaths.push(path.join(base, m[2]));
+          allPaths.push(path.join(base, m[2], "autoconvert"));
+        }
+        continue;
+      }
+
+      m = t.match(/^append_QDP_uidir\s+(\S+)$/);
+      if (m) {
+        const uiDir = vars["UI_DIR"] ?? "";
+        const uiSubdir = vars["UI_SUBDIR"] ?? "";
+        allPaths.push(path.join(uiDir, uiSubdir, m[1]));
+        allPaths.push(path.join(`${uiDir}-autoconvert`, uiSubdir, m[1]));
+        continue;
+      }
+
+      m = t.match(/^CAQTDM_DISPLAY_PATH=\$CAQTDM_DISPLAY_PATH:(.+)$/);
+      if (m) {
+        allPaths.push(subst(m[1]));
+        continue;
+      }
     }
   }
 
-  const existing = paths.filter(p => fs.existsSync(p));
-  console.log(`[ui-search-path] ${existing.length}/${paths.length} search paths available`);
+  // Dedupe while preserving order, then filter to those that exist.
+  const seen = new Set<string>();
+  const unique = allPaths.filter(p => (seen.has(p) ? false : (seen.add(p), true)));
+  const existing = unique.filter(p => fs.existsSync(p));
+  console.log(`[ui-search-path] ${existing.length}/${unique.length} search paths available`);
   return existing;
 }
 
-// Builds a list of all available .ui files from public/ui/ and NFS search paths.
-// .adl files are included as .ui (the serving layer converts them transparently).
-function buildFileList(searchPaths: string[]): { name: string; dir: string }[] {
+// Builds a list of all available .ui files from public/ui/, declared uiDirs,
+// and NFS search paths. .adl files are included as .ui (served-side converted).
+function buildFileList(uiDirs: Record<string, UiDirEntry>, searchPaths: string[]): { name: string; dir: string }[] {
   const files: { name: string; dir: string }[] = [];
 
   // public/ui/ first
@@ -134,7 +224,17 @@ function buildFileList(searchPaths: string[]): { name: string; dir: string }[] {
     }
   } catch {}
 
-  // NFS search paths
+  // Declared uiDirs (replaces what the old public/ui/<key> symlinks listed).
+  for (const [key, entry] of Object.entries(uiDirs)) {
+    try {
+      for (const f of fs.readdirSync(entry.target)) {
+        if (f.endsWith(".ui"))  files.push({ name: f, dir: key });
+        if (f.endsWith(".adl")) files.push({ name: f.replace(/\.adl$/, ".ui"), dir: key });
+      }
+    } catch {}
+  }
+
+  // Unioned caQtDM search paths
   for (const dir of searchPaths) {
     try {
       for (const f of fs.readdirSync(dir)) {
@@ -147,10 +247,14 @@ function buildFileList(searchPaths: string[]): { name: string; dir: string }[] {
   return files;
 }
 
-// Vite plugin: intercepts GET /ui/<filename> and searches NFS paths as fallback.
-function uiSearchPathPlugin() {
-  const searchPaths = buildSearchPaths();
-  const uiFileList  = buildFileList(searchPaths);
+// Vite plugin: intercepts GET /ui/<filename> and resolves via (in order):
+//   1. public/ui/<filename> — let Vite handle it normally
+//   2. /ui/<key>/<rest>     — uiDirs[key].target/<rest> (prefix mapping)
+//   3. embedded absolute (//path) — serve directly
+//   4. NFS search paths     — caQtDM-style fallback (full path then basename)
+function uiSearchPathPlugin(paths: LoadedPaths) {
+  const searchPaths = buildSearchPaths(paths.startupScripts);
+  const uiFileList  = buildFileList(paths.uiDirs, searchPaths);
   console.log(`[ui-search-path] ${uiFileList.length} display files indexed`);
 
   return {
@@ -159,7 +263,6 @@ function uiSearchPathPlugin() {
       server.middlewares.use((req: any, res: any, next: any) => {
         const url: string = req.url ?? "";
 
-        // File index endpoint for the file picker.
         if (url === "/api/ui-files" && req.method === "GET") {
           res.setHeader("Content-Type", "application/json");
           res.end(JSON.stringify(uiFileList));
@@ -168,16 +271,40 @@ function uiSearchPathPlugin() {
 
         if (!url.startsWith("/ui/")) return next();
 
-        const filename = url.slice(4).split("?")[0]; // strip /ui/ prefix and query
+        const filename = url.slice(4).split("?")[0];
         if (!filename) return next();
 
-        // If the file exists in public/ui/, let Vite serve it normally.
+        // 1. public/ui/<filename>
         const publicPath = path.join(process.cwd(), "public", "ui", filename);
         if (fs.existsSync(publicPath)) return next();
 
-        // If the URL contains // the original filename was an absolute path (e.g.
-        // /APSshare/adlsys/sr/fe/SR_Status.ui stored in the .ui file). Extract and
-        // serve it directly without searching.
+        // 2. Prefix mapping: /ui/<key>/<rest> -> uiDirs[key].target/<rest>
+        const slash = filename.indexOf("/");
+        if (slash > 0) {
+          const key = filename.slice(0, slash);
+          const rest = filename.slice(slash + 1);
+          const entry = paths.uiDirs[key];
+          if (entry) {
+            const direct = path.join(entry.target, rest);
+            if (fs.existsSync(direct)) {
+              console.log(`[ui-search-path] found (uiDirs.${key}): ${direct}`);
+              res.setHeader("Content-Type", "application/xml");
+              fs.createReadStream(direct).pipe(res);
+              return;
+            }
+            const adl = direct.replace(/\.ui$/, ".adl");
+            if (fs.existsSync(adl)) {
+              const converted = convertAdl(adl, paths.adl2ui);
+              if (converted) {
+                res.setHeader("Content-Type", "application/xml");
+                fs.createReadStream(converted).pipe(res);
+                return;
+              }
+            }
+          }
+        }
+
+        // 3. Embedded absolute path (//... in filename)
         const doubleSlash = filename.indexOf("//");
         if (doubleSlash !== -1) {
           const absPath = "/" + filename.slice(doubleSlash + 2);
@@ -187,10 +314,9 @@ function uiSearchPathPlugin() {
             fs.createReadStream(absPath).pipe(res);
             return;
           }
-          // Try .adl fallback for absolute paths.
           const absAdlPath = absPath.replace(/\.ui$/, ".adl");
           if (fs.existsSync(absAdlPath)) {
-            const converted = convertAdl(absAdlPath);
+            const converted = convertAdl(absAdlPath, paths.adl2ui);
             if (converted) {
               res.setHeader("Content-Type", "application/xml");
               fs.createReadStream(converted).pipe(res);
@@ -199,7 +325,7 @@ function uiSearchPathPlugin() {
           }
         }
 
-        // Search by full relative path first, then by basename only (mirrors caQtDM behavior).
+        // 4. Search paths from caQtDM startup scripts
         const basename = path.basename(filename);
         const candidates = filename === basename ? [basename] : [filename, basename];
 
@@ -207,7 +333,6 @@ function uiSearchPathPlugin() {
 
         for (const name of candidates) {
           for (const dir of searchPaths) {
-            // Try .ui first.
             const fullPath = path.join(dir, name);
             if (fs.existsSync(fullPath)) {
               console.log(`[ui-search-path] found: ${fullPath}`);
@@ -215,11 +340,10 @@ function uiSearchPathPlugin() {
               fs.createReadStream(fullPath).pipe(res);
               return;
             }
-            // Try .adl fallback — convert on the fly with adl2ui.
             const adlName = name.replace(/\.ui$/, ".adl");
             const adlPath = path.join(dir, adlName);
             if (fs.existsSync(adlPath)) {
-              const converted = convertAdl(adlPath);
+              const converted = convertAdl(adlPath, paths.adl2ui);
               if (converted) {
                 res.setHeader("Content-Type", "application/xml");
                 fs.createReadStream(converted).pipe(res);
@@ -236,13 +360,38 @@ function uiSearchPathPlugin() {
   };
 }
 
+// Exposes per-deployment path-status to the browser as a virtual module,
+// so the picker can render a "paths unreachable" hint.
+function deploymentPathStatusPlugin(paths: LoadedPaths) {
+  const code = `export const PATH_STATUS = ${JSON.stringify(paths.perDeploymentStatus)};`;
+  return {
+    name: "deployment-path-status",
+    resolveId(id: string) {
+      if (id === VIRTUAL_MODULE) return RESOLVED_ID;
+      return null;
+    },
+    load(id: string) {
+      if (id === RESOLVED_ID) return code;
+      return null;
+    },
+  };
+}
+
 // ── Vite config ───────────────────────────────────────────────────────────────
 
-export default defineConfig({
-  plugins: [react(), nodePolyfills(), uiSearchPathPlugin()],
-  server: {
-    port: 4200,
-    host: "0.0.0.0",
-    allowedHosts: true
-  }
+export default defineConfig(() => {
+  const paths = loadDeploymentPaths();
+  return {
+    plugins: [
+      react(),
+      nodePolyfills(),
+      uiSearchPathPlugin(paths),
+      deploymentPathStatusPlugin(paths),
+    ],
+    server: {
+      port: 4200,
+      host: "0.0.0.0",
+      allowedHosts: true,
+    },
+  };
 });
