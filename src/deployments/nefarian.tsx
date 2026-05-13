@@ -3,7 +3,7 @@ import { MotorGrid } from "../widgets/MotorGrid";
 import { MotorCardRow } from "../widgets/MotorCardRow";
 import { MotorCardFlat } from "../widgets/MotorCardFlat";
 import { ReadbackRow } from "../widgets/ReadbackRow";
-import { StripChartWidget } from "../widgets/StripChartWidget";
+import { StripChart } from "../widgets/StripChart";
 import { UiRenderer } from "../lib/UiRenderer";
 import type { DeploymentConfig } from "./types";
 
@@ -68,7 +68,8 @@ function LorentzianContent() {
           <ReadbackRow label="Noisy" pv="fr:userCalc1.VAL" />
         </tbody>
       </table>
-      <StripChartWidget pv="fr:userCalc1.VAL" label="Noisy" />
+      <StripChart id="nefarian-lorentzian"
+        initialPvs={[{ pv: "fr:userCalc1.VAL", label: "Noisy", enabled: true }]} />
     </div>
   );
 }

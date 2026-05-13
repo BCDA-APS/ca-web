@@ -13,8 +13,23 @@ import { Mirrors } from "./Mirrors";
 import { Slits } from "./Slits";
 import { Diagon } from "./Diagon";
 import { ScanRecords } from "./ScanRecords";
+import { StripChart, type TraceConfig } from "../../widgets/StripChart";
 import { pvwsWriter } from "../../lib/pvwsWriter";
 import type { DeploymentConfig } from "../types";
+
+const CA_PVS: TraceConfig[] = [
+  { pv: "29idb:ca1:read",  label: "CA1"  },
+  { pv: "29idb:ca2:read",  label: "CA2"  },
+  { pv: "29idb:ca3:read",  label: "CA3"  },
+  { pv: "29idb:ca4:read",  label: "CA4"  },
+  { pv: "29idb:ca5:read",  label: "CA5"  },
+  { pv: "29idb:ca9:read",  label: "CA9"  },
+  { pv: "29idb:ca10:read", label: "CA10" },
+  { pv: "29idb:ca12:read", label: "CA12" },
+  { pv: "29idb:ca13:read", label: "CA13" },
+  { pv: "29idb:ca14:read", label: "CA14" },
+  { pv: "29idb:ca15:read", label: "CA15", enabled: true },
+];
 
 const ARPES_MOTORS = ["m1", "m2", "m3", "m4", "m5", "m6"];
 
@@ -138,8 +153,9 @@ export const config: DeploymentConfig = {
     "29id-slits":           { x: 400, y:  55 },
     "29id-diagon":          { x: 100, y: 200 },
     "29id-scan-records":    { x: 700, y:  55 },
+    "29id-strip-tool":      { x: 700, y: 300 },
   },
-  defaultHiddenPanels: ["29id-mirrors", "29id-bllayout-d", "29id-bllayout-e", "29id-slits", "29id-diagon", "29id-scan-records"],
+  defaultHiddenPanels: ["29id-mirrors", "29id-bllayout-d", "29id-bllayout-e", "29id-slits", "29id-diagon", "29id-scan-records", "29id-strip-tool"],
   tabPanels: {
     1: [
       { id: "29idc-chamber-v2", title: "Chamber",  Content: ChamberDiagramV2 },
@@ -157,6 +173,7 @@ export const config: DeploymentConfig = {
       { id: "29id-slits",           title: "Slits",           Content: Slits },
       { id: "29id-diagon",          title: "DiaGon",          Content: Diagon },
       { id: "29id-scan-records",    title: "ScanRecords",    Content: ScanRecords },
+      { id: "29id-strip-tool",      title: "Strip Tool",      Content: () => <StripChart id="29id-strip-tool" initialPvs={CA_PVS} /> },
     ],
   },
 };

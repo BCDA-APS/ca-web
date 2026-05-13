@@ -183,7 +183,8 @@ export function BeamlineLayout() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 0, position: "relative" }}>
       {/* Shortcut buttons — top right corner */}
-      <div style={{ position: "absolute", top: 0, right: 0 }}>
+      <div style={{ position: "absolute", top: 0, right: 0, display: "flex", gap: 4 }}>
+        <button style={shortcutBtn} onClick={() => showPanel("29id-strip-tool")}>StripTool</button>
         <MoreMenu />
       </div>
       {/* Top row: E + D (beam goes right-to-left: D right-angle at x=405 from row left) */}
