@@ -48,11 +48,20 @@ src/
 │   ├── ReadbackRow.tsx      # simple readback row
 │   └── StripChart.tsx       # multi-PV rolling time-series chart
 └── deployments/             # one self-contained folder per deployment
-    ├── example/index.tsx    # copy-paste template
-    ├── nefarian/index.tsx   # default simulated-IOC deployment
+    ├── example/             # copy-paste template
+    │   ├── config.json      # all serializable config (id, title, pvws, tabs, panelDefaults, ...)
+    │   └── index.tsx        # React components + tabPanels + DeploymentConfig export
+    ├── nefarian/            # default simulated-IOC deployment
+    │   ├── config.json
+    │   └── index.tsx
     └── 29id/                # 29ID beamline panels (grouped by domain)
+        ├── config.json      # includes nested `paths` block: external uiDirs/startupScript/adl2ui
         ├── index.tsx
-        └── paths.json       # optional: external uiDirs/startupScript/adl2ui
+        ├── chamber/
+        ├── energy/
+        ├── layout/
+        ├── optics/
+        └── scan/
 ```
 
 ## Render vs connector convention
@@ -121,11 +130,18 @@ values, and metadata flow through that store. No local slices.
 
 ## Deployments
 
-`src/deployments/` contains one folder per deployment, each with an
-`index.tsx` exporting a `DeploymentConfig` (`id`, `title`,
-`pvws: { socket, ssl }`, tabs, default panel positions, hidden-panel
-defaults, quick-link `.ui` files, `tabPanels`). The folder name must
-match `config.id`.
+`src/deployments/` contains one folder per deployment. Each folder has:
+
+- `config.json` — all serializable deployment data: `id`, `title`,
+  `pvws: { socket, ssl }`, tabs, default panel positions, hidden-panel
+  defaults, quick-link `.ui` files, and an optional nested `paths` block
+  (build-time only, see below). The folder name must match `config.id`.
+- `index.tsx` — imports `config.json` as `rawConfig`, defines the React
+  components for each panel, builds the `tabPanels` map (which references
+  components by value and can't be JSON), strips the build-time `paths`
+  field off `rawConfig`, and exports
+  `const config: DeploymentConfig = { ...deploymentFields, tabPanels }`.
+  The export sits near the top of the file for readability.
 
 `src/lib/deployment.ts` auto-discovers every `src/deployments/*/index.tsx`
 with `import.meta.glob({ eager: false })` and exposes `LOADERS`,
@@ -139,17 +155,19 @@ read by `App.tsx` via `useContext`. PVWS socket/SSL come from the chosen
 `config.pvws`, so one build serves every deployment.
 
 To add a deployment: copy `src/deployments/example/` to
-`src/deployments/<your-id>/` and edit `id`, `title`, `pvws`, and
-`tabPanels`. No registration step.
+`src/deployments/<your-id>/`. Edit `config.json` (`id` must match the
+new folder name; set `title`, `pvws`, `tabs`, `panelDefaults`) and
+`index.tsx` (rewrite `tabPanels` for your panels). No registration step.
 
 If the deployment needs to serve `.ui` files from external directories
-(e.g. site NFS mounts), add an optional `paths.json` next to `index.tsx`
+(e.g. site NFS mounts), add an optional `paths` block to `config.json`
 declaring `uiDirs`, `startupScript`, and/or `adl2ui`. `vite.config.ts`
-unions these across all deployments at config-load time. `uiDirs[key]`
-makes `/ui/<key>/foo.ui` resolve against `<target>/foo.ui` (replaces
-the old `public/ui/<key>` symlinks). Targets missing on the current
-host are tolerated and surfaced to the picker through a virtual module
-(`virtual:deployment-path-status`) as a "paths unreachable" hint.
+reads these from `parsed.paths` and unions them across all deployments
+at config-load time. `uiDirs[key]` makes `/ui/<key>/foo.ui` resolve
+against `<target>/foo.ui` (replaces the old `public/ui/<key>` symlinks).
+Targets missing on the current host are tolerated and surfaced to the
+picker through a virtual module (`virtual:deployment-path-status`) as
+a "paths unreachable" hint.
 
 Current deployments: `example` (template), `nefarian` (simulated IOC), `29id`
 (beamline).

@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+### Deployment config consolidation
+
+- Each `src/deployments/<id>/` now uses a single `config.json` carrying
+  all serializable config: `id`, `title`, `pvws`, `tabs`, `panelDefaults`,
+  optional `defaultHiddenPanels`, optional `quickLinks`, and an optional
+  nested `paths` block (formerly `paths.json`: `uiDirs` / `startupScript`
+  / `adl2ui`). The per-deployment `paths.json` is gone.
+- `index.tsx` is reduced to React components, the `tabPanels` mapping,
+  and `export const config: DeploymentConfig = { ...deploymentFields, tabPanels }`.
+  The `paths` field is destructured off `rawConfig` before the spread so
+  build-time data doesn't leak into the runtime config object. The export
+  sits near the top of each `index.tsx` for readability.
+- `vite.config.ts`'s `loadDeploymentPaths()` reads `config.json` and looks
+  under `parsed.paths` for the build-time fields. A malformed (non-object)
+  `paths` value now throws instead of silently coercing to `{}`.
+- New type `DeploymentConfigData` in `src/lib/deployment.ts` describes
+  the on-disk JSON shape (runtime fields + optional `paths: unknown`).
+- Residue: Vite imports `config.json` atomically, so the `paths` bytes
+  still appear in the production bundle (~250 bytes for 29id). The
+  runtime `config` object is clean; removing the bundled bytes would
+  require a vite plugin to virtualise the JSON import — deferred.
+
 ### Bundle and structure pass (on `rafa-dev`)
 
 Bundle before/after (`npm run analyze`):

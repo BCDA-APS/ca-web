@@ -1,7 +1,11 @@
 # ADR 005 -- Portable deployment paths
 
 Date: 2026-05-13
-Status: Accepted
+Status: Accepted (the `paths.json` file format was later merged into the
+per-deployment `config.json` under a nested `paths` key — see the
+"Deployment config consolidation" entry in `bot_vault/CHANGELOG.md`. The
+plugin behavior, search-path logic, `virtual:deployment-path-status`
+contract, and "Switch deployment…" button described below are unchanged.)
 
 ## Context
 
