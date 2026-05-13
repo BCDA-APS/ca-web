@@ -16,22 +16,33 @@ MUI for UI components, Redux Toolkit (re-exported by `cs-web-lib`) for state.
 
 ```
 src/
-├── App.tsx                  # panel/overlay manager + error boundary
-├── main.tsx                 # picker vs App boot; Redux + OutlineProvider wrapping
+├── App.tsx                  # orchestrator: state wiring + composition of shell pieces
+├── main.tsx                 # async boot: resolve deployment, lazy-load it, render
 ├── DeploymentPicker.tsx     # full-screen selector shown when no deployment is chosen
 ├── index.css                # global styles
+├── shell/                   # App-shell components (chrome around the content)
+│   ├── DraggablePanel.tsx
+│   ├── OverlayPanel.tsx
+│   ├── Sidebar.tsx
+│   ├── SettingsPanel.tsx
+│   ├── FilePickerDialog.tsx
+│   ├── PvContextMenu.tsx
+│   ├── PvInfoDialog.tsx
+│   └── ErrorBoundary.tsx
+├── hooks/                   # connector hooks: data only, no JSX
+│   └── useMotor.ts          # motor PV subscriptions + derived state + write actions
 ├── lib/
-│   ├── deployment.ts        # DeploymentConfig types + glob registry + resolveActiveId + context
+│   ├── deployment.ts        # DeploymentConfig types + lazy LOADERS + loadDeployment + context
 │   ├── epics.ts             # PV value extractors (toDouble/toStr/fmt/toBool) + pvCtx menu
 │   ├── pvwsWriter.ts        # pvws WebSocket write client
 │   ├── theme.ts             # colors, font sizes
 │   ├── uiParser.ts          # caQtDM .ui (XML) → JSON
 │   └── UiRenderer.tsx       # parsed-UI → React widget tree (monolith)
-├── widgets/
+├── widgets/                 # render-only widgets (consume data via props or hooks)
 │   ├── EpicsWidgets.tsx     # RbvBox, SpBox, ChanRbvBox, ChanSpBox, TweakValue, …
-│   ├── MotorCard.tsx        # full motor card
-│   ├── MotorCardFlat.tsx    # minimal-decoration variant
-│   ├── MotorCardRow.tsx     # compact horizontal variant
+│   ├── MotorCard.tsx        # full motor card (consumes useMotor)
+│   ├── MotorCardFlat.tsx    # minimal-decoration variant (consumes useMotor)
+│   ├── MotorCardRow.tsx     # compact horizontal variant (consumes useMotor)
 │   ├── MotorGrid.tsx        # 3-column grid container
 │   ├── MotorRow.tsx         # PV-based motor row
 │   ├── ReadbackRow.tsx      # simple readback row
@@ -43,6 +54,24 @@ src/
         ├── index.tsx
         └── paths.json       # optional: external uiDirs/startupScript/adl2ui
 ```
+
+## Render vs connector convention
+
+Two layers, kept separate:
+
+- **`src/hooks/`** — connector hooks. Each takes a PV prefix or PV name(s),
+  calls `useConnection()` internally, and returns typed already-formatted
+  state. Never returns JSX. Owns its private formatting helpers.
+- **`src/widgets/`** — render-only. Components receive plain props or call a
+  hook from `src/hooks/`. No `useConnection` inside the render code path.
+
+Smart-leaf exception: a widget that takes a `pv: string` and is reused
+site-wide (the `MotorCard` family) can call its connector hook directly. This
+keeps the call sites concise. The data layer still lives in `src/hooks/`.
+
+`ChanRbvBox` / `ChanSpBox` are already render-only — they take a `raw` prop
+and don't subscribe themselves. The caller (typically a panel) does the
+`useConnection` and passes the raw value in.
 
 ## Rendering pipeline
 
@@ -63,22 +92,26 @@ modules is future work.
 - Every `ChanRbvBox`/`ChanSpBox` must wire `onContextMenu={pvCtx(...)}`
   (see `lib/epics.ts`) to expose the right-click PV menu. No exceptions.
 - Motor cards: three layout variants (`MotorCard`, `MotorCardRow`,
-  `MotorCardFlat`) share status-color logic and tweak buttons; future
-  work is to fold them into one component with a layout prop.
+  `MotorCardFlat`) all consume `useMotor(pv)` for data; only the render
+  differs. Folding them into one component with a `layout` prop is
+  deferred — call sites live in deployments and need a separate pass.
 
 ## Panels and overlays
 
-`App.tsx` manages a draggable panel system:
+`App.tsx` orchestrates a draggable panel system; the pieces live in
+`src/shell/`:
 
 - `DraggablePanel` — positions persisted to `localStorage` under
   `panel:<id>`; supports per-panel lock, z-index promotion on focus.
-- `AppOverlayPanel` — overlay windows opened from motor "More" menus or
-  the file picker; positions persisted under `overlay:<file>`.
-- Saved layouts — named sets of panel positions, hidden panels, and open
-  overlays serialized to `localStorage` under `panel:layouts` via the
-  Settings panel.
-- File picker — searchable list of `.ui` files from the NFS display path,
-  opened as overlays with macro hint detection.
+- `OverlayPanel` — overlay windows opened from motor "More" menus or the
+  file picker; positions persisted under `overlay:<file>`.
+- `SettingsPanel` — saves and restores named layouts (panel positions,
+  hidden panels, open overlays) under `localStorage` key `panel:layouts`.
+- `FilePickerDialog` — searchable list of `.ui` files from the NFS display
+  path, opened as overlays with macro hint detection.
+- `PvContextMenu` / `PvInfoDialog` — right-click PV menu and details
+  dialog.
+- `ErrorBoundary` — top-level error boundary (see below).
 
 ## State
 
@@ -95,10 +128,13 @@ defaults, quick-link `.ui` files, `tabPanels`). The folder name must
 match `config.id`.
 
 `src/lib/deployment.ts` auto-discovers every `src/deployments/*/index.tsx`
-with `import.meta.glob` at build time and exposes a `REGISTRY` keyed by id.
-`main.tsx` calls `resolveActiveId()` (URL `?deployment=<id>` wins, then
-`localStorage`); if none matches, `<DeploymentPicker />` renders instead
-of `<App />`. The chosen config flows through `DeploymentContext` and is
+with `import.meta.glob({ eager: false })` and exposes `LOADERS`,
+`listDeploymentIds()`, and `loadDeployment(id)`. Each deployment becomes
+its own Rollup chunk and is fetched on demand. `main.tsx` calls
+`resolveActiveId()` (URL `?deployment=<id>` wins, then `localStorage`),
+then `await loadDeployment(id)` before rendering. If no active id matches,
+`<DeploymentPicker />` renders instead and loads all configs in parallel
+to list them. The chosen config flows through `DeploymentContext` and is
 read by `App.tsx` via `useContext`. PVWS socket/SSL come from the chosen
 `config.pvws`, so one build serves every deployment.
 
@@ -120,12 +156,13 @@ Current deployments: `example` (template), `nefarian` (simulated IOC), `29id`
 
 ## Error boundary
 
-`AppErrorBoundary` (top of `App.tsx`) wraps the entire render tree.
-When any descendant throws, the whole UI is replaced with a "Recovering
-from render error…" screen and the error is logged with the
-`[AppErrorBoundary] caught:` prefix. After 3 seconds the boundary
-auto-resets and re-renders the app; a manual "Retry now" button is
-also exposed. This is whole-app recovery, not per-panel isolation.
+`ErrorBoundary` (in `src/shell/ErrorBoundary.tsx`, wrapped at the root of
+`App.tsx`) wraps the entire render tree. When any descendant throws, the
+whole UI is replaced with a "Recovering from render error…" screen and
+the error is logged with the `[ErrorBoundary] caught:` prefix. After 3
+seconds the boundary auto-resets and re-renders the app; a manual "Retry
+now" button is also exposed. This is whole-app recovery, not per-panel
+isolation.
 
 ## External dependencies
 
@@ -135,8 +172,20 @@ also exposed. This is whole-app recovery, not per-panel isolation.
 - On-the-fly MEDM-to-`.ui` conversion via `/APSshare/bin/adl2ui` (dev
   server only; results cached in `.ui-cache/`).
 
+## Build and bundle
+
+- `npm run build`: `tsc && vite build`.
+- `npm run analyze`: same build with `ANALYZE=1`, emits `dist/stats.html`
+  via `rollup-plugin-visualizer`.
+- `npm run lint`: ESLint with `eslint.config.js` (flat config). Currently
+  only `react-hooks/rules-of-hooks` is enforced.
+- Vendor chunks are split via `build.rollupOptions.output.manualChunks`
+  into `react` (~50 kB gz), `cs-web` (~746 kB gz, includes Redux + MUI),
+  and per-deployment chunks.
+
 ## Open questions
 
 - Should `UiRenderer.tsx` be split? Currently 2.5k lines.
-- Should the three `MotorCard*` variants collapse to one component?
+- Should the three `MotorCard*` variants collapse to one component now
+  that they share a hook? Deferred — call sites live in `src/deployments/`.
 - Are server-side saved layouts needed, or is `localStorage` enough?

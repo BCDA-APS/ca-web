@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { nodePolyfills } from "vite-plugin-node-polyfills";
+import { visualizer } from "rollup-plugin-visualizer";
 import fs from "fs";
 import path from "path";
 import { spawnSync } from "child_process";
@@ -381,13 +382,34 @@ function deploymentPathStatusPlugin(paths: LoadedPaths) {
 
 export default defineConfig(() => {
   const paths = loadDeploymentPaths();
+  const analyze = process.env.ANALYZE === "1";
   return {
     plugins: [
       react(),
       nodePolyfills(),
       uiSearchPathPlugin(paths),
       deploymentPathStatusPlugin(paths),
-    ],
+      analyze && visualizer({
+        filename: "dist/stats.html",
+        gzipSize: true,
+        brotliSize: true,
+        template: "treemap",
+      }),
+    ].filter(Boolean),
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id: string) {
+            if (!id.includes("node_modules")) return;
+            if (/[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/.test(id)) return "react";
+            if (/[\\/]node_modules[\\/](@mui|@emotion)[\\/]/.test(id)) return "mui";
+            if (
+              /[\\/]node_modules[\\/](@diamondlightsource[\\/]cs-web-lib|@reduxjs[\\/]toolkit|react-redux|redux|reselect|immer)[\\/]/.test(id)
+            ) return "cs-web";
+          },
+        },
+      },
+    },
     server: {
       port: 4200,
       host: "0.0.0.0",

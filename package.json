@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "analyze": "ANALYZE=1 npm run build",
+    "lint": "eslint src"
   },
   "dependencies": {
     "@diamondlightsource/cs-web-lib": "0.10.6",
@@ -23,7 +25,12 @@
     "@types/js-yaml": "^4.0.9",
     "@types/react": "^18.3.1",
     "@types/react-dom": "^18.3.1",
+    "@typescript-eslint/parser": "^8.59.3",
     "@vitejs/plugin-react": "^4.2.1",
+    "eslint": "^10.3.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "prettier": "^3.8.3",
+    "rollup-plugin-visualizer": "^7.0.1",
     "typescript": "^5.2.2",
     "vite": "^7.2.2",
     "vite-plugin-node-polyfills": "^0.24.0"

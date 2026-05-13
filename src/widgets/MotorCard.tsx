@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect } from "react";
-import { useConnection } from "@diamondlightsource/cs-web-lib";
-import { pvwsWriter } from "../lib/pvwsWriter";
-import { toDouble, toStr, fmt, pvCtx } from "../lib/epics";
+import { fmt, pvCtx } from "../lib/epics";
 import { colors, fontSize } from "../lib/theme";
+import { useMotor, type MotorStatus } from "../hooks/useMotor";
 
 interface MotorCardProps {
   /** PV prefix + motor name, e.g. "29idc:m1" */
@@ -11,26 +10,7 @@ interface MotorCardProps {
   softLimitPrec?: number;
 }
 
-// ── Status derivation ─────────────────────────────────────────────────────────
-
-type Status = "ok" | "moving" | "soft-limit" | "hw-limit" | "calibrate" | "disabled";
-
-function deriveStatus(
-  disabled: boolean,
-  calibrate: boolean,
-  hwLimit: boolean,
-  softLimit: boolean,
-  moving: boolean,
-): Status {
-  if (disabled)   return "disabled";
-  if (calibrate)  return "calibrate";
-  if (hwLimit)    return "hw-limit";
-  if (softLimit)  return "soft-limit";
-  if (moving)     return "moving";
-  return "ok";
-}
-
-const STATUS_BORDER: Record<Status, string> = {
+const STATUS_BORDER: Record<MotorStatus, string> = {
   "ok":         "2px solid #3a3a3a",
   "moving":     `2px solid ${colors.statusOk}`,
   "soft-limit": `2px solid ${colors.statusWarn}`,
@@ -39,7 +19,7 @@ const STATUS_BORDER: Record<Status, string> = {
   "disabled":   `2px dashed ${colors.statusError}`,
 };
 
-const STATUS_LABEL: Partial<Record<Status, string>> = {
+const STATUS_LABEL: Partial<Record<MotorStatus, string>> = {
   "moving":     "Moving",
   "soft-limit": "Soft lim",
   "hw-limit":   "HW lim",
@@ -47,7 +27,7 @@ const STATUS_LABEL: Partial<Record<Status, string>> = {
   "disabled":   "Disabled",
 };
 
-const STATUS_LABEL_COLOR: Record<Status, string> = {
+const STATUS_LABEL_COLOR: Record<MotorStatus, string> = {
   "ok":         "transparent",
   "moving":     colors.statusOk,
   "soft-limit": colors.statusWarn,
@@ -55,8 +35,6 @@ const STATUS_LABEL_COLOR: Record<Status, string> = {
   "calibrate":  colors.statusWarn,
   "disabled":   colors.statusError,
 };
-
-// ── PositionBar ───────────────────────────────────────────────────────────────
 
 function PositionBar({ rbv, llm, hlm, lls, hls }: {
   rbv: number | null;
@@ -96,8 +74,6 @@ function PositionBar({ rbv, llm, hlm, lls, hls }: {
   );
 }
 
-// ── MotorCard ─────────────────────────────────────────────────────────────────
-
 const PULSE_STYLE = `
 @keyframes pulse-border {
   0%   { box-shadow: 0 0 0 0   rgba(76, 175, 80, 0.5); }
@@ -117,39 +93,7 @@ function ensurePulseStyle() {
 
 export function MotorCard({ pv, softLimitPrec }: MotorCardProps) {
   useEffect(() => { ensurePulseStyle(); }, []);
-  const id = `mc-${pv}`;
-
-  const [, connected, , descVal]  = useConnection(`${id}-desc`,  `ca://${pv}.DESC`);
-  const [, ,         , rbvVal]    = useConnection(`${id}-rbv`,   `ca://${pv}.RBV`);
-  const [, ,         , dmovVal]   = useConnection(`${id}-dmov`,  `ca://${pv}.DMOV`);
-  const [, ,         , lvioVal]   = useConnection(`${id}-lvio`,  `ca://${pv}.LVIO`);
-  const [, ,         , llsVal]    = useConnection(`${id}-lls`,   `ca://${pv}.LLS`);
-  const [, ,         , hlsVal]    = useConnection(`${id}-hls`,   `ca://${pv}.HLS`);
-  const [, ,         , setVal]    = useConnection(`${id}-set`,   `ca://${pv}.SET`);
-  const [, ableConnected, , ableVal] = useConnection(`${id}-able`, `ca://${pv}_able.VAL`);
-  const [, ,         , llmVal]    = useConnection(`${id}-llm`,   `ca://${pv}.LLM`);
-  const [, ,         , hlmVal]    = useConnection(`${id}-hlm`,   `ca://${pv}.HLM`);
-  const [, ,         , valVal]    = useConnection(`${id}-val`,   `ca://${pv}.VAL`);
-  const [, ,         , twvVal]    = useConnection(`${id}-twv`,   `ca://${pv}.TWV`);
-
-  const prec     = (rbvVal as any)?.display?.precision ?? 3;
-  const desc     = toStr(descVal) || pv;
-  const rbv      = toDouble(rbvVal);
-  const dmov     = (toDouble(dmovVal) ?? 1) !== 0;
-  const lvio     = (toDouble(lvioVal) ?? 0) !== 0;
-  const lls      = (toDouble(llsVal)  ?? 0) !== 0;
-  const hls      = (toDouble(hlsVal)  ?? 0) !== 0;
-  const calibrate = (toDouble(setVal) ?? 0) !== 0;
-  const ableStr  = toStr(ableVal);
-  const disabled = ableConnected && ableStr === "Disable";
-  const val      = toDouble(valVal);
-  const llm      = toDouble(llmVal);
-  const hlm      = toDouble(hlmVal);
-  const twv      = toDouble(twvVal);
-
-  const moving   = connected && !dmov;
-  const hwLimit  = lls || hls;
-  const status   = deriveStatus(disabled, calibrate, hwLimit, lvio, moving);
+  const m = useMotor(pv);
 
   const [editingVal, setEditingVal] = useState(false);
   const [valInput, setValInput]     = useState("");
@@ -163,13 +107,13 @@ export function MotorCard({ pv, softLimitPrec }: MotorCardProps) {
   useEffect(() => { if (editingTwv && twvRef.current) twvRef.current.focus(); }, [editingTwv]);
 
   function startEdit() {
-    if (disabled) return;
-    setValInput(val !== null ? fmt(val, prec) : "");
+    if (m.disabled) return;
+    setValInput(m.val !== null ? fmt(m.val, m.prec) : "");
     setEditingVal(true);
   }
   function commitVal() {
     const n = parseFloat(valInput);
-    if (!isNaN(n)) pvwsWriter.write(`${pv}.VAL`, n);
+    if (!isNaN(n)) m.writeVal(n);
     setEditingVal(false);
     setValInput("");
   }
@@ -177,15 +121,15 @@ export function MotorCard({ pv, softLimitPrec }: MotorCardProps) {
 
   function commitTwv() {
     const n = parseFloat(twvInput);
-    if (!isNaN(n)) pvwsWriter.write(`${pv}.TWV`, n);
+    if (!isNaN(n)) m.writeTwv(n);
     setEditingTwv(false);
     setTwvInput("");
   }
   function cancelTwv() { setEditingTwv(false); setTwvInput(""); }
 
   function startTwvEdit() {
-    if (disabled) return;
-    setTwvInput(twv !== null ? String(twv) : "");
+    if (m.disabled) return;
+    setTwvInput(m.twv !== null ? String(m.twv) : "");
     setEditingTwv(true);
   }
 
@@ -202,20 +146,16 @@ export function MotorCard({ pv, softLimitPrec }: MotorCardProps) {
     }
   }
 
-  function tweakBack()    { if (!disabled) pvwsWriter.write(`${pv}.TWR`, 1); }
-  function tweakForward() { if (!disabled) pvwsWriter.write(`${pv}.TWF`, 1); }
-
-  const twvDisplay = twv !== null ? String(twv) : "—";
-  const opacity = connected ? 1 : 0.5;
-  const cardBorder = STATUS_BORDER[status];
-  const statusLabel = STATUS_LABEL[status];
-  const statusColor = STATUS_LABEL_COLOR[status];
+  const twvDisplay = m.twv !== null ? String(m.twv) : "—";
+  const opacity = m.connected ? 1 : 0.5;
+  const statusLabel = STATUS_LABEL[m.status];
+  const statusColor = STATUS_LABEL_COLOR[m.status];
 
   return (
     <div style={{
-      border: cardBorder,
+      border: STATUS_BORDER[m.status],
       borderRadius: 5,
-      background: disabled ? colors.cardBgDisabled : colors.cardBg,
+      background: m.disabled ? colors.cardBgDisabled : colors.cardBg,
       padding: "6px 8px",
       width: 125,
       boxSizing: "border-box",
@@ -224,13 +164,12 @@ export function MotorCard({ pv, softLimitPrec }: MotorCardProps) {
       flexDirection: "column",
       gap: 3,
       transition: "border-color 0.2s",
-      animation: moving ? "pulse-border 1.2s ease-in-out infinite" : undefined,
+      animation: m.moving ? "pulse-border 1.2s ease-in-out infinite" : undefined,
     }}>
 
-      {/* Motor name + status */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4, minWidth: 0 }}>
         <div style={{ fontSize: fontSize.label, fontWeight: 600, color: colors.label, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flex: 1 }}>
-          {desc}
+          {m.desc}
         </div>
         {statusLabel && (
           <div style={{ fontSize: fontSize.small, color: statusColor, fontWeight: 600, whiteSpace: "nowrap", flexShrink: 0 }}>
@@ -239,15 +178,13 @@ export function MotorCard({ pv, softLimitPrec }: MotorCardProps) {
         )}
       </div>
 
-      {/* RBV */}
       <div
-        style={{ ...styles.rbv, borderColor: calibrate ? colors.statusWarn : colors.rbvBorder, cursor: "context-menu" }}
-        onContextMenu={e => pvCtx(`${pv}.RBV`, rbvVal, e)}
+        style={{ ...styles.rbv, borderColor: m.calibrate ? colors.statusWarn : colors.rbvBorder, cursor: "context-menu" }}
+        onContextMenu={e => pvCtx(`${pv}.RBV`, m.rbvRaw, e)}
       >
-        {connected ? fmt(rbv, prec) : "—"}
+        {m.connected ? fmt(m.rbv, m.prec) : "—"}
       </div>
 
-      {/* VAL */}
       {editingVal ? (
         <input
           ref={valRef}
@@ -262,29 +199,26 @@ export function MotorCard({ pv, softLimitPrec }: MotorCardProps) {
         />
       ) : (
         <div
-          style={{ ...styles.val, cursor: disabled ? "default" : "text" }}
-          title={disabled ? "Motor disabled" : "Click to move"}
+          style={{ ...styles.val, cursor: m.disabled ? "default" : "text" }}
+          title={m.disabled ? "Motor disabled" : "Click to move"}
           onClick={startEdit}
         >
-          {connected ? fmt(val, prec) : "—"}
+          {m.connected ? fmt(m.val, m.prec) : "—"}
         </div>
       )}
 
-      {/* Position bar */}
-      <PositionBar rbv={rbv} llm={llm} hlm={hlm} lls={lls} hls={hls} />
+      <PositionBar rbv={m.rbv} llm={m.llm} hlm={m.hlm} lls={m.lls} hls={m.hls} />
 
-      {/* Soft limits */}
       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: "#d08030", fontFamily: "monospace" }}>
-        <span>{llm !== null ? fmt(llm, softLimitPrec ?? prec) : "—"}</span>
-        <span>{hlm !== null ? fmt(hlm, softLimitPrec ?? prec) : "—"}</span>
+        <span>{m.llm !== null ? fmt(m.llm, softLimitPrec ?? m.prec) : "—"}</span>
+        <span>{m.hlm !== null ? fmt(m.hlm, softLimitPrec ?? m.prec) : "—"}</span>
       </div>
 
-      {/* Tweak row */}
       <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
         <button
           style={{ ...styles.tweakBtn, flex: "0 0 auto" }}
-          onClick={tweakBack}
-          disabled={disabled || !connected}
+          onClick={m.tweakBack}
+          disabled={m.disabled || !m.connected}
           title="Tweak backward"
         ><span style={{ marginTop: -4 }}>‹</span></button>
 
@@ -309,16 +243,14 @@ export function MotorCard({ pv, softLimitPrec }: MotorCardProps) {
 
         <button
           style={{ ...styles.tweakBtn, flex: "0 0 auto" }}
-          onClick={tweakForward}
-          disabled={disabled || !connected}
+          onClick={m.tweakForward}
+          disabled={m.disabled || !m.connected}
           title="Tweak forward"
         ><span style={{ marginTop: -4 }}>›</span></button>
       </div>
     </div>
   );
 }
-
-// ── Styles ────────────────────────────────────────────────────────────────────
 
 const styles: Record<string, React.CSSProperties> = {
   rbv: {

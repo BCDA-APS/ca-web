@@ -1,4 +1,9 @@
-import { REGISTRY } from "./lib/deployment";
+import { useEffect, useState } from "react";
+import {
+  type DeploymentConfig,
+  listDeploymentIds,
+  loadDeployment,
+} from "./lib/deployment";
 import { colors } from "./lib/theme";
 import { PATH_STATUS } from "virtual:deployment-path-status";
 
@@ -9,7 +14,25 @@ function pick(id: string) {
 }
 
 export function DeploymentPicker() {
-  const deployments = Object.values(REGISTRY).sort((a, b) => a.title.localeCompare(b.title));
+  const [deployments, setDeployments] = useState<DeploymentConfig[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all(listDeploymentIds().map(loadDeployment))
+      .then(cfgs => {
+        if (cancelled) return;
+        cfgs.sort((a, b) => a.title.localeCompare(b.title));
+        setDeployments(cfgs);
+      })
+      .catch(e => {
+        if (cancelled) return;
+        setError(String(e?.message ?? e));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div
@@ -30,41 +53,51 @@ export function DeploymentPicker() {
           Choose which beamline to connect to. Your choice is remembered, and you can deep-link
           with <code>?deployment=&lt;id&gt;</code>.
         </p>
-        <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 10 }}>
-          {deployments.map(d => {
-            const missing = PATH_STATUS[d.id]?.missing ?? [];
-            return (
-              <li key={d.id}>
-                <button
-                  onClick={() => pick(d.id)}
-                  style={{
-                    width: "100%",
-                    textAlign: "left",
-                    background: "#fff",
-                    border: `1px solid ${colors.relatedBorder}`,
-                    borderRadius: 6,
-                    padding: "12px 16px",
-                    cursor: "pointer",
-                    fontFamily: "inherit",
-                  }}
-                >
-                  <div style={{ fontSize: 15, fontWeight: 600, color: "#0a1828" }}>{d.title}</div>
-                  <div style={{ fontSize: 12, color: colors.dim, marginTop: 2 }}>
-                    id: {d.id} · pvws: {d.pvws.socket}
-                  </div>
-                  {missing.length > 0 && (
-                    <div
-                      style={{ fontSize: 12, color: colors.statusWarn, marginTop: 4 }}
-                      title={missing.join(", ")}
-                    >
-                      {missing.length} external path{missing.length === 1 ? "" : "s"} unreachable on this host
+        {error && (
+          <div style={{ fontSize: 13, color: colors.statusWarn, marginBottom: 12 }}>
+            Failed to load deployments: {error}
+          </div>
+        )}
+        {!error && !deployments && (
+          <div style={{ fontSize: 13, color: colors.dim }}>Loading deployments…</div>
+        )}
+        {deployments && (
+          <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 10 }}>
+            {deployments.map(d => {
+              const missing = PATH_STATUS[d.id]?.missing ?? [];
+              return (
+                <li key={d.id}>
+                  <button
+                    onClick={() => pick(d.id)}
+                    style={{
+                      width: "100%",
+                      textAlign: "left",
+                      background: "#fff",
+                      border: `1px solid ${colors.relatedBorder}`,
+                      borderRadius: 6,
+                      padding: "12px 16px",
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    <div style={{ fontSize: 15, fontWeight: 600, color: "#0a1828" }}>{d.title}</div>
+                    <div style={{ fontSize: 12, color: colors.dim, marginTop: 2 }}>
+                      id: {d.id} · pvws: {d.pvws.socket}
                     </div>
-                  )}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+                    {missing.length > 0 && (
+                      <div
+                        style={{ fontSize: 12, color: colors.statusWarn, marginTop: 4 }}
+                        title={missing.join(", ")}
+                      >
+                        {missing.length} external path{missing.length === 1 ? "" : "s"} unreachable on this host
+                      </div>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </div>
     </div>
   );

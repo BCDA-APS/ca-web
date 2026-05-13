@@ -31,33 +31,51 @@ export interface DeploymentConfig {
   tabPanels: Record<number, PanelConfig[]>;
 }
 
+type DeploymentLoader = () => Promise<{ config: DeploymentConfig }>;
+
 const modules = import.meta.glob<{ config: DeploymentConfig }>(
   "../deployments/*/index.tsx",
-  { eager: true },
 );
 
-export const REGISTRY: Record<string, DeploymentConfig> = {};
+const LOADERS: Record<string, DeploymentLoader> = {};
+const loadedById: Record<string, DeploymentConfig> = {};
+
 for (const path in modules) {
-  const cfg = modules[path].config;
-  if (!cfg?.id) throw new Error(`Deployment at ${path} is missing config.id`);
   const folder = path.split("/").slice(-2, -1)[0];
-  if (folder !== cfg.id) {
-    throw new Error(`Deployment id "${cfg.id}" must match its folder name "${folder}"`);
+  if (LOADERS[folder]) {
+    throw new Error(`Duplicate deployment folder: ${folder}`);
   }
-  if (REGISTRY[cfg.id]) throw new Error(`Duplicate deployment id: ${cfg.id}`);
-  REGISTRY[cfg.id] = cfg;
+  LOADERS[folder] = modules[path];
+}
+
+export function listDeploymentIds(): string[] {
+  return Object.keys(LOADERS);
+}
+
+export async function loadDeployment(id: string): Promise<DeploymentConfig> {
+  if (loadedById[id]) return loadedById[id];
+  const loader = LOADERS[id];
+  if (!loader) throw new Error(`Unknown deployment id: ${id}`);
+  const mod = await loader();
+  const cfg = mod.config;
+  if (!cfg?.id) throw new Error(`Deployment in folder "${id}" is missing config.id`);
+  if (cfg.id !== id) {
+    throw new Error(`Deployment id "${cfg.id}" must match its folder name "${id}"`);
+  }
+  loadedById[id] = cfg;
+  return cfg;
 }
 
 const STORAGE_KEY = "ca-web.deployment";
 
 export function resolveActiveId(): string | null {
   const fromUrl = new URLSearchParams(window.location.search).get("deployment");
-  if (fromUrl && REGISTRY[fromUrl]) {
+  if (fromUrl && LOADERS[fromUrl]) {
     localStorage.setItem(STORAGE_KEY, fromUrl);
     return fromUrl;
   }
   const fromStorage = localStorage.getItem(STORAGE_KEY);
-  if (fromStorage && REGISTRY[fromStorage]) return fromStorage;
+  if (fromStorage && LOADERS[fromStorage]) return fromStorage;
   return null;
 }
 
@@ -66,3 +84,11 @@ export function clearActive() {
 }
 
 export const DeploymentContext = createContext<DeploymentConfig | null>(null);
+
+// Clear the cached deployment in dev so HMR picks up edits to a deployment's
+// index.tsx without a hard reload.
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    for (const k of Object.keys(loadedById)) delete loadedById[k];
+  });
+}

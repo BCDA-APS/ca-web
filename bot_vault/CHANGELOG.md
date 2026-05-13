@@ -1,5 +1,59 @@
 # Changelog
 
+## Unreleased
+
+### Bundle and structure pass (on `rafa-dev`)
+
+Bundle before/after (`npm run analyze`):
+
+| Asset                         | Before (raw) | Before (gz) | After (raw) | After (gz) |
+| ----------------------------- | -----------: | ----------: | ----------: | ---------: |
+| Entry / app chunk             |     2,719 kB |      851 kB |       86 kB |      25 kB |
+| `react` vendor chunk          |            — |           — |      155 kB |      50 kB |
+| `cs-web` vendor chunk         |            — |           — |    2,338 kB |     746 kB |
+| Active deployment chunk (29id)|            — |           — |       91 kB |      19 kB |
+| Other deployments (each)      |            — |           — |        4 kB |     1.4 kB |
+| ReadbackRow shared chunk      |            — |           — |       14 kB |       4 kB |
+| StripChart shared chunk       |            — |           — |       18 kB |       6 kB |
+
+First load for an active deployment now downloads the entry + react +
+cs-web + deployment chunk (~2.6 MB raw / ~840 kB gz) instead of a single
+2.7 MB / 851 kB bundle — similar total but split so vendor cache survives
+deployment switches and inactive deployments stay off the wire.
+
+Phase summary:
+
+- **Visibility**: added `rollup-plugin-visualizer` and an `npm run analyze`
+  script (`ANALYZE=1 npm run build`) emitting `dist/stats.html`.
+- **Lazy deployments**: `src/lib/deployment.ts` switched to
+  `import.meta.glob({ eager: false })`; `loadDeployment(id)` and
+  `listDeploymentIds()` replace the synchronous `REGISTRY`. `main.tsx`
+  now async-boots; `DeploymentPicker` loads configs in parallel only
+  when shown.
+- **Vendor chunks**: `vite.config.ts` defines `manualChunks` for `react`,
+  `mui`, and `cs-web` (Redux + cs-web-lib).
+- **Render/connector split**: new `src/hooks/useMotor.ts` consolidates the
+  12 PV subscriptions + status derivation + write actions formerly
+  duplicated across `MotorCard`, `MotorCardRow`, `MotorCardFlat`. Each
+  variant is now render-only on top of the hook. Convention documented in
+  `architecture/overview.md`.
+- **`App.tsx` decomposition**: 859 LOC → 186 LOC. Extracted into
+  `src/shell/`: `DraggablePanel`, `OverlayPanel`, `Sidebar`,
+  `SettingsPanel`, `FilePickerDialog` (+ `useUiFiles`), `PvContextMenu`,
+  `PvInfoDialog`, `ErrorBoundary`. Dropped the `App` prefix on filenames
+  since the folder carries that meaning.
+- **ESLint**: installed `eslint` + `@typescript-eslint/parser` +
+  `eslint-plugin-react-hooks`; flat config in `eslint.config.js`. Only
+  `react-hooks/rules-of-hooks` is enforced for now. `npm run lint` added.
+  The pre-existing `.claude/hooks/quality-gate.sh` already invoked
+  `eslint` on staged files when present; it now actually runs.
+
+Deferred (off-limits this pass — would touch `src/deployments/`):
+
+- Folding `MotorCard*` variants into one file with a `layout` prop.
+- Extracting `useChamber`, `useLayoutSection`, `useEnergy` hooks from the
+  29id chamber, layout, and energy panels.
+
 ## v0.1.0-dev -- 2026-05-13
 
 ### Scaffold
