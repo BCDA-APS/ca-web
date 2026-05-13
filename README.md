@@ -2,12 +2,34 @@
 
 A React app that renders caQtDM `.ui` files in the browser, using `cs-web-lib` for EPICS PV connections via pvws.
 
+## Docs
+
+- [docs/deployment.md](docs/deployment.md) — ops guide for beamline hosts (pvws container, mode setup, troubleshooting).
+- [docs/roadmap.md](docs/roadmap.md) — feature roadmap.
+- [docs/widgets.md](docs/widgets.md) — widget catalog and EPICS-binding rules.
+- [docs/ui-rendering.md](docs/ui-rendering.md) — caQtDM `.ui` parsing and rendering pipeline.
+- [docs/deployments.md](docs/deployments.md) — how to add a new beamline deployment.
+- [docs/design-system.md](docs/design-system.md) — visual conventions.
+- [docs/display-path-resolution.md](docs/display-path-resolution.md) — caQtDM display path lookup.
+- [bot_vault/](bot_vault/) — architecture overview, ADRs, and bot-authored notes.
+
 ## Development
 
-Requires a conda environment with Node.js. Create one if needed:
+Requires Node.js (18+; tested with 24.x). Use whichever toolchain the host
+provides:
+
+- **System / nvm:** `node` and `npm` already on `PATH` — nothing extra to do.
+- **conda** (typical on APS beamline hosts): create and activate the env first.
+
+  ```bash
+  conda create -n nodejs nodejs
+  conda activate nodejs
+  ```
+
+Then install deps:
 
 ```bash
-conda create -n nodejs nodejs
+npm install
 ```
 
 ### Local mode (default)
@@ -16,8 +38,7 @@ Run Vite and pvws on the same machine; open the app in a browser on that machine
 The default `.env` uses `localhost:8080` so each machine connects to its own pvws:
 
 ```bash
-cd ~/workspace/caqtdm-web
-conda activate nodejs
+cd ~/workspace/ca-web
 npm run dev
 ```
 

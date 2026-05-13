@@ -23,17 +23,17 @@ ca-web — a browser-based control panel for beamline instruments
 
 ## Stack
 
-React 18, TypeScript 5, Vite 7, npm (via conda env `nodejs`). Key dependency: `@diamondlightsource/cs-web-lib` (local tgz) for EPICS / Channel Access. MUI for UI components, Redux Toolkit for state.
+React 18, TypeScript 5, Vite 7, npm. Key dependency: `@diamondlightsource/cs-web-lib` (npm registry) for EPICS / Channel Access. MUI for UI components, Redux Toolkit for state.
 
 ## Commands
 
 ```bash
-conda activate nodejs && npm run dev       # start dev server
-conda activate nodejs && npm run build     # tsc + vite build
-conda activate nodejs && npm run preview   # preview production build
+npm run dev       # start dev server
+npm run build     # tsc + vite build
+npm run preview   # preview production build
 ```
 
-Note: npm is not available system-wide. Always activate the `nodejs` conda env first.
+If your Node toolchain is provided by conda (e.g. on beamline hosts), activate the env first: `conda activate nodejs`.
 
 ## Widgets
 
