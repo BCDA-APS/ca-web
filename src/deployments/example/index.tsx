@@ -12,6 +12,26 @@ import { UiRenderer } from "../../lib/UiRenderer";
 import type { DeploymentConfig } from "../../lib/deployment";
 import rawConfig from "./config.json";
 
+const tabPanels: DeploymentConfig["tabPanels"] = {
+  1: [
+    { id: "motors",        title: "Motors",                          Content: MotorsContent },
+    { id: "lorentzian",    title: "Detector — Simulated Lorentzian", Content: LorentzianContent },
+    { id: "area-detector", title: "Area Detector — myad:cam1",       Content: AreaDetectorContent },
+  ],
+  2: [
+    { id: "test",                 title: "Widget Test",        Content: TestContent },
+    { id: "motor-card-test",      title: "Motor Cards",        Content: MotorCardTestContent },
+    { id: "motor-card-row-test",  title: "Motor Cards (row)",  Content: MotorCardRowTestContent },
+    { id: "motor-card-flat-test", title: "Motor Cards (flat)", Content: () => (
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        {["m1","m2","m3","m4","m5","m6"].map(m => <MotorCardFlat key={m} pv={`fr:${m}`} />)}
+      </div>
+    )},
+  ],
+};
+
+export const config: DeploymentConfig = { ...rawConfig, tabPanels };
+
 const MOTOR_DISPLAYS = [
   { label: "Tiny",  file: "/ui/motors/motorx_tiny.ui" },
   { label: "Small", file: "/ui/motors/motorx.ui" },
@@ -119,23 +139,3 @@ function MotorCardRowTestContent() {
     </div>
   );
 }
-
-const tabPanels: DeploymentConfig["tabPanels"] = {
-  1: [
-    { id: "motors",        title: "Motors",                          Content: MotorsContent },
-    { id: "lorentzian",    title: "Detector — Simulated Lorentzian", Content: LorentzianContent },
-    { id: "area-detector", title: "Area Detector — myad:cam1",       Content: AreaDetectorContent },
-  ],
-  2: [
-    { id: "test",                 title: "Widget Test",        Content: TestContent },
-    { id: "motor-card-test",      title: "Motor Cards",        Content: MotorCardTestContent },
-    { id: "motor-card-row-test",  title: "Motor Cards (row)",  Content: MotorCardRowTestContent },
-    { id: "motor-card-flat-test", title: "Motor Cards (flat)", Content: () => (
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        {["m1","m2","m3","m4","m5","m6"].map(m => <MotorCardFlat key={m} pv={`fr:${m}`} />)}
-      </div>
-    )},
-  ],
-};
-
-export const config: DeploymentConfig = { ...rawConfig, tabPanels };
