@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Intro slide deck (`docs/presentation/`)
+
+Slidev-based 10-slide deck for APS beamline scientists: problem,
+what ca-web is, screenshots of the picker and the example panel,
+architecture diagram, deployment story, widgets, status, roadmap.
+Self-contained subfolder with its own `package.json`; run
+`cd docs/presentation && npm install && npm run dev`. Screenshots
+captured from the running app (`assets/`).
+
 ### caQtDM 29-ID port: new `29id_dev` deployment, four reusable widgets
 
 - New deployment `src/deployments/29id_dev/` — a clone of `29id` used as
