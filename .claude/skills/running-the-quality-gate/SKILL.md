@@ -1,3 +1,14 @@
+---
+name: running-the-quality-gate
+description: Run ca-web's pre-commit quality gate (tsc + ESLint + repo
+  hygiene hooks). Use before committing any non-trivial change, when the
+  user says "run the quality gate", "check the branch is healthy", "is
+  this ready to commit", "lint and type-check this", or when a commit was
+  blocked by pre-commit and they need to diagnose why. Also use after
+  large refactors before claiming "passes" — see verifying-before-completion
+  for the broader evidence rule.
+---
+
 # Running the quality gate
 
 ## When to use
@@ -63,7 +74,7 @@ files, so running it on a small change is fast.
 
 ## See also
 
-- [verifying-before-completion.md](verifying-before-completion.md) —
+- [verifying-before-completion](../verifying-before-completion/SKILL.md) —
   the "evidence before claims" rule and the table of commands per claim.
 - `.pre-commit-config.yaml` — the hook definitions.
 - `.claude/hooks/quality-gate.sh` — the local tsc+eslint runner.

@@ -6,6 +6,7 @@ import { pvwsWriter } from "./lib/pvwsWriter";
 import { probeWebSocket } from "./lib/pvwsProbe";
 import { installPvwsWebSocketStub } from "./lib/wsStub";
 import { loadDeployment, resolveActiveId, DeploymentContext } from "./lib/deployment";
+import { hydrateLayouts } from "./lib/layoutStorage";
 import { DeploymentPicker } from "./DeploymentPicker";
 import App from "./App";
 
@@ -28,6 +29,7 @@ if (!activeId) {
   root.render(<DeploymentPicker />);
 } else {
   loadDeployment(activeId).then(async cfg => {
+    await hydrateLayouts(cfg.id);
     const wsUrl = `${cfg.pvws.ssl ? "wss" : "ws"}://${cfg.pvws.socket}/pvws/pv`;
     const wsAlive = await probeWebSocket(wsUrl, 3000);
     if (wsAlive) {

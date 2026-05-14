@@ -9,7 +9,7 @@ We need a lightweight way to capture architectural decisions so future contribut
 
 ## Decision
 
-Use Architecture Decision Records (ADRs) in `bot_vault/architecture/adr/`. One file per decision, numbered sequentially. Format: Context / Decision / Consequences.
+Use Architecture Decision Records (ADRs) in `docs/adr/`. One file per decision, numbered sequentially. Format: Context / Decision / Consequences.
 
 ## Consequences
 

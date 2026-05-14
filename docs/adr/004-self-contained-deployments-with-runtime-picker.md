@@ -70,7 +70,5 @@ An `example/` deployment is committed as a copy-paste template.
 
 ## Notes
 
-- `docs/deployments.md` predates this change and still references
-  `VITE_DEPLOYMENT` / `--mode`. It's human-authored under `docs/` and
-  was not updated as part of this refactor; the human owner should
-  refresh it.
+- `../deployments.md` predates this change and still references
+  `VITE_DEPLOYMENT` / `--mode`. Flagged for a refresh.

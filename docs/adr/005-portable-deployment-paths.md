@@ -3,7 +3,7 @@
 Date: 2026-05-13
 Status: Accepted (the `paths.json` file format was later merged into the
 per-deployment `config.json` under a nested `paths` key — see the
-"Deployment config consolidation" entry in `bot_vault/CHANGELOG.md`. The
+"Deployment config consolidation" entry in `CHANGELOG.md`. The
 plugin behavior, search-path logic, `virtual:deployment-path-status`
 contract, and "Switch deployment…" button described below are unchanged.)
 
@@ -86,5 +86,5 @@ follow-up flagged in ADR 004).
 
 ## Notes
 
-- `docs/deployments.md` (human-authored) was last touched before ADR 004
-  and is now doubly out of date. Flagged for a human refresh.
+- `../deployments.md` was last touched before ADR 004 and is now doubly
+  out of date. Flagged for a refresh.

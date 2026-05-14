@@ -71,6 +71,6 @@ fit the host container while preserving aspect ratio.
 into smaller modules (`renderer/`, `widgets/caDispatch.tsx`,
 `pathResolver.ts`, `macroSubstitution.ts`) is queued — see the
 "Open questions" section in
-[../bot_vault/architecture/overview.md](../bot_vault/architecture/overview.md).
+[architecture.md](architecture.md).
 Until then, treat it as a single dispatch surface and keep changes
 local to the relevant widget block.

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { layoutKey } from "../lib/layoutStorage";
+import { layoutGet, layoutSet } from "../lib/layoutStorage";
 
 // Global z-index counter so clicking a panel brings it to the front.
 let gZ = 10;
@@ -15,17 +15,14 @@ export function DraggablePanel({ id, title, defaultPos, onClose, children }: {
 }) {
   const def = defaultPos ?? { x: 60, y: 60 };
   const [ps, setPs] = useState<PanelState>(() => {
-    try {
-      const s = localStorage.getItem(layoutKey(`panel:${id}`));
-      if (s) return JSON.parse(s);
-    } catch { /* ignore */ }
-    return { ...def, locked: false };
+    const saved = layoutGet<PanelState>(`panel:${id}`);
+    return saved ?? { ...def, locked: false };
   });
   const [zIdx, setZIdx] = useState(gZ);
   const dragRef = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null);
 
   useEffect(() => {
-    localStorage.setItem(layoutKey(`panel:${id}`), JSON.stringify(ps));
+    layoutSet(`panel:${id}`, ps);
   }, [id, ps]);
 
   function bringToFront() {

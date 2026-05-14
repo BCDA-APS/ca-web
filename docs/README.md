@@ -1,7 +1,9 @@
 # ca-web docs
 
-Human-authored documentation. Bot-authored architecture notes live in
-[`../bot_vault/`](../bot_vault/).
+## Architecture
+
+- [architecture.md](architecture.md) — system overview, stack, conventions.
+- [adr/](adr/) — architecture decision records.
 
 ## Guides
 
@@ -21,8 +23,3 @@ Human-authored documentation. Bot-authored architecture notes live in
 - [design-system.md](design-system.md) — visual conventions.
 - [display-path-resolution.md](display-path-resolution.md) — how the dev
   server resolves displays from the caQtDM startup script.
-
-## Authoring rules
-
-This folder is human-authored. Bots may only modify it with explicit
-instruction (see [../CLAUDE.md](../CLAUDE.md)).

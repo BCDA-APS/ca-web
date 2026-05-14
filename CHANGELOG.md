@@ -2,6 +2,68 @@
 
 ## Unreleased
 
+### Layouts move from `localStorage` to per-deployment JSON files
+
+- Live state (panel positions, lock, hidden, overlay positions, strip
+  chart settings) is now persisted to
+  `src/deployments/<id>/layouts/current.json` instead of
+  `localStorage`. Saved layouts are one file per draft at
+  `src/deployments/<id>/layouts/<name>.json`, so they version-control,
+  diff, and `mv`/`rm` like any other config artifact.
+- New Vite plugin `layouts-api` (inline in `vite.config.ts`) serves
+  `GET /api/layouts/<id>` (list), and `GET/PUT/DELETE
+  /api/layouts/<id>/<name>` in both `vite dev` and `vite preview`.
+  Names are slugged to `[a-z0-9-]{1,64}`; `current` cannot be deleted;
+  bodies cap at 1 MB; writes are atomic via tmp+rename.
+- `src/lib/layoutStorage.ts` rewritten: `hydrateLayouts(id)` fetches
+  `current.json` once at boot into an in-memory cache; `layoutGet` /
+  `layoutSet` are sync accessors; writes are debounced (~250ms) and PUT
+  back. `listLayouts` / `readLayout` / `writeLayout` / `deleteLayout`
+  drive named drafts. Legacy `ca-web.<id>.*` localStorage keys are
+  drained on first boot, then cleared. Server-unreachable disables
+  writes loudly via `console.error` — no silent fallback.
+- `SettingsPanel` drops the "Copy as JSON" button (drafts are already
+  files on disk) and renames "My drafts" → "Saved layouts".
+
+### Skills relocated to `.claude/skills/`
+
+- New `.claude/skills/` directory holds per-skill subfolders with
+  `SKILL.md` (Claude design frontmatter: `name`, `description`). Claude
+  Code auto-discovers them via the Skill tool; other tools read them
+  through `AGENTS.md` at the repo root.
+- New skill `new-deployment` — interactive scaffold for
+  `src/deployments/<id>/`. Interviews the user for
+  id/title/pvws/tabs/panels/PVs, optionally ingests an external `.ui`
+  directory for `quickLinks`, then writes `config.json` and `index.tsx`.
+- Existing skills `running-the-quality-gate` and
+  `verifying-before-completion` moved out of `bot_vault/skills/` (now
+  removed). Bodies are unchanged; frontmatter and per-skill
+  subfolders added.
+- New `AGENTS.md` at the repo root: cross-tool entry summarising stack,
+  commands, skills, and project rules for OpenCode / Cursor / Aider /
+  Codex.
+- `CLAUDE.md` directives + Docs links updated to point at the new
+  location.
+
+### Additional skills
+
+- `adding-a-widget` — encodes the connector/render split, the
+  `pvCtx` context-menu rule (no lint enforces it), alignment
+  conventions, and exact import paths. Includes a render-only
+  template the user can copy.
+- `adding-a-panel` — extends an existing deployment with a new
+  draggable panel. Calls out the localStorage-key trap up front
+  (panel `id` slugs have no rename migration in
+  `src/lib/layoutStorage.ts`) and the `config.json` / `index.tsx`
+  sync.
+- `debugging-pvws-connectivity` — diagnostic flow for blank
+  dashboards and the red `wsDown` banner. Documents the
+  boot-time probe (`src/lib/pvwsProbe.ts`) and the WebSocket stub
+  (`src/lib/wsStub.ts`), then walks a four-step recipe (config
+  socket, `curl` healthcheck, `wscat`, EPICS_CA_ADDR_LIST). Links
+  to `docs/how-to-start-pvws.md` for operator setup.
+- `AGENTS.md` Skills list updated with the three new entries.
+
 ### Dead-code sweep
 
 - Deleted unused `ChamberDiagram.tsx` and `ChamberDiagramLight.tsx`

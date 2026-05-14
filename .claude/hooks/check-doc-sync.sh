@@ -21,7 +21,7 @@ cd "$(git rev-parse --show-toplevel 2>/dev/null)" 2>/dev/null || exit 0
 CORE_PATTERNS='src/lib/.*\.tsx?$|src/widgets/.*\.tsx?$|src/deployments/.*\.tsx?$|src/App\.tsx$|src/main\.tsx$'
 
 # Files that count as a doc update
-DOC_PATTERNS='bot_vault/|CLAUDE\.md|docs/'
+DOC_PATTERNS='docs/|CHANGELOG\.md|CLAUDE\.md'
 
 # claude-file: quick gate -- only proceed if the edited file is core source
 if [ "$MODE" = "claude-file" ]; then
@@ -62,7 +62,7 @@ if [ -z "$DOC_CHANGED" ]; then
   echo "  Changed:"
   echo "$CORE_CHANGED" | sed 's/^/    /'
   echo ""
-  echo "  Expected: update bot_vault/CHANGELOG.md, bot_vault/architecture/overview.md,"
+  echo "  Expected: update CHANGELOG.md, docs/architecture.md,"
   echo "  or a relevant doc under docs/."
   echo ""
   exit 1

@@ -12,7 +12,8 @@ A React app that renders caQtDM `.ui` files in the browser, using `cs-web-lib` f
 - [docs/deployments.md](docs/deployments.md) — how to add a new beamline deployment.
 - [docs/design-system.md](docs/design-system.md) — visual conventions.
 - [docs/display-path-resolution.md](docs/display-path-resolution.md) — caQtDM display path lookup.
-- [bot_vault/](bot_vault/) — architecture overview, ADRs, and bot-authored notes.
+- [docs/architecture.md](docs/architecture.md) — architecture overview.
+- [docs/adr/](docs/adr/) — architecture decision records.
 
 ## Development
 

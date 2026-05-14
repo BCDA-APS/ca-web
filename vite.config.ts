@@ -369,6 +369,100 @@ function uiSearchPathPlugin(paths: LoadedPaths) {
   };
 }
 
+// Per-deployment layout persistence. Each deployment owns a layouts/
+// directory under src/deployments/<id>/layouts/ containing one JSON file per
+// named layout (plus "current.json" for the live state). The plugin services
+// /api/layouts in both `vite dev` and `vite preview` so the same persistence
+// works whether you're authoring or running the production build from the
+// repo. There is no production-static deployment path: ca-web runs from the
+// repo so the server can always write.
+const LAYOUT_NAME_RX = /^[a-z0-9-]{1,64}$/;
+
+function layoutsApiPlugin() {
+  function layoutDir(deploymentId: string): string | null {
+    if (!LAYOUT_NAME_RX.test(deploymentId)) return null;
+    const deploymentRoot = path.join(DEPLOYMENTS_DIR, deploymentId);
+    if (!fs.existsSync(deploymentRoot)) return null;
+    return path.join(deploymentRoot, "layouts");
+  }
+
+  function ensureDir(dir: string) {
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  }
+
+  function handler(req: any, res: any, next: any) {
+    const url: string = req.url ?? "";
+    const m = url.match(/^\/api\/layouts\/([^/?]+)(?:\/([^/?]+))?(?:\?.*)?$/);
+    if (!m) return next();
+
+    const [, deploymentId, nameRaw] = m;
+    const dir = layoutDir(deploymentId);
+    if (!dir) { res.statusCode = 404; res.end("unknown deployment"); return; }
+
+    // GET /api/layouts/<id>  → list of names
+    if (!nameRaw && req.method === "GET") {
+      ensureDir(dir);
+      const names = fs.readdirSync(dir)
+        .filter(f => f.endsWith(".json"))
+        .map(f => f.slice(0, -5))
+        .filter(n => LAYOUT_NAME_RX.test(n))
+        .sort();
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify(names));
+      return;
+    }
+    if (!nameRaw) { res.statusCode = 405; res.end("method not allowed"); return; }
+
+    if (!LAYOUT_NAME_RX.test(nameRaw)) { res.statusCode = 400; res.end("bad name"); return; }
+    const file = path.join(dir, `${nameRaw}.json`);
+
+    if (req.method === "GET") {
+      if (!fs.existsSync(file)) { res.statusCode = 404; res.end("not found"); return; }
+      res.setHeader("Content-Type", "application/json");
+      fs.createReadStream(file).pipe(res);
+      return;
+    }
+
+    if (req.method === "PUT") {
+      let body = "";
+      let aborted = false;
+      req.on("data", (c: Buffer) => {
+        body += c.toString("utf8");
+        if (body.length > 1024 * 1024) {
+          aborted = true;
+          res.statusCode = 413; res.end("payload too large");
+          req.destroy();
+        }
+      });
+      req.on("end", () => {
+        if (aborted) return;
+        try { JSON.parse(body); } catch { res.statusCode = 400; res.end("bad json"); return; }
+        ensureDir(dir);
+        const tmp = `${file}.tmp`;
+        fs.writeFileSync(tmp, body);
+        fs.renameSync(tmp, file);
+        res.statusCode = 204; res.end();
+      });
+      return;
+    }
+
+    if (req.method === "DELETE") {
+      if (nameRaw === "current") { res.statusCode = 400; res.end("cannot delete current"); return; }
+      if (fs.existsSync(file)) fs.unlinkSync(file);
+      res.statusCode = 204; res.end();
+      return;
+    }
+
+    res.statusCode = 405; res.end("method not allowed");
+  }
+
+  return {
+    name: "layouts-api",
+    configureServer(server: any) { server.middlewares.use(handler); },
+    configurePreviewServer(server: any) { server.middlewares.use(handler); },
+  };
+}
+
 // Exposes per-deployment path-status to the browser as a virtual module,
 // so the picker can render a "paths unreachable" hint.
 function deploymentPathStatusPlugin(paths: LoadedPaths) {
@@ -397,6 +491,7 @@ export default defineConfig(() => {
       nodePolyfills(),
       uiSearchPathPlugin(paths),
       deploymentPathStatusPlugin(paths),
+      layoutsApiPlugin(),
       analyze && visualizer({
         filename: "dist/stats.html",
         gzipSize: true,

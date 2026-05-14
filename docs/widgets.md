@@ -75,7 +75,7 @@ Three layout variants in `src/widgets/`:
 
 They share status-color derivation and tweak button logic. Consolidating
 them into one component with a layout prop is queued work (see
-`bot_vault/architecture/overview.md`).
+`architecture.md`).
 
 `MotorGrid.tsx` is a 3-column container that you can drop motor cards
 into. `MotorRow.tsx` is a PV-name-based row (not raw-channel-based) that

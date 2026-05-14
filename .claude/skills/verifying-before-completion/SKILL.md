@@ -1,3 +1,15 @@
+---
+name: verifying-before-completion
+description: Evidence-before-claims rule for ca-web. Use BEFORE declaring
+  any task done, fixed, passing, shipped, working, or ready — the skill
+  provides the claim-to-command table (tsc, eslint, pre-commit, app
+  renders, deployment loads, PV widget right-click, 29ID build resolves)
+  you must run before making the assertion. Also use proactively when you
+  catch yourself about to write "should work", "looks good", or "no
+  obvious issues" — those are hypotheses, not verifications, and this
+  skill says how to convert them into evidence.
+---
+
 # Verifying before completion
 
 ## When to use
@@ -48,5 +60,5 @@ because the code looks right; tell them because you ran the proof.
 
 ## See also
 
-- [running-the-quality-gate.md](running-the-quality-gate.md) — the
+- [running-the-quality-gate](../running-the-quality-gate/SKILL.md) — the
   single command that exercises most of the table.

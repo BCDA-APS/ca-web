@@ -26,7 +26,7 @@ Running `npm run dev` without `--mode` falls back to the gitignored
 `.env` (typically `localhost:8080` and `VITE_DEPLOYMENT=nefarian`).
 
 Architectural rationale: see
-[../bot_vault/architecture/adr/003-deployment-selector-via-vite-mode.md](../bot_vault/architecture/adr/003-deployment-selector-via-vite-mode.md).
+[adr/003-deployment-selector-via-vite-mode.md](adr/003-deployment-selector-via-vite-mode.md).
 
 ## Anatomy of a deployment
 

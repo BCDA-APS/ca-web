@@ -15,14 +15,13 @@ ca-web — a browser-based control panel for beamline instruments
 - After 5+ file changes, run `/agent critic` before committing unless the user says otherwise.
 - Audit/research agents: 70/30 scan/report split. Reserve final 30% for the report.
 - Never hardcode model names in code. Use a settings/env value.
-- Project facts go in `bot_vault/` (git-versioned). Claude memory is for behavioral feedback only.
+- Project facts go in `docs/` (git-versioned). Claude memory is for behavioral feedback only.
 - No silent degradation: every external dep must surface state via events/logs.
 - Trunk-based on `main` by default. Cut a branch only for risky / multi-day / PR-review work.
 - WCAG 2.1 AA enforced. Semantic HTML, alt text, labels, keyboard navigation mandatory.
-- `docs/` is human-authored. Bots MUST NOT modify it without explicit instruction.
 - Pre-commit runs format checks and the local quality-gate (tsc + ESLint) automatically. Override with `SKIP=quality-gate git commit ...` only when the user requests it.
-- When editing source under `src/lib/`, `src/widgets/`, or `src/deployments/`, update `bot_vault/CHANGELOG.md`, `bot_vault/architecture/overview.md`, or the relevant page under `docs/` if the change is architecturally visible. The doc-sync hook will warn if you forget.
-- Use procedural skills under `bot_vault/skills/` (e.g. `running-the-quality-gate.md`, `verifying-before-completion.md`) when extending the repo so conventions stay consistent.
+- When editing source under `src/lib/`, `src/widgets/`, or `src/deployments/`, update `CHANGELOG.md`, `docs/architecture.md`, or the relevant page under `docs/` if the change is architecturally visible. The doc-sync hook will warn if you forget.
+- Use procedural skills under `.claude/skills/` (e.g. `new-deployment`, `running-the-quality-gate`, `verifying-before-completion`) when extending the repo so conventions stay consistent.
 
 ## Stack
 
@@ -47,11 +46,11 @@ If your Node toolchain is provided by conda (e.g. on beamline hosts), activate t
 
 ## Docs
 
-- Architecture: [bot_vault/architecture/overview.md](bot_vault/architecture/overview.md)
-- Rules: [bot_vault/entry.md](bot_vault/entry.md)
-- ADRs: [bot_vault/architecture/adr/](bot_vault/architecture/adr/)
-- Skills: [bot_vault/skills/](bot_vault/skills/)
-- Changelog: [bot_vault/CHANGELOG.md](bot_vault/CHANGELOG.md)
+- Architecture: [docs/architecture.md](docs/architecture.md)
+- ADRs: [docs/adr/](docs/adr/)
+- Skills: [.claude/skills/](.claude/skills/)
+- Cross-tool entry: [AGENTS.md](AGENTS.md)
+- Changelog: [CHANGELOG.md](CHANGELOG.md)
 
 ## Status
 

@@ -1,6 +1,5 @@
 import { createContext } from "react";
 import type { ComponentType } from "react";
-import { setActiveDeploymentId } from "./layoutStorage";
 
 export interface Tab {
   id: number;
@@ -91,7 +90,6 @@ export async function loadDeployment(id: string): Promise<DeploymentConfig> {
     throw new Error(`Deployment id "${cfg.id}" must match its folder name "${id}"`);
   }
   loadedById[id] = cfg;
-  setActiveDeploymentId(cfg.id);
   return cfg;
 }
 

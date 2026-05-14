@@ -110,23 +110,27 @@ modules is future work.
 `App.tsx` orchestrates a draggable panel system; the pieces live in
 `src/shell/`:
 
-- `DraggablePanel` — positions persisted to `localStorage` under
-  `ca-web.<deploymentId>.panel:<id>`; supports per-panel lock, z-index
-  promotion on focus.
+- `DraggablePanel` — positions live in `current.json` under the active
+  deployment's `layouts/` folder (key `panel:<id>`); supports per-panel
+  lock and z-index promotion on focus.
 - `OverlayPanel` — overlay windows opened from motor "More" menus or the
-  file picker; positions persisted under
-  `ca-web.<deploymentId>.overlay:<file>`.
-- `SettingsPanel` — gear menu showing two layout sections. *Shared
-  (deployment)* are team-curated layouts that ship in
-  `config.layouts` (committed to the deployment's `config.json`) and
-  survive cleared browsers, new machines, and redeploys since they live
-  in the bundle. *My drafts* are personal layouts stored under
-  `ca-web.<deploymentId>.panel:layouts`; each has a "JSON" button that
-  copies the entry to the clipboard for pasting into `config.json`.
-  See `src/lib/layoutStorage.ts` for the key prefixer and the one-time
-  migration that moves pre-namespace keys (`panel:layouts`,
-  `panel:<id>`, `overlay:<file>`, `panel-hidden`, `stripchart:<id>`)
-  under the active deployment's namespace.
+  file picker; positions live in the same `current.json` under
+  `overlay:<file>`.
+- `SettingsPanel` — gear menu listing saved layouts. Each saved layout is
+  one file at `src/deployments/<id>/layouts/<name>.json` shaped as a
+  `SavedLayout` (positions, hidden panels, overlays). Clicking one
+  restores it onto the live state; the × button deletes the file.
+  *Shared (deployment)* layouts declared in `config.layouts` still render
+  here for backward compat but are no longer the recommended path — just
+  commit a draft file to git.
+
+Persistence is wired in `src/lib/layoutStorage.ts`: `hydrateLayouts()`
+fetches `current.json` once at boot into an in-memory cache; `layoutGet`
+/ `layoutSet` are the synchronous accessors call sites use; writes are
+debounced (~250ms) and PUT back to the file. The `listLayouts` /
+`readLayout` / `writeLayout` / `deleteLayout` helpers cover named drafts.
+If the layouts API is unreachable on boot, persistence is disabled with
+a single `console.error` — there's no silent fallback to `localStorage`.
 - `FilePickerDialog` — searchable list of `.ui` files from the NFS display
   path, opened as overlays with macro hint detection.
 - `PvContextMenu` / `PvInfoDialog` — right-click PV menu and details
@@ -182,6 +186,20 @@ a "paths unreachable" hint.
 
 Current deployments: `example` (template), `nefarian` (simulated IOC), `29id`
 (beamline).
+
+### Layout persistence API
+
+`vite.config.ts` registers a `layouts-api` plugin (in both
+`configureServer` and `configurePreviewServer`) that services
+`/api/layouts/<deploymentId>` (GET list) and
+`/api/layouts/<deploymentId>/<name>` (GET/PUT/DELETE). Writes are scoped
+to `src/deployments/<deploymentId>/layouts/`, atomic via a tmp+rename,
+capped at 1 MB, and reject any name that doesn't match
+`[a-z0-9-]{1,64}`. `current` cannot be deleted. The plugin only resolves
+deployment IDs that exist as folders, so the URL space is closed and
+path traversal can't escape the deployments root. Since the app always
+runs from inside the repo (dev or `vite preview`), the same persistence
+works for both — there is no production-static deploy path.
 
 ## Error boundary
 

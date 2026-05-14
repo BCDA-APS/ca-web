@@ -1,15 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { AppOverlay } from "./OverlayPanel";
 import type { SavedLayout, SavedOverlay } from "../lib/deployment";
-import { layoutKey } from "../lib/layoutStorage";
+import {
+  layoutGet,
+  layoutSet,
+  listLayouts,
+  readLayout,
+  writeLayout,
+  deleteLayout,
+  slugifyLayoutName,
+} from "../lib/layoutStorage";
 
 export type { SavedLayout, SavedOverlay } from "../lib/deployment";
-
-const DRAFTS_KEY = "panel:layouts";
-
-function loadDrafts(): SavedLayout[] {
-  try { return JSON.parse(localStorage.getItem(layoutKey(DRAFTS_KEY)) ?? "[]"); } catch { return []; }
-}
 
 export function SettingsPanel({ panelDefaults, hiddenPanels, overlays, sharedLayouts, onClose, onBumpLayout, onResetHidden, onRestoreHidden, onRestoreOverlays }: {
   panelDefaults: Record<string, { x: number; y: number }>;
@@ -25,45 +27,53 @@ export function SettingsPanel({ panelDefaults, hiddenPanels, overlays, sharedLay
   const panelIds = Object.keys(panelDefaults);
   const [naming, setNaming] = useState(false);
   const [nameInput, setNameInput] = useState("");
-  const [drafts, setDrafts] = useState<SavedLayout[]>(loadDrafts);
-  const [copiedName, setCopiedName] = useState<string | null>(null);
+  const [drafts, setDrafts] = useState<SavedLayout[]>([]);
 
-  function persistDrafts(next: SavedLayout[]) {
-    localStorage.setItem(layoutKey(DRAFTS_KEY), JSON.stringify(next));
-    setDrafts(next);
-  }
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const names = await listLayouts();
+      const loaded = await Promise.all(names.map(async n => {
+        const data = await readLayout(n);
+        return data ? ({ ...(data as unknown as SavedLayout), name: n }) : null;
+      }));
+      if (cancelled) return;
+      setDrafts(loaded.filter((l): l is SavedLayout => l !== null));
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   function buildLayout(name: string): SavedLayout {
     const positions: SavedLayout["positions"] = {};
     panelIds.forEach(id => {
-      const s = localStorage.getItem(layoutKey(`panel:${id}`));
-      if (s) try { positions[id] = JSON.parse(s); } catch { /* skip */ }
+      const p = layoutGet<{ x: number; y: number; locked: boolean }>(`panel:${id}`);
+      if (p) positions[id] = p;
     });
     const savedOverlays: SavedOverlay[] = overlays.map(ov => {
-      let pos = ov.pos;
-      let locked = false;
-      try {
-        const s = localStorage.getItem(layoutKey(`overlay:${ov.file}`));
-        if (s) { const p = JSON.parse(s); pos = { x: p.x, y: p.y }; locked = p.locked ?? false; }
-      } catch { /* skip */ }
+      const p = layoutGet<{ x: number; y: number; locked?: boolean }>(`overlay:${ov.file}`);
+      const pos = p ? { x: p.x, y: p.y } : ov.pos;
+      const locked = p?.locked ?? false;
       return { file: ov.file, macros: ov.macros, label: ov.label, pos, locked };
     });
     return { name, positions, hidden: [...hiddenPanels], overlays: savedOverlays };
   }
 
-  function saveDraft() {
-    const name = nameInput.trim();
-    if (!name) return;
-    const layout = buildLayout(name);
-    persistDrafts([...drafts.filter(l => l.name !== name), layout]);
+  async function saveDraft() {
+    const trimmed = nameInput.trim();
+    if (!trimmed) return;
+    const slug = slugifyLayoutName(trimmed);
+    if (!slug || slug === "current") return;
+    const layout = buildLayout(trimmed);
+    const ok = await writeLayout(slug, layout as unknown as Record<string, unknown>);
+    if (!ok) return;
+    setDrafts(prev => [...prev.filter(l => l.name !== trimmed), layout]);
     setNaming(false);
     setNameInput("");
   }
 
   function restoreLayout(layout: SavedLayout) {
     panelIds.forEach(id => {
-      if (layout.positions[id])
-        localStorage.setItem(layoutKey(`panel:${id}`), JSON.stringify(layout.positions[id]));
+      if (layout.positions[id]) layoutSet(`panel:${id}`, layout.positions[id]);
     });
     onRestoreHidden(layout.hidden ?? []);
     onRestoreOverlays(layout.overlays ?? []);
@@ -74,7 +84,7 @@ export function SettingsPanel({ panelDefaults, hiddenPanels, overlays, sharedLay
   function resetToDefault() {
     panelIds.forEach(id => {
       const def = panelDefaults[id] ?? { x: 60, y: 60 };
-      localStorage.setItem(layoutKey(`panel:${id}`), JSON.stringify({ ...def, locked: false }));
+      layoutSet(`panel:${id}`, { ...def, locked: false });
     });
     onResetHidden();
     onRestoreOverlays([]);
@@ -82,27 +92,12 @@ export function SettingsPanel({ panelDefaults, hiddenPanels, overlays, sharedLay
     onClose();
   }
 
-  function copyAsJson(layout: SavedLayout) {
-    const text = JSON.stringify(layout, null, 2);
-    const done = () => { setCopiedName(layout.name); setTimeout(() => setCopiedName(null), 1500); };
-    try {
-      if (navigator.clipboard?.writeText) {
-        navigator.clipboard.writeText(text).then(done, () => fallback(text, done));
-      } else {
-        fallback(text, done);
-      }
-    } catch { fallback(text, done); }
-  }
-
-  function fallback(text: string, done: () => void) {
-    const ta = document.createElement("textarea");
-    ta.value = text;
-    ta.style.position = "fixed";
-    ta.style.opacity = "0";
-    document.body.appendChild(ta);
-    ta.select();
-    try { document.execCommand("copy"); done(); } catch { /* ignore */ }
-    document.body.removeChild(ta);
+  async function removeDraft(layout: SavedLayout) {
+    const slug = slugifyLayoutName(layout.name);
+    if (!slug) return;
+    const ok = await deleteLayout(slug);
+    if (!ok) return;
+    setDrafts(prev => prev.filter(l => l.name !== layout.name));
   }
 
   const menuItemStyle: React.CSSProperties = {
@@ -173,7 +168,7 @@ export function SettingsPanel({ panelDefaults, hiddenPanels, overlays, sharedLay
 
       {drafts.length > 0 && <>
         <div style={{ margin: "6px 14px", borderTop: "1px solid #1e3a5f" }} />
-        <div style={sectionLabel}>My drafts</div>
+        <div style={sectionLabel}>Saved layouts</div>
         {drafts.map(layout => (
           <div key={`draft-${layout.name}`} style={{ display: "flex", alignItems: "center" }}>
             <button style={{ ...menuItemStyle, flex: 1, padding: "5px 14px" }} onMouseEnter={hoverOn} onMouseLeave={hoverOff}
@@ -181,15 +176,8 @@ export function SettingsPanel({ panelDefaults, hiddenPanels, overlays, sharedLay
               {layout.name}
             </button>
             <button
-              title="Copy as JSON for config.json"
-              onClick={e => { e.stopPropagation(); copyAsJson(layout); }}
-              style={{ background: "none", border: "none", color: copiedName === layout.name ? "#81c784" : "#546e8a", cursor: "pointer", fontSize: 11, padding: "4px 6px", lineHeight: 1, flexShrink: 0, fontFamily: "monospace" }}
-              onMouseEnter={e => { if (copiedName !== layout.name) (e.currentTarget as HTMLElement).style.color = "#90caf9"; }}
-              onMouseLeave={e => { if (copiedName !== layout.name) (e.currentTarget as HTMLElement).style.color = "#546e8a"; }}
-            >{copiedName === layout.name ? "copied" : "JSON"}</button>
-            <button
               title="Delete"
-              onClick={e => { e.stopPropagation(); persistDrafts(drafts.filter(l => l.name !== layout.name)); }}
+              onClick={e => { e.stopPropagation(); void removeDraft(layout); }}
               style={{ background: "none", border: "none", color: "#546e8a", cursor: "pointer", fontSize: 15, padding: "4px 10px", lineHeight: 1, flexShrink: 0 }}
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "#ef5350"; }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "#546e8a"; }}

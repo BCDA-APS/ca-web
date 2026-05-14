@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { UiRenderer } from "../lib/UiRenderer";
-import { layoutKey } from "../lib/layoutStorage";
+import { layoutGet, layoutSet } from "../lib/layoutStorage";
+
+interface OverlayState { x: number; y: number; locked: boolean }
 
 export interface AppOverlay {
   id: number;
@@ -14,25 +16,16 @@ export interface AppOverlay {
 }
 
 export function OverlayPanel({ ov, onClose }: { ov: AppOverlay; onClose: () => void }) {
-  const storageKey = layoutKey(`overlay:${ov.file}`);
-  const [pos, setPos] = useState<{ x: number; y: number }>(() => {
-    try {
-      const s = localStorage.getItem(storageKey);
-      if (s) { const p = JSON.parse(s); return { x: p.x, y: p.y }; }
-    } catch { /* ignore */ }
-    return ov.pos;
-  });
-  const [locked, setLocked] = useState<boolean>(() => {
-    try {
-      const s = localStorage.getItem(storageKey);
-      if (s) return JSON.parse(s).locked ?? false;
-    } catch { /* ignore */ }
-    return false;
-  });
+  const storageKey = `overlay:${ov.file}`;
+  const saved = layoutGet<OverlayState>(storageKey);
+  const [pos, setPos] = useState<{ x: number; y: number }>(() =>
+    saved ? { x: saved.x, y: saved.y } : ov.pos
+  );
+  const [locked, setLocked] = useState<boolean>(() => saved?.locked ?? false);
   const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
 
   useEffect(() => {
-    localStorage.setItem(storageKey, JSON.stringify({ x: pos.x, y: pos.y, locked }));
+    layoutSet(storageKey, { x: pos.x, y: pos.y, locked });
   }, [storageKey, pos, locked]);
 
   function onMouseDown(e: React.MouseEvent) {

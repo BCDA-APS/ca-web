@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useContext } from "react";
 import { createPortal } from "react-dom";
 import { DeploymentContext, clearActive } from "./lib/deployment";
-import { layoutKey } from "./lib/layoutStorage";
+import { layoutGet, layoutSet } from "./lib/layoutStorage";
 import { ErrorBoundary } from "./shell/ErrorBoundary";
 import { DraggablePanel } from "./shell/DraggablePanel";
 import { OverlayPanel, type AppOverlay } from "./shell/OverlayPanel";
@@ -22,11 +22,8 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
   const [activeTab, setActiveTab] = useState(config.tabs[0].id);
   const activeTabColor = config.tabs.find(t => t.id === activeTab)?.color ?? "#0a1520";
   const [hiddenPanels, setHiddenPanels] = useState<Set<string>>(() => {
-    try {
-      const s = localStorage.getItem(layoutKey("panel-hidden"));
-      if (s) return new Set(JSON.parse(s));
-    } catch { /* ignore */ }
-    return new Set(config.defaultHiddenPanels ?? []);
+    const saved = layoutGet<string[]>("panel-hidden");
+    return saved ? new Set(saved) : new Set(config.defaultHiddenPanels ?? []);
   });
   const activeTabRef = useRef(activeTab);
   activeTabRef.current = activeTab;
@@ -48,7 +45,7 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(layoutKey("panel-hidden"), JSON.stringify([...hiddenPanels]));
+    layoutSet("panel-hidden", [...hiddenPanels]);
   }, [hiddenPanels]);
 
   useEffect(() => {
@@ -83,7 +80,7 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
   }
 
   function restoreOverlays(saved: SavedOverlay[]) {
-    saved.forEach(ov => localStorage.setItem(layoutKey(`overlay:${ov.file}`), JSON.stringify({ x: ov.pos.x, y: ov.pos.y, locked: ov.locked ?? false })));
+    saved.forEach(ov => layoutSet(`overlay:${ov.file}`, { x: ov.pos.x, y: ov.pos.y, locked: ov.locked ?? false }));
     const tabId = activeTabRef.current;
     setOverlays(saved.map(ov => ({ id: ++counter.current, file: ov.file, macros: ov.macros, label: ov.label, pos: ov.pos, tabId })));
   }
