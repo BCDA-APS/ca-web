@@ -65,23 +65,29 @@ To add a new deployment:
    and adjust `pvws.socket` for your PVWS server.
 3. Replace `tabs`, `panelDefaults`, and `tabPanels` with your own panels.
 4. (Optional) If the deployment needs to serve `.ui` files from external
-   directories (e.g. NFS-mounted caQtDM display paths), add a
-   `paths.json` alongside `index.tsx`:
+   directories (e.g. NFS-mounted caQtDM display paths), add a `paths`
+   block to the same `config.json`:
 
    ```json
    {
-     "uiDirs": { "mybeamline": "/net/host/path/to/ui" },
-     "startupScript": "/net/host/path/to/start_epics_X",
-     "adl2ui": "/APSshare/bin/adl2ui"
+     "id": "mybeamline",
+     "title": "My Beamline",
+     "pvws": { "socket": "localhost:8080", "ssl": false },
+     "paths": {
+       "uiDirs": { "mybeamline": "/net/host/path/to/ui" },
+       "startupScript": "/net/host/path/to/start_epics_X",
+       "adl2ui": "/APSshare/bin/adl2ui"
+     }
    }
    ```
 
-   All fields are optional. `uiDirs[key]` makes `/ui/<key>/foo.ui` resolve
-   against `<target>/foo.ui`. `startupScript` is a caQtDM startup script
-   parsed to derive the display search path. `adl2ui` is the converter for
-   on-the-fly `.adl` → `.ui`. Targets that don't exist on the current host
-   are tolerated — the picker shows a "paths unreachable" hint for affected
-   deployments.
+   All `paths` fields are optional and consumed at build time only.
+   `uiDirs[key]` makes `/ui/<key>/foo.ui` resolve against
+   `<target>/foo.ui`. `startupScript` is a caQtDM startup script parsed
+   to derive the display search path. `adl2ui` is the converter for
+   on-the-fly `.adl` → `.ui`. Targets that don't exist on the current
+   host are tolerated — the picker shows a "paths unreachable" hint for
+   affected deployments.
 
 That's it — the picker auto-discovers it. No registration step.
 
@@ -117,19 +123,23 @@ pvws runs as a podman container. From the repo root:
 See [docs/how-to-start-pvws.md](docs/how-to-start-pvws.md) for env vars,
 build/load steps, host-specific notes, and the pvws write protocol.
 
-## Public UI File Layout
+## UI File Resolution
 
-`.ui` files for the main 29-ID displays are served from `public/ui/`.
+`.ui` files used directly by the React shell (e.g. the test panel) are
+imported as Vite assets from `src/ui/` and shipped in the bundle.
 
-The dev server automatically resolves displays not found in `public/ui/` by searching
-the same directory list that the desktop caQtDM uses. It does this by parsing the
-caQtDM startup script (`/net/s29dserv/xorApps/ui/start_epics_29id`) and the sourced
-release file (`release_6.3`) at startup — no paths are hardcoded. This covers all
-synApps modules (motor, calc, sscan, optics, etc.), APSshare storage ring screens,
-and site-specific paths.
+For deployment-supplied displays, the dev server resolves any `/ui/*`
+request against the directories declared in each deployment's
+`paths.uiDirs` and the same directory list that the desktop caQtDM uses.
+It does this by parsing the caQtDM startup script (e.g.
+`/net/s29dserv/xorApps/ui/start_epics_29id`) and the sourced release
+file at startup — no paths are hardcoded. This covers all synApps
+modules (motor, calc, sscan, optics, etc.), APSshare storage ring
+screens, and site-specific paths.
 
-If a display is only available in `.adl` (MEDM) format, it is converted on the fly
-using `/APSshare/bin/adl2ui` and cached in `.ui-cache/` (git-ignored).
+If a display is only available in `.adl` (MEDM) format, it is converted
+on the fly using the deployment's `paths.adl2ui` (e.g.
+`/APSshare/bin/adl2ui`) and cached in `.ui-cache/` (git-ignored).
 
 See `docs/display-path-resolution.md` for full details.
 

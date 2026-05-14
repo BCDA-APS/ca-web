@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+### Dead-code sweep
+
+- Deleted unused `ChamberDiagram.tsx` and `ChamberDiagramLight.tsx`
+  under `src/deployments/29id/chamber/` (~860 lines combined). The
+  29id deployment uses `ChamberDiagramV2` exclusively.
+- Dropped `js-yaml`, `@types/js-yaml`, and `@reduxjs/toolkit` from
+  `package.json`. None had direct imports; `@reduxjs/toolkit` still
+  resolves transitively via `@diamondlightsource/cs-web-lib`'s own
+  `dependencies`.
+- Moved `public/ui/test.ui` to `src/ui/test.ui`. The `example` and
+  `nefarian` deployments now import it via Vite `?url`
+  (`import testUiUrl from "../../ui/test.ui?url"`) instead of
+  hard-coding the public path. Build emits the .ui as a fingerprinted
+  asset.
+- Moved `public/aps-logo.png` to `src/assets/aps-logo.png`; `App.tsx`
+  imports it directly (`import apsLogoUrl from "./assets/aps-logo.png"`).
+  `public/` directory removed entirely — all static assets now flow
+  through the Vite asset pipeline.
+- Removed `docs/superpowers/` (untracked planning artefacts) and
+  added `docs/superpowers/` to `.gitignore` alongside `.superpowers/`.
+
 ### Resilient, per-deployment layout storage
 
 - Layouts can now ship with a deployment: `DeploymentConfig.layouts?:
@@ -28,12 +49,17 @@
 ### pvws gateway pre-flight gate
 
 - `src/main.tsx` probes `ws[s]://<socket>/pvws/pv` once with a 3s timeout
-  (`src/lib/pvwsProbe.ts`) before mounting the app. If the probe fails,
-  `renderGatewayError(wsUrl)` replaces the app with a full-screen
-  recovery view (Retry / Switch deployment…) and neither cs-web-lib's
-  store nor `pvwsWriter` are initialized — this avoids the library's
-  hardcoded 500ms reconnect loop and the cascade of "No connections for
-  ca://…" subscription failures from every PV widget on mount.
+  (`src/lib/pvwsProbe.ts`) before initializing cs-web-lib. If the probe
+  fails, `installPvwsWebSocketStub(wsUrl)` (new `src/lib/wsStub.ts`)
+  pins that URL to a no-op `WebSocket` that stays in `CONNECTING` and
+  never fires open/close/error. The library's hardcoded 500ms reconnect
+  loop and queued `sendMessage` calls both fall through silently (the
+  library guards every send with `readyState === OPEN`), so PVs render
+  in their default disconnected state and the cascade of
+  "No connections for ca://…" errors disappears.
+- `App` accepts `wsDown` / `wsUrl` props and shows a red banner above
+  the existing header (offset to `top: 32`) with a Retry button. The
+  shell, panels, and templates remain visible and navigable.
 - Scope: startup-only. A connection that opens at boot but later drops
   still falls through to the library's reconnect behaviour.
 

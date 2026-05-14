@@ -43,7 +43,7 @@ forwarded). Not yet observed in practice at 29-ID.
 
 ## 8. ~~Distributed access across the beamline subnet~~ ✓ Done
 
-See `DEPLOYMENT.md` for the full setup including known pitfalls 
+See `DEPLOYMENT.md` for the full setup including known pitfalls
 (NFS overlay storage, `--no-hosts`, etc.).
 
 ## 9. Line profile on images

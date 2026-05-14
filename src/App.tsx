@@ -9,8 +9,9 @@ import { Sidebar } from "./shell/Sidebar";
 import { SettingsPanel, type SavedOverlay } from "./shell/SettingsPanel";
 import { FilePickerDialog, useUiFiles } from "./shell/FilePickerDialog";
 import { PvContextMenu, type PvContextEvent } from "./shell/PvContextMenu";
+import apsLogoUrl from "./assets/aps-logo.png";
 
-export default function App() {
+export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; wsUrl?: string }) {
   const config = useContext(DeploymentContext)!;
   const [overlays, setOverlays] = useState<AppOverlay[]>([]);
   const [pvContext, setPvContext] = useState<PvContextEvent | null>(null);
@@ -101,10 +102,17 @@ export default function App() {
       <Sidebar tabs={config.tabs} active={activeTab} onSelect={setActiveTab} />
 
       <div style={{ position: "fixed", bottom: 16, right: 16, zIndex: 1000, opacity: 0.85 }}>
-        <img src="/aps-logo.png" alt="Argonne National Laboratory | APS" style={{ height: "40px", width: "auto", display: "block" }} />
+        <img src={apsLogoUrl} alt="Argonne National Laboratory | APS" style={{ height: "40px", width: "auto", display: "block" }} />
       </div>
 
-      <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 2001, background: activeTabColor, borderBottom: "1px solid rgba(0,0,0,0.15)", padding: "8px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", transition: "background 0.3s" }}>
+      {wsDown && (
+        <div role="alert" style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 2002, background: "#c62828", color: "#ffffff", fontSize: 13, padding: "6px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, borderBottom: "1px solid rgba(0,0,0,0.25)" }}>
+          <span><strong>EPICS gateway unreachable</strong> — {wsUrl}. PVs are disconnected.</span>
+          <button onClick={() => window.location.reload()} style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.5)", borderRadius: 4, color: "#ffffff", cursor: "pointer", fontSize: 12, padding: "3px 10px" }}>Retry</button>
+        </div>
+      )}
+
+      <div style={{ position: "fixed", top: wsDown ? 32 : 0, left: 0, right: 0, zIndex: 2001, background: activeTabColor, borderBottom: "1px solid rgba(0,0,0,0.15)", padding: "8px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", transition: "background 0.3s" }}>
         <span style={{ color: "#ffffff", fontSize: 16, fontWeight: 700, letterSpacing: 0.5 }}>{config.title}</span>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }} onClick={e => e.stopPropagation()}>
           {(config.quickLinks ?? []).map(ql => (

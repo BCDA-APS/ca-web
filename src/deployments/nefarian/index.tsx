@@ -7,6 +7,7 @@ import { StripChart } from "../../widgets/StripChart";
 import { UiRenderer } from "../../lib/UiRenderer";
 import type { DeploymentConfig, DeploymentConfigData } from "../../lib/deployment";
 import rawConfig from "./config.json";
+import testUiUrl from "../../ui/test.ui?url";
 
 // Drop the build-time-only `paths` block; vite.config.ts reads it directly
 // from config.json and it has no business in the runtime config bundle.
@@ -119,7 +120,7 @@ function AreaDetectorContent() {
 }
 
 function TestContent() {
-  return <UiRenderer file="/ui/test.ui" macros={{}} />;
+  return <UiRenderer file={testUiUrl} macros={{}} />;
 }
 
 function MotorCardTestContent() {

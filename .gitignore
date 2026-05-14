@@ -15,6 +15,7 @@ dist/
 .playwright-mcp/
 .superpowers/
 .gstack/
+docs/superpowers/
 
 # Secrets dir (if it ever exists)
 /secrets/
