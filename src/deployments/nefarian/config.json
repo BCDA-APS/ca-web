@@ -1,0 +1,18 @@
+{
+  "id": "nefarian",
+  "title": "Nefarian",
+  "pvws": { "socket": "localhost:8080", "ssl": false },
+  "tabs": [
+    { "id": 1, "icon": "⌂",  "label": "Home" },
+    { "id": 2, "icon": "🔬", "label": "Test" }
+  ],
+  "panelDefaults": {
+    "motors":               { "x": 108, "y":  56 },
+    "lorentzian":           { "x": 108, "y": 460 },
+    "area-detector":        { "x": 108, "y": 800 },
+    "test":                 { "x": 108, "y":  56 },
+    "motor-card-test":      { "x": 108, "y": 400 },
+    "motor-card-row-test":  { "x": 500, "y": 400 },
+    "motor-card-flat-test": { "x": 108, "y": 700 }
+  }
+}

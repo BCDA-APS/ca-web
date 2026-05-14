@@ -1,0 +1,47 @@
+{
+  "id": "29id",
+  "title": "29ID Beamline",
+  "pvws": { "socket": "mite:8080", "ssl": false },
+  "quickLinks": [
+    { "label": "29ID", "file": "/ui/29id/29id.ui", "macros": {} }
+  ],
+  "tabs": [
+    { "id": 3, "icon": "✴️", "label": "29ID-A", "color": "rgb(174,203,255)" },
+    { "id": 1, "icon": "⚛",  "label": "29ID-C", "color": "rgb(170,170,255)" },
+    { "id": 2, "icon": "💠", "label": "29ID-D" }
+  ],
+  "panelDefaults": {
+    "29idc-chamber-v2":     { "x": 100, "y":  55 },
+    "29idc-motors":         { "x": 650, "y":  55 },
+    "29idc-arpes":          { "x": 100, "y": 1000 },
+    "29idc-energy":         { "x": 100, "y": 500 },
+    "29idd-kappa":          { "x": 100, "y":  55 },
+    "29id-energy-a":        { "x":  85, "y":  55 },
+    "29id-beamline-layout": { "x":  85, "y": 530 },
+    "29id-mirrors":         { "x": 600, "y":  55 },
+    "29id-bllayout-d":      { "x": 100, "y": 200 },
+    "29id-bllayout-e":      { "x": 100, "y": 400 },
+    "29id-slits":           { "x": 400, "y":  55 },
+    "29id-diagon":          { "x": 100, "y": 200 },
+    "29id-scan-records":    { "x": 700, "y":  55 },
+    "29id-strip-tool":      { "x": 700, "y": 300 }
+  },
+  "defaultHiddenPanels": [
+    "29id-mirrors",
+    "29id-bllayout-d",
+    "29id-bllayout-e",
+    "29id-slits",
+    "29id-diagon",
+    "29id-scan-records",
+    "29id-strip-tool"
+  ],
+  "paths": {
+    "uiDirs": {
+      "29id":   "/net/s29dserv/xorApps/ui/29id",
+      "ADCore": "/APSshare/epics/synApps_6_2_1/support/areaDetector-R3-12-1/ADCore/ADApp/op/ui",
+      "motors": "/APSshare/epics/synApps_6_2_1/support/motor-R7-2-2/motorApp/op/ui/autoconvert"
+    },
+    "startupScript": "/net/s29dserv/xorApps/ui/start_epics_29id",
+    "adl2ui": "/APSshare/bin/adl2ui"
+  }
+}

@@ -3,19 +3,48 @@ import { toDouble } from "../../lib/epics";
 import { colors } from "../../lib/theme";
 import { UiRenderer } from "../../lib/UiRenderer";
 import { MotorGrid } from "../../widgets/MotorGrid";
-import { ChamberDiagramV2 } from "./ChamberDiagramV2";
-import { BeamlineEnergy } from "./BeamlineEnergy";
-import { BeamlineEnergyA } from "./BeamlineEnergyA";
-import { BeamlineLayout } from "./BeamlineLayout";
-import { BLLayoutD } from "./BLLayoutD";
-import { BLLayoutE } from "./BLLayoutE";
-import { Mirrors } from "./Mirrors";
-import { Slits } from "./Slits";
-import { Diagon } from "./Diagon";
-import { ScanRecords } from "./ScanRecords";
+import { ChamberDiagramV2 } from "./chamber/ChamberDiagramV2";
+import { BeamlineEnergy } from "./energy/BeamlineEnergy";
+import { BeamlineEnergyA } from "./energy/BeamlineEnergyA";
+import { BeamlineLayout } from "./layout/BeamlineLayout";
+import { BLLayoutD } from "./layout/BLLayoutD";
+import { BLLayoutE } from "./layout/BLLayoutE";
+import { Mirrors } from "./optics/Mirrors";
+import { Slits } from "./optics/Slits";
+import { Diagon } from "./optics/Diagon";
+import { ScanRecords } from "./scan/ScanRecords";
 import { StripChart, type TraceConfig } from "../../widgets/StripChart";
 import { pvwsWriter } from "../../lib/pvwsWriter";
-import type { DeploymentConfig } from "../types";
+import type { DeploymentConfig, DeploymentConfigData } from "../../lib/deployment";
+import rawConfig from "./config.json";
+
+// Drop the build-time-only `paths` block; vite.config.ts reads it directly
+// from config.json and it has no business in the runtime config bundle.
+const { paths: _paths, ...deploymentFields } = rawConfig as DeploymentConfigData;
+void _paths;
+
+const tabPanels: DeploymentConfig["tabPanels"] = {
+  1: [
+    { id: "29idc-chamber-v2", title: "Chamber",         Content: ChamberDiagramV2 },
+    { id: "29idc-motors",     title: "29ID-C Motors",   Content: ArpesMotorsContent },
+    { id: "29idc-arpes",      title: "29ID-C ARPES",    Content: ArpesContent },
+    { id: "29idc-energy",     title: "Beamline Energy", Content: BeamlineEnergy },
+  ],
+  2: [{ id: "29idd-kappa", title: "29ID-D Kappa", Content: KappaContent }],
+  3: [
+    { id: "29id-beamline-layout", title: "Beamline Layout", Content: BeamlineLayout },
+    { id: "29id-mirrors",         title: "Mirrors",         Content: Mirrors },
+    { id: "29id-energy-a",        title: "Beamline Energy", Content: BeamlineEnergyA },
+    { id: "29id-bllayout-d",      title: "D Layout",        Content: BLLayoutD },
+    { id: "29id-bllayout-e",      title: "E Layout",        Content: BLLayoutE },
+    { id: "29id-slits",           title: "Slits",           Content: Slits },
+    { id: "29id-diagon",          title: "DiaGon",          Content: Diagon },
+    { id: "29id-scan-records",    title: "ScanRecords",     Content: ScanRecords },
+    { id: "29id-strip-tool",      title: "Strip Tool",      Content: () => <StripChart id="29id-strip-tool" initialPvs={CA_PVS} /> },
+  ],
+};
+
+export const config: DeploymentConfig = { ...deploymentFields, tabPanels };
 
 const CA_PVS: TraceConfig[] = [
   { pv: "29idb:ca1:read",  label: "CA1"  },
@@ -128,52 +157,3 @@ function KappaContent() {
     />
   );
 }
-
-export const config: DeploymentConfig = {
-  title: "29ID Beamline",
-  quickLinks: [
-    { label: "29ID", file: "/ui/29id/29id.ui", macros: {} },
-  ],
-  tabs: [
-    { id: 3, icon: "✴️", label: "29ID-A", color: "rgb(174,203,255)" },
-    { id: 1, icon: "⚛",  label: "29ID-C", color: "rgb(170,170,255)" },
-    { id: 2, icon: "💠", label: "29ID-D" },
-  ],
-  panelDefaults: {
-    "29idc-chamber-v2":    { x: 100, y:  55 },
-    "29idc-motors":  { x: 650, y:  55 },
-    "29idc-arpes":   { x: 100, y: 1000 },
-    "29idc-energy":  { x: 100, y: 500 },
-    "29idd-kappa":   { x: 100, y:  55 },
-    "29id-energy-a":        { x:  85, y:  55 },
-    "29id-beamline-layout": { x:  85, y: 530 },
-    "29id-mirrors":         { x: 600, y:  55 },
-    "29id-bllayout-d":      { x: 100, y: 200 },
-    "29id-bllayout-e":      { x: 100, y: 400 },
-    "29id-slits":           { x: 400, y:  55 },
-    "29id-diagon":          { x: 100, y: 200 },
-    "29id-scan-records":    { x: 700, y:  55 },
-    "29id-strip-tool":      { x: 700, y: 300 },
-  },
-  defaultHiddenPanels: ["29id-mirrors", "29id-bllayout-d", "29id-bllayout-e", "29id-slits", "29id-diagon", "29id-scan-records", "29id-strip-tool"],
-  tabPanels: {
-    1: [
-      { id: "29idc-chamber-v2", title: "Chamber",  Content: ChamberDiagramV2 },
-      { id: "29idc-motors",  title: "29ID-C Motors",   Content: ArpesMotorsContent },
-      { id: "29idc-arpes",   title: "29ID-C ARPES",    Content: ArpesContent },
-      { id: "29idc-energy",  title: "Beamline Energy", Content: BeamlineEnergy },
-    ],
-    2: [{ id: "29idd-kappa", title: "29ID-D Kappa", Content: KappaContent }],
-    3: [
-      { id: "29id-beamline-layout", title: "Beamline Layout", Content: BeamlineLayout },
-      { id: "29id-mirrors",         title: "Mirrors",         Content: Mirrors },
-      { id: "29id-energy-a",        title: "Beamline Energy", Content: BeamlineEnergyA },
-      { id: "29id-bllayout-d",      title: "D Layout",        Content: BLLayoutD },
-      { id: "29id-bllayout-e",      title: "E Layout",        Content: BLLayoutE },
-      { id: "29id-slits",           title: "Slits",           Content: Slits },
-      { id: "29id-diagon",          title: "DiaGon",          Content: Diagon },
-      { id: "29id-scan-records",    title: "ScanRecords",    Content: ScanRecords },
-      { id: "29id-strip-tool",      title: "Strip Tool",      Content: () => <StripChart id="29id-strip-tool" initialPvs={CA_PVS} /> },
-    ],
-  },
-};

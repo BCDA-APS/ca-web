@@ -3,8 +3,25 @@ dist/
 .env
 .loglogin
 .ui-cache/
+
+# AI tooling working dirs
 .claude/agent-memory/
 .claude/audits/
 .claude/health/
 .claude/worktrees/
+.claude/scheduled_tasks.lock
 .claude/settings.local.json
+.worktrees/
+.playwright-mcp/
+.superpowers/
+.gstack/
+docs/superpowers/
+
+# Secrets dir (if it ever exists)
+/secrets/
+/secrets/*.json
+/secrets/*.key
+/secrets/*.pem
+
+# Test output
+test-results/

@@ -215,6 +215,6 @@ function MySection() {
 ## Notes
 
 - **ChamberDiagram** is SVG-based so it cannot use the HTML widget components, but it does import `toDouble`, `toStr`, and `pvCtx` from `epics.ts`. Use `colors.*` tokens for SVG `fill` and `stroke` attributes.
-- **Import paths** depend on where your panel lives. Panels in `src/deployments/29id/` use `../../lib/...` and `../../widgets/...`.
+- **Import paths** depend on where your panel lives. Panels directly under `src/deployments/29id/` (e.g. `index.tsx`) use `../../lib/...` and `../../widgets/...`; panels inside the domain subfolders (`layout/`, `energy/`, `chamber/`, `optics/`, `scan/`) use `../../../lib/...` and `../../../widgets/...`.
 - **Right-click PV info** is handled globally by `App.tsx`. Any element that dispatches a `"pv-context"` custom event (via `pvCtx`) will show the PV info dialog automatically.
 - **TweakValue and SpBox share the same colors** (`spBg/spText/spBorder`) to signal they are both editable inputs. If you ever need to differentiate them, add dedicated tokens to `theme.ts`.

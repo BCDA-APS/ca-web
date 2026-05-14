@@ -3,9 +3,22 @@
     "deny": ["Bash(rm -rf *)"]
   },
   "hooks": {
-    "PreToolUse": [{
-      "matcher": "Edit|Write",
-      "hooks": [{ "type": "command", "command": "bash .claude/hooks/protect-files.sh $CLAUDE_FILE_PATH", "timeout": 5 }]
-    }]
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          { "type": "command", "command": "bash .claude/hooks/protect-files.sh \"$CLAUDE_FILE_PATH\"", "timeout": 5 }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          { "type": "command", "command": "bash .claude/hooks/ts-auto-format.sh \"$CLAUDE_FILE_PATH\"", "timeout": 10 },
+          { "type": "command", "command": "bash .claude/hooks/check-doc-sync.sh claude-file \"$CLAUDE_FILE_PATH\"", "timeout": 5 }
+        ]
+      }
+    ]
   }
 }

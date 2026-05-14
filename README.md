@@ -2,116 +2,145 @@
 
 A React app that renders caQtDM `.ui` files in the browser, using `cs-web-lib` for EPICS PV connections via pvws.
 
+## Docs
+
+- [docs/deployment.md](docs/deployment.md) — ops guide for beamline hosts (pvws container, mode setup, troubleshooting).
+- [docs/how-to-start-pvws.md](docs/how-to-start-pvws.md) — how to start the pvws backend that ca-web connects to.
+- [docs/roadmap.md](docs/roadmap.md) — feature roadmap.
+- [docs/widgets.md](docs/widgets.md) — widget catalog and EPICS-binding rules.
+- [docs/ui-rendering.md](docs/ui-rendering.md) — caQtDM `.ui` parsing and rendering pipeline.
+- [docs/deployments.md](docs/deployments.md) — how to add a new beamline deployment.
+- [docs/design-system.md](docs/design-system.md) — visual conventions.
+- [docs/display-path-resolution.md](docs/display-path-resolution.md) — caQtDM display path lookup.
+- [docs/architecture.md](docs/architecture.md) — architecture overview.
+- [docs/adr/](docs/adr/) — architecture decision records.
+
 ## Development
 
-Requires a conda environment with Node.js. Create one if needed:
+Requires Node.js (18+; tested with 24.x). Use whichever toolchain the host
+provides:
+
+- **System / nvm:** `node` and `npm` already on `PATH` — nothing extra to do.
+- **conda** (typical on APS beamline hosts): create and activate the env first.
+
+  ```bash
+  conda create -n nodejs nodejs
+  conda activate nodejs
+  ```
+
+Then install deps:
 
 ```bash
-conda create -n nodejs nodejs
+npm install
 ```
 
-### Local mode (default)
-
-Run Vite and pvws on the same machine; open the app in a browser on that machine.
-The default `.env` uses `localhost:8080` so each machine connects to its own pvws:
+### Running the app
 
 ```bash
-cd ~/workspace/caqtdm-web
-conda activate nodejs
+cd ~/workspace/ca-web
 npm run dev
 ```
 
-Then open `http://localhost:4200` in a browser on the same machine.
+Then open `http://localhost:4200` in a browser. The first visit shows a
+**deployment picker** listing every folder in `src/deployments/`. Click one to
+enter it — the choice is remembered in `localStorage`, and you can deep-link
+straight in with `?deployment=<id>` (for example
+`http://localhost:4200/?deployment=29id`).
 
-### Deployment modes
+### Deployments
 
-Tab layouts and pvws addresses are configured per deployment using Vite's mode system.
-Two deployment env files are committed:
+Each subfolder under `src/deployments/` is a self-contained deployment. The
+folder name **must** match the `id` exported by its `index.tsx`. Committed
+deployments:
 
-| Mode | File | pvws | Tabs |
+| id | Title | pvws | Tabs |
 |------|------|------|------|
-| `nefarian` (default) | `.env.nefarian` | `localhost:8080` | Motors, Lorentzian, Area Detector |
-| `29id` | `.env.29id` | `mite:8080` | 29ID-C ARPES, 29ID-D Kappa |
+| `example` | Example Deployment | `localhost:8080` | Home, Test (template) |
+| `nefarian` | Nefarian | `localhost:8080` | Home, Test (simulated IOC) |
+| `29id` | 29ID Beamline | `mite:8080` | 29ID-A, 29ID-C, 29ID-D |
 
-```bash
-npm run dev -- --mode nefarian   # simulated IOC (default)
-npm run dev -- --mode 29id       # 29ID beamline on mite
-```
+To add a new deployment:
 
-Running `npm run dev` without `--mode` uses the gitignored `.env` (localhost pvws,
-nefarian tabs). Deployment files contain no secrets and are committed.
+1. Copy `src/deployments/example/` to `src/deployments/<your-id>/`.
+2. In the new `index.tsx`, set `id` to match the folder name, set `title`,
+   and adjust `pvws.socket` for your PVWS server.
+3. Replace `tabs`, `panelDefaults`, and `tabPanels` with your own panels.
+4. (Optional) If the deployment needs to serve `.ui` files from external
+   directories (e.g. NFS-mounted caQtDM display paths), add a `paths`
+   block to the same `config.json`:
 
-To add a new deployment, create `src/deployments/<name>.tsx` exporting a
-`DeploymentConfig`, add a `.env.<name>` file, and register it in
-`src/deployments/index.ts`.
+   ```json
+   {
+     "id": "mybeamline",
+     "title": "My Beamline",
+     "pvws": { "socket": "localhost:8080", "ssl": false },
+     "paths": {
+       "uiDirs": { "mybeamline": "/net/host/path/to/ui" },
+       "startupScript": "/net/host/path/to/start_epics_X",
+       "adl2ui": "/APSshare/bin/adl2ui"
+     }
+   }
+   ```
+
+   All `paths` fields are optional and consumed at build time only.
+   `uiDirs[key]` makes `/ui/<key>/foo.ui` resolve against
+   `<target>/foo.ui`. `startupScript` is a caQtDM startup script parsed
+   to derive the display search path. `adl2ui` is the converter for
+   on-the-fly `.adl` → `.ui`. Targets that don't exist on the current
+   host are tolerated — the picker shows a "paths unreachable" hint for
+   affected deployments.
+
+That's it — the picker auto-discovers it. No registration step.
+
+### Running on a laptop without beamline NFS
+
+The repo has no machine-specific paths in trunk. `npm install && npm run build`
+works on any host. In dev, deployments that declare unreachable external paths
+(e.g. `29id` away from the beamline subnet) are still selectable; their
+`/ui/*` requests cleanly 404 in the browser network panel. The picker shows
+a small "N external paths unreachable" hint for those entries.
 
 ### Distributed mode (beamline access)
 
-Run the app on `mite` (beamline subnet machine) with the `29id` mode so any subnet
-browser can reach real 29ID PVs. Because the workspace is NFS-mounted, no code
-duplication is needed:
+Run the app on `mite` (beamline subnet machine); any subnet browser can reach
+it. Because the workspace is NFS-mounted, no code duplication is needed:
 
 ```bash
-npm run dev -- --mode 29id
+npm run dev
 ```
 
-Then open `http://mite:4200` from any machine on the subnet. pvws must also be running
-on `mite` (see pvws Setup below).
+Then open `http://mite:4200/?deployment=29id` from any machine on the subnet.
+pvws must also be running on `mite` (see [pvws Setup](#pvws-setup) below).
 
 ## pvws Setup
 
-pvws runs as a Podman container.
-
-### On nefarian (simulated IOC)
+pvws runs as a podman container. From the repo root:
 
 ```bash
-podman stop pvws && podman rm pvws
-podman run --network=host -d --name pvws \
-  -e PV_WRITE_SUPPORT=true \
-  -e EPICS_CA_MAX_ARRAY_BYTES=8000000 \
-  -e PV_ARRAY_THROTTLE_MS=1000 \
-  pvws:latest
+./scripts/start-pvws.sh                                              # workstation / nefarian
+./scripts/start-pvws.sh --name pvws-29id --no-hosts --rootless-nfs   # mite / 29ID beamline
 ```
 
-### On mite (29ID beamline)
+See [docs/how-to-start-pvws.md](docs/how-to-start-pvws.md) for env vars,
+build/load steps, host-specific notes, and the pvws write protocol.
 
-`/etc/hosts` is not writable by regular users on the beamline machines, so
-`--no-hosts` is required. A distinct container name avoids conflicts with other
-instances on the shared machine.
+## UI File Resolution
 
-```bash
-podman stop pvws-29id && podman rm pvws-29id
-podman run --network=host --no-hosts -d --name pvws-29id \
-  -e PV_WRITE_SUPPORT=true \
-  -e EPICS_CA_MAX_ARRAY_BYTES=8000000 \
-  -e PV_ARRAY_THROTTLE_MS=1000 \
-  pvws:latest
-```
+`.ui` files used directly by the React shell (e.g. the test panel) are
+imported as Vite assets from `src/ui/` and shipped in the bundle.
 
-### Environment variables
+For deployment-supplied displays, the dev server resolves any `/ui/*`
+request against the directories declared in each deployment's
+`paths.uiDirs` and the same directory list that the desktop caQtDM uses.
+It does this by parsing the caQtDM startup script (e.g.
+`/net/s29dserv/xorApps/ui/start_epics_29id`) and the sourced release
+file at startup — no paths are hardcoded. This covers all synApps
+modules (motor, calc, sscan, optics, etc.), APSshare storage ring
+screens, and site-specific paths.
 
-- **`PV_WRITE_SUPPORT=true`** — enables PV write support (required for caTextEntry, caMessageButton, etc.)
-- **`EPICS_CA_MAX_ARRAY_BYTES=8000000`** — required for area detector waveform PVs (e.g. `ArrayData`). The container does **not** inherit the host shell's environment. Without this, the default is 16 KB and image PVs will connect but return 0 elements.
-- **`PV_ARRAY_THROTTLE_MS=1000`** — maximum update rate for waveform/array PVs (default is 10000 ms = 10 s, which makes strip charts and line profiles sluggish). Set to 1000 ms for ~1 Hz updates; lower values (e.g. 200) give faster updates at the cost of more bandwidth.
-
-### pvws write protocol
-
-- A PV must be **subscribed** on the same WebSocket connection before a write will be accepted. pvws returns `{"type":"error","message":"Cannot write unknown PV <name>"}` otherwise.
-- PV names must use the `ca://` prefix (e.g. `ca://fr:m1.VAL`).
-
-## Public UI File Layout
-
-`.ui` files for the main 29-ID displays are served from `public/ui/`.
-
-The dev server automatically resolves displays not found in `public/ui/` by searching
-the same directory list that the desktop caQtDM uses. It does this by parsing the
-caQtDM startup script (`/net/s29dserv/xorApps/ui/start_epics_29id`) and the sourced
-release file (`release_6.3`) at startup — no paths are hardcoded. This covers all
-synApps modules (motor, calc, sscan, optics, etc.), APSshare storage ring screens,
-and site-specific paths.
-
-If a display is only available in `.adl` (MEDM) format, it is converted on the fly
-using `/APSshare/bin/adl2ui` and cached in `.ui-cache/` (git-ignored).
+If a display is only available in `.adl` (MEDM) format, it is converted
+on the fly using the deployment's `paths.adl2ui` (e.g.
+`/APSshare/bin/adl2ui`) and cached in `.ui-cache/` (git-ignored).
 
 See `docs/display-path-resolution.md` for full details.
 

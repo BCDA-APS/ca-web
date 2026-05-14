@@ -85,7 +85,7 @@ unused branch.
 - Pass `config.tabs` to `Sidebar` as a `tabs` prop (Sidebar currently reads
   module-level TABS — this prop must be threaded through)
 - Pass `config.panelDefaults` to `SettingsPanel` as a `panelDefaults` prop
-  (SettingsPanel currently reads module-level PANEL_DEFAULTS/PANEL_IDS — 
+  (SettingsPanel currently reads module-level PANEL_DEFAULTS/PANEL_IDS —
   this prop must be threaded through)
 - Pass `config.title` to the header span
 - Render `<config.TabContent tabId={activeTab} layoutKey={layoutKey} />`
