@@ -2,6 +2,46 @@
 
 ## Unreleased
 
+### caQtDM 29-ID port: new `29id_dev` deployment, four reusable widgets
+
+- New deployment `src/deployments/29id_dev/` — a clone of `29id` used as
+  a staging area for porting screens from the caQtDM tree at
+  `/net/s29dserv/xorApps/ui/29id`. Production `29id` is unchanged. Move
+  panels from `29id_dev` → `29id` one at a time once they're proven.
+- New tabs in `29id_dev`: **29ID-E** (coherent beamline) and
+  **29ID-BLEPS** (vacuum interlocks). The existing 29ID-A / C / D tabs
+  in `29id_dev` gain ~16 additional panels (default hidden) covering
+  diagnostics, scan progress, PV history, apertures, M3R alignment,
+  detector spectra, sample-temperature PID, and beam-profile cameras.
+- Four new reusable widgets under `src/widgets/`:
+  - `BlepsSector.tsx` — vacuum sector schematic: gate-valve cells
+    (OPEN/CLOSED/FAULT color states), ion-gauge / ion-pump / vacuum-trip
+    interlock LEDs, optional summary banner.
+  - `DetectorSpectrum.tsx` — MCA/DXP/Vortex spectrum plot with ROIs,
+    real/live/dead-time stats, and Start/Stop/Erase buttons.
+  - `TempController.tsx` — LakeShore 331/340 / Si9700 PID card with
+    setpoint, heater output, ramp, range, and P/I/D entries.
+  - `CameraViewer.tsx` — AreaDetector image viewer (MJPEG stream or
+    waveform-driven canvas fallback) with crosshair overlay and
+    exposure / gain / acquire controls.
+- Phase-2 native panels wired in `src/deployments/29id_dev/index.tsx`:
+  `bleps-sector-{a..e}` (BlepsSector), `29idd-dxp-saturn`
+  (DetectorSpectrum, mca1 + 4 ROIs), `29idd-si9700` (TempController,
+  tc1 loop with P/I/D), `29idc-cam-live` and `29ide-lightfield`
+  (CameraViewer), `29idd-mpa` (DetectorSpectrum + CameraViewer
+  composite).
+- The remaining new panels (`29id-bl-diag`, `29id-apertures`,
+  `29id-scan-progress`, `29id-pv-history`, `29id-m3r-align`,
+  `29idc-ses`, `29idc-stripchart-t`, `29idc-motors-detail`,
+  `29idd-stripchart-t`, `29idd-scan-progress`, `29idd-quantar`,
+  `29ide-overview`, `29ide-motors`, `29ide-scan`, `29ide-apertures`,
+  `bleps-faults`) load via `UiRenderer` from `/ui/29id/<file>.ui` for
+  immediate breadth; React rewrites are deferred.
+- Already-covered caQtDM screens are explicitly **not** re-ported (see
+  the inventory in `/home/rafa/.claude/plans/i-want-to-investigate-mellow-fog.md`):
+  layouts, energy, mirrors, slits, chamber, Kappa, ARPES motors,
+  CA-1..15 strip chart, scan records.
+
 ### Layouts move from `localStorage` to per-deployment JSON files
 
 - Live state (panel positions, lock, hidden, overlay positions, strip

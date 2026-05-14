@@ -1,0 +1,102 @@
+{
+  "id": "29id_dev",
+  "title": "29ID Beamline (dev)",
+  "pvws": { "socket": "mite:8080", "ssl": false },
+  "quickLinks": [
+    { "label": "29ID", "file": "/ui/29id/29id.ui", "macros": {} }
+  ],
+  "tabs": [
+    { "id": 3, "icon": "✴️", "label": "29ID-A", "color": "rgb(174,203,255)" },
+    { "id": 1, "icon": "⚛",  "label": "29ID-C", "color": "rgb(170,170,255)" },
+    { "id": 2, "icon": "💠", "label": "29ID-D" },
+    { "id": 4, "icon": "🌀", "label": "29ID-E", "color": "rgb(196,224,196)" },
+    { "id": 5, "icon": "🛡", "label": "29ID-BLEPS", "color": "rgb(230,210,180)" }
+  ],
+  "panelDefaults": {
+    "29idc-chamber-v2":     { "x": 100, "y":  55 },
+    "29idc-motors":         { "x": 650, "y":  55 },
+    "29idc-arpes":          { "x": 100, "y": 1000 },
+    "29idc-energy":         { "x": 100, "y": 500 },
+    "29idc-cam-live":        { "x": 650, "y": 500 },
+    "29idc-ses":             { "x": 650, "y": 800 },
+    "29idc-stripchart-t":    { "x": 100, "y": 1400 },
+    "29idc-motors-detail":   { "x": 650, "y": 1100 },
+
+    "29idd-kappa":          { "x": 100, "y":  55 },
+    "29idd-mpa":             { "x": 700, "y":  55 },
+    "29idd-dxp-saturn":      { "x": 700, "y": 600 },
+    "29idd-si9700":          { "x": 100, "y": 700 },
+    "29idd-stripchart-t":    { "x": 700, "y": 1100 },
+    "29idd-scan-progress":   { "x": 100, "y": 1100 },
+    "29idd-quantar":         { "x": 100, "y": 1400 },
+
+    "29id-energy-a":        { "x":  85, "y":  55 },
+    "29id-beamline-layout": { "x":  85, "y": 530 },
+    "29id-mirrors":         { "x": 600, "y":  55 },
+    "29id-bllayout-d":      { "x": 100, "y": 200 },
+    "29id-bllayout-e":      { "x": 100, "y": 400 },
+    "29id-slits":           { "x": 400, "y":  55 },
+    "29id-diagon":          { "x": 100, "y": 200 },
+    "29id-scan-records":    { "x": 700, "y":  55 },
+    "29id-strip-tool":      { "x": 700, "y": 300 },
+    "29id-bl-diag":          { "x": 100, "y": 900 },
+    "29id-apertures":        { "x": 600, "y": 600 },
+    "29id-scan-progress":    { "x": 600, "y": 900 },
+    "29id-pv-history":       { "x": 100, "y": 1100 },
+    "29id-m3r-align":        { "x": 600, "y": 1100 },
+
+    "29ide-overview":        { "x": 100, "y":  55 },
+    "29ide-motors":          { "x": 700, "y":  55 },
+    "29ide-scan":            { "x": 700, "y": 400 },
+    "29ide-lightfield":      { "x": 100, "y": 600 },
+    "29ide-apertures":       { "x": 700, "y": 700 },
+
+    "bleps-sector-a":        { "x": 100, "y":  55 },
+    "bleps-sector-b":        { "x": 100, "y": 350 },
+    "bleps-sector-c":        { "x": 100, "y": 650 },
+    "bleps-sector-d":        { "x": 600, "y":  55 },
+    "bleps-sector-e":        { "x": 600, "y": 350 },
+    "bleps-faults":          { "x": 600, "y": 650 }
+  },
+  "defaultHiddenPanels": [
+    "29id-mirrors",
+    "29id-bllayout-d",
+    "29id-bllayout-e",
+    "29id-slits",
+    "29id-diagon",
+    "29id-scan-records",
+    "29id-strip-tool",
+    "29id-bl-diag",
+    "29id-apertures",
+    "29id-scan-progress",
+    "29id-pv-history",
+    "29id-m3r-align",
+    "29idc-cam-live",
+    "29idc-ses",
+    "29idc-stripchart-t",
+    "29idc-motors-detail",
+    "29idd-mpa",
+    "29idd-dxp-saturn",
+    "29idd-si9700",
+    "29idd-stripchart-t",
+    "29idd-scan-progress",
+    "29idd-quantar",
+    "29ide-motors",
+    "29ide-scan",
+    "29ide-lightfield",
+    "29ide-apertures",
+    "bleps-sector-b",
+    "bleps-sector-c",
+    "bleps-sector-d",
+    "bleps-sector-e"
+  ],
+  "paths": {
+    "uiDirs": {
+      "29id":   "/net/s29dserv/xorApps/ui/29id",
+      "ADCore": "/APSshare/epics/synApps_6_2_1/support/areaDetector-R3-12-1/ADCore/ADApp/op/ui",
+      "motors": "/APSshare/epics/synApps_6_2_1/support/motor-R7-2-2/motorApp/op/ui/autoconvert"
+    },
+    "startupScript": "/net/s29dserv/xorApps/ui/start_epics_29id",
+    "adl2ui": "/APSshare/bin/adl2ui"
+  }
+}

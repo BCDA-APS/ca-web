@@ -46,7 +46,11 @@ src/
 │   ├── MotorGrid.tsx        # 3-column grid container
 │   ├── MotorRow.tsx         # PV-based motor row
 │   ├── ReadbackRow.tsx      # simple readback row
-│   └── StripChart.tsx       # multi-PV rolling time-series chart
+│   ├── StripChart.tsx       # multi-PV rolling time-series chart
+│   ├── BlepsSector.tsx      # vacuum sector: valves, gauges, interlocks, summary
+│   ├── DetectorSpectrum.tsx # MCA/DXP/Vortex spectrum + ROIs + stats + acquire
+│   ├── TempController.tsx   # LakeShore 331/340 / Si9700 PID controller card
+│   └── CameraViewer.tsx     # MJPEG or AD waveform image viewer with crosshair
 └── deployments/             # one self-contained folder per deployment
     ├── example/             # copy-paste template
     │   ├── config.json      # all serializable config (id, title, pvws, tabs, panelDefaults, ...)
@@ -185,7 +189,8 @@ picker through a virtual module (`virtual:deployment-path-status`) as
 a "paths unreachable" hint.
 
 Current deployments: `example` (template), `nefarian` (simulated IOC), `29id`
-(beamline).
+(production beamline), `29id_dev` (dev / staging clone of `29id` where new
+panels and widgets are tried out before being ported into production).
 
 ### Layout persistence API
 
