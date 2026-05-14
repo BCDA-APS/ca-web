@@ -5,6 +5,7 @@ A React app that renders caQtDM `.ui` files in the browser, using `cs-web-lib` f
 ## Docs
 
 - [docs/deployment.md](docs/deployment.md) — ops guide for beamline hosts (pvws container, mode setup, troubleshooting).
+- [docs/how-to-start-pvws.md](docs/how-to-start-pvws.md) — how to start the pvws backend that ca-web connects to.
 - [docs/roadmap.md](docs/roadmap.md) — feature roadmap.
 - [docs/widgets.md](docs/widgets.md) — widget catalog and EPICS-binding rules.
 - [docs/ui-rendering.md](docs/ui-rendering.md) — caQtDM `.ui` parsing and rendering pipeline.
@@ -102,48 +103,19 @@ npm run dev
 ```
 
 Then open `http://mite:4200/?deployment=29id` from any machine on the subnet.
-pvws must also be running on `mite` (see pvws Setup below).
+pvws must also be running on `mite` (see [pvws Setup](#pvws-setup) below).
 
 ## pvws Setup
 
-pvws runs as a Podman container.
-
-### On nefarian (simulated IOC)
+pvws runs as a podman container. From the repo root:
 
 ```bash
-podman stop pvws && podman rm pvws
-podman run --network=host -d --name pvws \
-  -e PV_WRITE_SUPPORT=true \
-  -e EPICS_CA_MAX_ARRAY_BYTES=8000000 \
-  -e PV_ARRAY_THROTTLE_MS=1000 \
-  pvws:latest
+./scripts/start-pvws.sh                                              # workstation / nefarian
+./scripts/start-pvws.sh --name pvws-29id --no-hosts --rootless-nfs   # mite / 29ID beamline
 ```
 
-### On mite (29ID beamline)
-
-`/etc/hosts` is not writable by regular users on the beamline machines, so
-`--no-hosts` is required. A distinct container name avoids conflicts with other
-instances on the shared machine.
-
-```bash
-podman stop pvws-29id && podman rm pvws-29id
-podman run --network=host --no-hosts -d --name pvws-29id \
-  -e PV_WRITE_SUPPORT=true \
-  -e EPICS_CA_MAX_ARRAY_BYTES=8000000 \
-  -e PV_ARRAY_THROTTLE_MS=1000 \
-  pvws:latest
-```
-
-### Environment variables
-
-- **`PV_WRITE_SUPPORT=true`** — enables PV write support (required for caTextEntry, caMessageButton, etc.)
-- **`EPICS_CA_MAX_ARRAY_BYTES=8000000`** — required for area detector waveform PVs (e.g. `ArrayData`). The container does **not** inherit the host shell's environment. Without this, the default is 16 KB and image PVs will connect but return 0 elements.
-- **`PV_ARRAY_THROTTLE_MS=1000`** — maximum update rate for waveform/array PVs (default is 10000 ms = 10 s, which makes strip charts and line profiles sluggish). Set to 1000 ms for ~1 Hz updates; lower values (e.g. 200) give faster updates at the cost of more bandwidth.
-
-### pvws write protocol
-
-- A PV must be **subscribed** on the same WebSocket connection before a write will be accepted. pvws returns `{"type":"error","message":"Cannot write unknown PV <name>"}` otherwise.
-- PV names must use the `ca://` prefix (e.g. `ca://fr:m1.VAL`).
+See [docs/how-to-start-pvws.md](docs/how-to-start-pvws.md) for env vars,
+build/load steps, host-specific notes, and the pvws write protocol.
 
 ## Public UI File Layout
 

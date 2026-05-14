@@ -1,5 +1,6 @@
 import { createContext } from "react";
 import type { ComponentType } from "react";
+import { setActiveDeploymentId } from "./layoutStorage";
 
 export interface Tab {
   id: number;
@@ -20,6 +21,21 @@ export interface QuickLink {
   macros?: Record<string, string>;
 }
 
+export interface SavedOverlay {
+  file: string;
+  macros: Record<string, string>;
+  label: string;
+  pos: { x: number; y: number };
+  locked?: boolean;
+}
+
+export interface SavedLayout {
+  name: string;
+  positions: Record<string, { x: number; y: number; locked: boolean }>;
+  hidden?: string[];
+  overlays?: SavedOverlay[];
+}
+
 export interface DeploymentConfig {
   id: string;
   title: string;
@@ -28,6 +44,11 @@ export interface DeploymentConfig {
   panelDefaults: Record<string, { x: number; y: number }>;
   defaultHiddenPanels?: string[];
   quickLinks?: QuickLink[];
+  // Shared, team-curated layouts that ship with the deployment build.
+  // Survive cleared browser / new machine / new deploy since they live in
+  // the bundled config.json. Author drafts via the gear menu and use
+  // "Copy as JSON" to paste an entry here.
+  layouts?: SavedLayout[];
   tabPanels: Record<number, PanelConfig[]>;
 }
 
@@ -70,6 +91,7 @@ export async function loadDeployment(id: string): Promise<DeploymentConfig> {
     throw new Error(`Deployment id "${cfg.id}" must match its folder name "${id}"`);
   }
   loadedById[id] = cfg;
+  setActiveDeploymentId(cfg.id);
   return cfg;
 }
 

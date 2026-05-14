@@ -7,6 +7,8 @@ Human-authored documentation. Bot-authored architecture notes live in
 
 - [deployment.md](deployment.md) — ops guide for beamline hosts: pvws
   container setup, deployment modes, troubleshooting.
+- [how-to-start-pvws.md](how-to-start-pvws.md) — start the pvws backend
+  (build/load, env vars, host recipes, pitfalls).
 - [roadmap.md](roadmap.md) — feature roadmap.
 - [deployments.md](deployments.md) — how to add a new beamline deployment.
 

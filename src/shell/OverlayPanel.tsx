@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { UiRenderer } from "../lib/UiRenderer";
+import { layoutKey } from "../lib/layoutStorage";
 
 export interface AppOverlay {
   id: number;
@@ -13,7 +14,7 @@ export interface AppOverlay {
 }
 
 export function OverlayPanel({ ov, onClose }: { ov: AppOverlay; onClose: () => void }) {
-  const storageKey = `overlay:${ov.file}`;
+  const storageKey = layoutKey(`overlay:${ov.file}`);
   const [pos, setPos] = useState<{ x: number; y: number }>(() => {
     try {
       const s = localStorage.getItem(storageKey);

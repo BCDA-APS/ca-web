@@ -111,11 +111,22 @@ modules is future work.
 `src/shell/`:
 
 - `DraggablePanel` — positions persisted to `localStorage` under
-  `panel:<id>`; supports per-panel lock, z-index promotion on focus.
+  `ca-web.<deploymentId>.panel:<id>`; supports per-panel lock, z-index
+  promotion on focus.
 - `OverlayPanel` — overlay windows opened from motor "More" menus or the
-  file picker; positions persisted under `overlay:<file>`.
-- `SettingsPanel` — saves and restores named layouts (panel positions,
-  hidden panels, open overlays) under `localStorage` key `panel:layouts`.
+  file picker; positions persisted under
+  `ca-web.<deploymentId>.overlay:<file>`.
+- `SettingsPanel` — gear menu showing two layout sections. *Shared
+  (deployment)* are team-curated layouts that ship in
+  `config.layouts` (committed to the deployment's `config.json`) and
+  survive cleared browsers, new machines, and redeploys since they live
+  in the bundle. *My drafts* are personal layouts stored under
+  `ca-web.<deploymentId>.panel:layouts`; each has a "JSON" button that
+  copies the entry to the clipboard for pasting into `config.json`.
+  See `src/lib/layoutStorage.ts` for the key prefixer and the one-time
+  migration that moves pre-namespace keys (`panel:layouts`,
+  `panel:<id>`, `overlay:<file>`, `panel-hidden`, `stripchart:<id>`)
+  under the active deployment's namespace.
 - `FilePickerDialog` — searchable list of `.ui` files from the NFS display
   path, opened as overlays with macro hint detection.
 - `PvContextMenu` / `PvInfoDialog` — right-click PV menu and details
@@ -206,4 +217,3 @@ isolation.
 - Should `UiRenderer.tsx` be split? Currently 2.5k lines.
 - Should the three `MotorCard*` variants collapse to one component now
   that they share a hook? Deferred — call sites live in `src/deployments/`.
-- Are server-side saved layouts needed, or is `localStorage` enough?

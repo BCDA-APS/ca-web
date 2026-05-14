@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useContext } from "react";
 import { createPortal } from "react-dom";
 import { DeploymentContext, clearActive } from "./lib/deployment";
+import { layoutKey } from "./lib/layoutStorage";
 import { ErrorBoundary } from "./shell/ErrorBoundary";
 import { DraggablePanel } from "./shell/DraggablePanel";
 import { OverlayPanel, type AppOverlay } from "./shell/OverlayPanel";
@@ -16,12 +17,12 @@ export default function App() {
   const counter = useRef(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [layoutKey, setLayoutKey] = useState(0);
+  const [layoutBump, setLayoutBump] = useState(0);
   const [activeTab, setActiveTab] = useState(config.tabs[0].id);
   const activeTabColor = config.tabs.find(t => t.id === activeTab)?.color ?? "#0a1520";
   const [hiddenPanels, setHiddenPanels] = useState<Set<string>>(() => {
     try {
-      const s = localStorage.getItem("panel-hidden");
+      const s = localStorage.getItem(layoutKey("panel-hidden"));
       if (s) return new Set(JSON.parse(s));
     } catch { /* ignore */ }
     return new Set(config.defaultHiddenPanels ?? []);
@@ -46,7 +47,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem("panel-hidden", JSON.stringify([...hiddenPanels]));
+    localStorage.setItem(layoutKey("panel-hidden"), JSON.stringify([...hiddenPanels]));
   }, [hiddenPanels]);
 
   useEffect(() => {
@@ -81,7 +82,7 @@ export default function App() {
   }
 
   function restoreOverlays(saved: SavedOverlay[]) {
-    saved.forEach(ov => localStorage.setItem(`overlay:${ov.file}`, JSON.stringify({ x: ov.pos.x, y: ov.pos.y, locked: ov.locked ?? false })));
+    saved.forEach(ov => localStorage.setItem(layoutKey(`overlay:${ov.file}`), JSON.stringify({ x: ov.pos.x, y: ov.pos.y, locked: ov.locked ?? false })));
     const tabId = activeTabRef.current;
     setOverlays(saved.map(ov => ({ id: ++counter.current, file: ov.file, macros: ov.macros, label: ov.label, pos: ov.pos, tabId })));
   }
@@ -147,8 +148,9 @@ export default function App() {
             panelDefaults={config.panelDefaults}
             hiddenPanels={hiddenPanels}
             overlays={overlays}
+            sharedLayouts={config.layouts ?? []}
             onClose={() => setSettingsOpen(false)}
-            onBumpLayout={() => setLayoutKey(k => k + 1)}
+            onBumpLayout={() => setLayoutBump(k => k + 1)}
             onResetHidden={() => setHiddenPanels(new Set(config.defaultHiddenPanels ?? []))}
             onRestoreHidden={hidden => setHiddenPanels(new Set(hidden))}
             onRestoreOverlays={restoreOverlays}
@@ -169,7 +171,7 @@ export default function App() {
         .filter(panel => !hiddenPanels.has(panel.id))
         .map(panel => (
           <DraggablePanel
-            key={`${panel.id}-${layoutKey}`}
+            key={`${panel.id}-${layoutBump}`}
             id={panel.id}
             title={panel.title}
             defaultPos={config.panelDefaults[panel.id]}

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useConnection } from "@diamondlightsource/cs-web-lib";
 import { toDouble } from "../lib/epics";
+import { layoutKey } from "../lib/layoutStorage";
 
 // One per enabled PV. React mounts/unmounts these as the enabled set changes,
 // so cs-web-lib's useConnection cleanup unsubscribes from pvws on remove.
@@ -75,7 +76,7 @@ const UI = {
 
 function loadState(id: string): Persisted | null {
   try {
-    const raw = localStorage.getItem(`stripchart:${id}`);
+    const raw = localStorage.getItem(layoutKey(`stripchart:${id}`));
     return raw ? JSON.parse(raw) as Persisted : null;
   } catch {
     return null;
@@ -126,7 +127,7 @@ export function StripChart({
       extraPvs,
       windowMs, yMode, logY, yMin, yMax,
     };
-    try { localStorage.setItem(`stripchart:${id}`, JSON.stringify(payload)); } catch {}
+    try { localStorage.setItem(layoutKey(`stripchart:${id}`), JSON.stringify(payload)); } catch {}
   }, [id, enabled, colorsMap, extraPvs, windowMs, yMode, logY, yMin, yMax]);
 
   // ── Sidebar entries: pre-loaded (from props) + ad-hoc (from state) ─────────

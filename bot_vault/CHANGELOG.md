@@ -2,6 +2,41 @@
 
 ## Unreleased
 
+### Resilient, per-deployment layout storage
+
+- Layouts can now ship with a deployment: `DeploymentConfig.layouts?:
+  SavedLayout[]` in `src/lib/deployment.ts`. Entries committed to
+  `src/deployments/<id>/config.json` render in the gear menu under
+  "Shared (deployment)" and survive cleared browsers, new machines,
+  and redeploys since they live in the JS bundle. The team-curation
+  workflow: author a draft in the menu, click "JSON" to copy it,
+  paste into `config.json`, commit.
+- All panel/overlay/strip-chart storage moves under
+  `ca-web.<deploymentId>.<suffix>` so switching deployments at
+  runtime doesn't mix layout data. Keys touched:
+  `panel:layouts`, `panel:<panelId>`, `overlay:<file>`,
+  `panel-hidden`, `stripchart:<id>`. New helper
+  `src/lib/layoutStorage.ts` owns the prefixer and a one-time
+  migration that copies legacy non-namespaced keys under the
+  active deployment's namespace on first load.
+- `SettingsPanel` is split into "Save current layout…", "Reset to
+  default positions", "Shared (deployment)" (read-only, tagged),
+  and "My drafts" (saveable, deletable, with a "JSON" copy button).
+- App.tsx renamed its local `layoutKey` state to `layoutBump` to
+  avoid shadowing the new helper import.
+
+### pvws gateway pre-flight gate
+
+- `src/main.tsx` probes `ws[s]://<socket>/pvws/pv` once with a 3s timeout
+  (`src/lib/pvwsProbe.ts`) before mounting the app. If the probe fails,
+  `renderGatewayError(wsUrl)` replaces the app with a full-screen
+  recovery view (Retry / Switch deployment…) and neither cs-web-lib's
+  store nor `pvwsWriter` are initialized — this avoids the library's
+  hardcoded 500ms reconnect loop and the cascade of "No connections for
+  ca://…" subscription failures from every PV widget on mount.
+- Scope: startup-only. A connection that opens at boot but later drops
+  still falls through to the library's reconnect behaviour.
+
 ### Deployment config consolidation
 
 - Each `src/deployments/<id>/` now uses a single `config.json` carrying
