@@ -1,6 +1,10 @@
 import { createContext } from "react";
 import type { ComponentType } from "react";
 
+// Panels broadcast their current inner content-area size so child widgets
+// (e.g. StripChart's SVG) can resize without DOM measurement.
+export const PanelSizeContext = createContext<{ w: number; h: number } | null>(null);
+
 export interface Tab {
   id: number;
   icon: string;
@@ -12,6 +16,15 @@ export interface PanelConfig {
   id: string;
   title: string;
   Content: ComponentType;
+  defaultSize?: { w: number; h: number };
+  // How content should respond when the panel is resized beyond defaultSize.
+  // - undefined / "none" (default): content stays at natural size; panel just grows around it.
+  // - "transform": apply uniform CSS scale based on ps.w/defaultSize.w. Good for
+  //   form/widget panels — text becomes slightly fuzzy at non-integer scales but
+  //   layout stays intact. Requires defaultSize.
+  // - "fit": content handles its own sizing (e.g. StripChart via PanelSizeContext,
+  //   or SVG diagrams using viewBox). DraggablePanel does nothing extra.
+  scale?: "transform" | "fit" | "none";
 }
 
 export interface QuickLink {
@@ -30,7 +43,9 @@ export interface SavedOverlay {
 
 export interface SavedLayout {
   name: string;
-  positions: Record<string, { x: number; y: number; locked: boolean }>;
+  // w/h are optional for backwards-compat: layouts written before sizes were
+  // tracked still load fine; DraggablePanel falls back to defaultSize.
+  positions: Record<string, { x: number; y: number; w?: number; h?: number; locked: boolean }>;
   hidden?: string[];
   overlays?: SavedOverlay[];
 }

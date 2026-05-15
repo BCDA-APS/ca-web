@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback, useContext } from "react";
 import { useConnection } from "@diamondlightsource/cs-web-lib";
 import { toDouble } from "../lib/epics";
 import { layoutGet, layoutSet } from "../lib/layoutStorage";
+import { PanelSizeContext } from "../lib/deployment";
 
 // One per enabled PV. React mounts/unmounts these as the enabled set changes,
 // so cs-web-lib's useConnection cleanup unsubscribes from pvws on remove.
@@ -27,6 +28,9 @@ interface Props {
   id: string;
   initialPvs?: TraceConfig[];
   defaultWindowMs?: number;
+  // Default size used when the parent container doesn't dictate one (e.g.
+  // standalone use). Inside a sized DraggablePanel, the panel's dimensions
+  // win via the ResizeObserver below.
   width?: number;
   height?: number;
 }
@@ -220,11 +224,14 @@ export function StripChart({
     tick(n => n + 1);
   }
 
-  // ── Layout dimensions ─────────────────────────────────────────────────────
+  // ── Layout dimensions (driven by panel context, no DOM measurement) ──────
   const CTRL_H = 30;
   const SIDEBAR_W = 140;
-  const chartW = width  - SIDEBAR_W;
-  const chartH = height - CTRL_H;
+  const panelSize = useContext(PanelSizeContext);
+  const totalW = panelSize?.w ?? width;
+  const totalH = panelSize?.h ?? height;
+  const chartW = Math.max(SIDEBAR_W + 100, totalW) - SIDEBAR_W;
+  const chartH = Math.max(CTRL_H + 80, totalH) - CTRL_H;
 
   // ── Chart math ────────────────────────────────────────────────────────────
   const now = Date.now();
@@ -339,9 +346,11 @@ export function StripChart({
 
   return (
     <div style={{
-      display: "flex", flexDirection: "column", width, height,
+      display: "flex", flexDirection: "column",
+      width: totalW, height: totalH,
+      overflow: "hidden",
       background: UI.bg, color: UI.text, fontFamily: "sans-serif",
-      borderRadius: 4,
+      borderRadius: 4, boxSizing: "border-box",
     }}>
       {enabledPvs.map(pv => (
         <TraceSubscriber key={pv} pv={pv} onValue={recordValue} />

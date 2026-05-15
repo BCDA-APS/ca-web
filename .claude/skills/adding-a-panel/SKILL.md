@@ -85,7 +85,8 @@ Practical effect:
    const tabPanels: DeploymentConfig["tabPanels"] = {
      1: [
        // …existing panels…
-       { id: "your-new-panel", title: "Your Panel", Content: YourPanelContent },
+       { id: "your-new-panel", title: "Your Panel", Content: YourPanelContent,
+         defaultSize: { w: 360, h: 320 }, scale: "transform" },
      ],
    };
    ```
@@ -102,6 +103,35 @@ Practical effect:
    [adding-a-widget](../adding-a-widget/SKILL.md): use `ChanRbvBox`
    / `ChanSpBox`, wire `onContextMenu={e => pvCtx("ca://PV", raw, e)}`,
    keep alignment explicit.
+
+   ### `defaultSize` and `scale` — set both for every new panel
+
+   These two fields are optional in the type but **required for every
+   new panel** by convention — the deployment is the source of truth
+   for layout, and leaving them off forces every reader to understand
+   what the panel does just to predict its resize behaviour.
+
+   - `defaultSize: { w, h }` — initial panel size when no saved layout
+     exists. Pick the size the panel needs to read comfortably (eyeball
+     it in the dev server). If the auto-measured natural size is right,
+     you can still set `defaultSize` to that value to lock it in.
+   - `scale: "transform"` — for static-content panels (forms, motor
+     grids, scan controls, fixed-layout diagrams). Resizing the panel
+     scales the contents uniformly via CSS transform, with aspect-locked
+     drag. Text gets slightly fuzzy at non-integer scales but layout
+     stays intact.
+   - `scale: "fit"` — for panels whose content sizes itself from the
+     panel size (currently `StripChart`, which reads `PanelSizeContext`
+     from `src/lib/deployment.ts`). `DraggablePanel` does not transform;
+     the component handles its own internal layout. Resize is freeform
+     (no aspect lock).
+   - `scale` omitted — the panel grows but content stays at natural
+     size with empty space around it. Almost never what you want; pick
+     one of `"transform"` or `"fit"`.
+
+   The same component used in different deployments can have different
+   `defaultSize` / `scale` values — that's the point. Set them per
+   registration site, not on the component itself.
 
 6. **Confirm the id matches in both files.** A typo here is the most
    common bug — the panel renders but its position resets on every

@@ -56,7 +56,7 @@ const tabPanels: DeploymentConfig["tabPanels"] = {
     { id: "29id-slits",            title: "Slits",              Content: Slits },
     { id: "29id-diagon",           title: "DiaGon",             Content: Diagon },
     { id: "29id-scan-records",     title: "ScanRecords",        Content: ScanRecords },
-    { id: "29id-strip-tool",       title: "Strip Tool",         Content: () => <StripChart id="29id-strip-tool" initialPvs={CA_PVS} /> },
+    { id: "29id-strip-tool",       title: "StripTool",          Content: () => <StripChart id="29id-strip-tool" initialPvs={CA_PVS} />, defaultSize: { w: 700, h: 320 } },
     { id: "29id-bl-diag",          title: "Diagnostics",        Content: BlDiagContent },
     { id: "29id-apertures",        title: "Apertures",          Content: AperturesContent },
     { id: "29id-scan-progress",    title: "Scan Progress",      Content: ScanProgressContent },

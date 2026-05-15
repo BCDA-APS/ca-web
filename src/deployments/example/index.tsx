@@ -21,7 +21,7 @@ void _paths;
 const tabPanels: DeploymentConfig["tabPanels"] = {
   1: [
     { id: "motors",        title: "Motors",                          Content: MotorsContent },
-    { id: "lorentzian",    title: "Detector — Simulated Lorentzian", Content: LorentzianContent },
+    { id: "lorentzian",    title: "Detector — Simulated Lorentzian", Content: LorentzianContent, defaultSize: { w: 900, h: 360 } },
     { id: "area-detector", title: "Area Detector — myad:cam1",       Content: AreaDetectorContent },
   ],
   2: [

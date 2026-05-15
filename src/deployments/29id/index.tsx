@@ -25,22 +25,22 @@ void _paths;
 
 const tabPanels: DeploymentConfig["tabPanels"] = {
   1: [
-    { id: "29idc-chamber-v2", title: "Chamber",         Content: ChamberDiagramV2 },
-    { id: "29idc-motors",     title: "29ID-C Motors",   Content: ArpesMotorsContent },
-    { id: "29idc-arpes",      title: "29ID-C ARPES",    Content: ArpesContent },
-    { id: "29idc-energy",     title: "Beamline Energy", Content: BeamlineEnergy },
+    { id: "29idc-chamber-v2", title: "Chamber",         Content: ChamberDiagramV2,  scale: "transform" },
+    { id: "29idc-motors",     title: "29ID-C Motors",   Content: ArpesMotorsContent, scale: "transform" },
+    { id: "29idc-arpes",      title: "29ID-C ARPES",    Content: ArpesContent,       scale: "transform" },
+    { id: "29idc-energy",     title: "Beamline Energy", Content: BeamlineEnergy,     scale: "transform" },
   ],
-  2: [{ id: "29idd-kappa", title: "29ID-D Kappa", Content: KappaContent }],
+  2: [{ id: "29idd-kappa", title: "29ID-D Kappa", Content: KappaContent, scale: "transform" }],
   3: [
-    { id: "29id-beamline-layout", title: "Beamline Layout", Content: BeamlineLayout },
-    { id: "29id-mirrors",         title: "Mirrors",         Content: Mirrors },
-    { id: "29id-energy-a",        title: "Beamline Energy", Content: BeamlineEnergyA },
-    { id: "29id-bllayout-d",      title: "D Layout",        Content: BLLayoutD },
-    { id: "29id-bllayout-e",      title: "E Layout",        Content: BLLayoutE },
-    { id: "29id-slits",           title: "Slits",           Content: Slits },
-    { id: "29id-diagon",          title: "DiaGon",          Content: Diagon },
-    { id: "29id-scan-records",    title: "ScanRecords",     Content: ScanRecords },
-    { id: "29id-strip-tool",      title: "Strip Tool",      Content: () => <StripChart id="29id-strip-tool" initialPvs={CA_PVS} /> },
+    { id: "29id-beamline-layout", title: "Beamline Layout", Content: BeamlineLayout,  scale: "transform" },
+    { id: "29id-mirrors",         title: "Mirrors",         Content: Mirrors,         scale: "transform" },
+    { id: "29id-energy-a",        title: "Beamline Energy", Content: BeamlineEnergyA, scale: "transform" },
+    { id: "29id-bllayout-d",      title: "D Layout",        Content: BLLayoutD,       scale: "transform" },
+    { id: "29id-bllayout-e",      title: "E Layout",        Content: BLLayoutE,       scale: "transform" },
+    { id: "29id-slits",           title: "Slits",           Content: Slits,           scale: "transform" },
+    { id: "29id-diagon",          title: "DiaGon",          Content: Diagon,          scale: "transform" },
+    { id: "29id-scan-records",    title: "ScanRecords",     Content: ScanRecords, defaultSize: { w: 360, h: 320 }, scale: "transform" },
+    { id: "29id-strip-tool",      title: "StripTool",       Content: () => <StripChart id="29id-strip-tool" initialPvs={CA_PVS} />, defaultSize: { w: 700, h: 320 } },
   ],
 };
 

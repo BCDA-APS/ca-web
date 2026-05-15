@@ -46,7 +46,7 @@ export function SettingsPanel({ panelDefaults, hiddenPanels, overlays, sharedLay
   function buildLayout(name: string): SavedLayout {
     const positions: SavedLayout["positions"] = {};
     panelIds.forEach(id => {
-      const p = layoutGet<{ x: number; y: number; locked: boolean }>(`panel:${id}`);
+      const p = layoutGet<{ x: number; y: number; w?: number; h?: number; locked: boolean }>(`panel:${id}`);
       if (p) positions[id] = p;
     });
     const savedOverlays: SavedOverlay[] = overlays.map(ov => {
