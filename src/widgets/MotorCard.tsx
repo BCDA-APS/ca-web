@@ -190,6 +190,7 @@ export function MotorCard({ pv, softLimitPrec }: MotorCardProps) {
           ref={valRef}
           style={styles.input}
           value={valInput}
+          aria-label={`${pv} setpoint`}
           onChange={e => setValInput(e.target.value)}
           onKeyDown={e => {
             if (e.key === "Enter")  commitVal();
@@ -227,6 +228,7 @@ export function MotorCard({ pv, softLimitPrec }: MotorCardProps) {
             ref={twvRef}
             style={{ ...styles.input, flex: 1, textAlign: "center" }}
             value={twvInput}
+            aria-label={`${pv} tweak step`}
             onChange={e => setTwvInput(e.target.value)}
             onKeyDown={handleTwvKey}
             onBlur={cancelTwv}

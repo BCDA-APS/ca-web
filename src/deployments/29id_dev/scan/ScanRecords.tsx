@@ -37,6 +37,7 @@ function StrSpBox({ raw, pv, width, style, onContextMenu }: {
   if (editing) {
     return (
       <input ref={inputRef} value={draft} style={inputStyle}
+        aria-label={pv}
         onChange={e => setDraft(e.target.value)}
         onBlur={commit}
         onKeyDown={e => { if (e.key === "Enter") { commit(); } else if (e.key === "Escape") setEditing(false); }}

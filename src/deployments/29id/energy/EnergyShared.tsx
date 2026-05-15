@@ -384,6 +384,7 @@ export function IdSection() {
           {mode}
         </div>
         <select
+          aria-label="ID polarization mode"
           value={desIdx >= 0 ? desIdx : ""}
           onChange={e => pvwsWriter.write("S29ID:DesiredModeC.VAL", Number(e.target.value))}
           style={{

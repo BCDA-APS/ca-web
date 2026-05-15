@@ -91,6 +91,7 @@ export function FilePickerDialog({ files, onClose, onOpen }: {
           <input
             autoFocus
             placeholder="Search by name or module…"
+            aria-label="Search displays"
             value={query}
             onChange={e => { setQuery(e.target.value); setSelected(null); }}
             style={inputStyle}
@@ -131,6 +132,7 @@ export function FilePickerDialog({ files, onClose, onOpen }: {
               <span style={{ color: "#90caf9", fontSize: 12, flexShrink: 0 }}>Macros:</span>
               <input
                 placeholder="P=fr:,M=m1"
+                aria-label="Macros"
                 value={macroStr}
                 onChange={e => setMacroStr(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter") handleOpen(); }}

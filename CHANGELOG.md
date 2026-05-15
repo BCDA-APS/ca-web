@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+### Bug fixes from browser dogfooding
+
+- **Layout API rejected `29id_dev`** (`vite.config.ts`). The
+  layout-persistence middleware reused `LAYOUT_NAME_RX`
+  (`/^[a-z0-9-]{1,64}$/`) to validate deployment IDs, so any deployment
+  whose ID contained an underscore got `404 unknown deployment` on
+  `GET`/`PUT /api/layouts/<id>/current`. Split into a separate
+  `DEPLOYMENT_ID_RX` that allows `_`. Layout filenames stay restrictive.
+- **`caStripPlot` subscribed to empty PV names** (`src/lib/UiRenderer.tsx`).
+  The widget allocates 4 channel slots and was padding unused ones with
+  `""`, which made `cs-web-lib`'s `useConnection` log
+  `Failed to subscribe to pv ` once per empty slot. Pass `undefined`
+  instead — the hook skips the subscription cleanly.
+- **Form fields missing accessible names** (15 widget/shell/deployment
+  files). Added `aria-label` to React-rendered inputs/selects/checkboxes
+  (StripChart toolbar, SpBox, TweakValue, MotorRow, MotorCard*,
+  CameraViewer, FilePickerDialog, SettingsPanel, ChamberDiagramV2,
+  EnergyShared, ScanRecords). Added `name=` + `aria-label=` to caQtDM
+  widgets rendered by `UiRenderer` (caLineEdit, caMenu, caNumeric,
+  caSlider, caToggleButton). Drops DevTools' "form field needs id/name"
+  count from 27 → 6 on 29ID-C and from 5 → 0 on the example HOME tab.
+
 ### Intro slide deck (`docs/presentation/`)
 
 Slidev-based 10-slide deck for APS beamline scientists: problem,

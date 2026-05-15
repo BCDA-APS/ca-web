@@ -76,6 +76,7 @@ export function MotorRow({ label, pv, displays, macros }: MotorRowProps) {
             style={styles.input}
             value={setpointInput}
             placeholder={posStr}
+            aria-label={`${desc} setpoint`}
             onChange={e => setSetpointInput(e.target.value)}
             onKeyDown={e => {
               if (e.key === "Enter")  sendMove();
@@ -98,6 +99,7 @@ export function MotorRow({ label, pv, displays, macros }: MotorRowProps) {
               style={styles.tweakInput}
               value={tweakInput}
               placeholder={twvStr}
+              aria-label={`${desc} tweak step`}
               onChange={e => setTweakInput(e.target.value)}
               onKeyDown={e => {
                 if (e.key === "Enter")  submitTweak();

@@ -169,6 +169,7 @@ export function MotorCardRow({ pv }: MotorCardRowProps) {
               ref={valRef}
               style={S.input}
               value={valInput}
+              aria-label={`${pv} setpoint`}
               onChange={e => setValInput(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter") commitVal(); if (e.key === "Escape") cancelVal(); }}
               onBlur={cancelVal}
@@ -192,6 +193,7 @@ export function MotorCardRow({ pv }: MotorCardRowProps) {
                 ref={twvRef}
                 style={{ ...S.input, flex: 1, textAlign: "center", padding: "2px 4px" }}
                 value={twvInput}
+                aria-label={`${pv} tweak step`}
                 onChange={e => setTwvInput(e.target.value)}
                 onKeyDown={handleTwvKey}
                 onBlur={cancelTwv}

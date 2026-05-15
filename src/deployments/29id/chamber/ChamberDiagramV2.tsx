@@ -259,6 +259,7 @@ export function ChamberDiagramV2() {
                 {editingSP ? (
                   <input
                     ref={spRef}
+                    aria-label="Temperature setpoint (K)"
                     style={{ width: 55, fontFamily: "monospace", fontSize: 12, padding: "2px 4px", background: "rgb(162,186,221)", color: "rgb(10,37,159)", border: "1px solid rgb(120,150,190)", borderRadius: 3, boxSizing: "border-box" }}
                     value={spInput}
                     onChange={e => setSpInput(e.target.value)}
@@ -286,6 +287,7 @@ export function ChamberDiagramV2() {
                 <span style={{ color: "#333333", minWidth: 52 }}>Heater</span>
                 <span style={{ flex: 1 }} />
                 <select
+                  aria-label="Heater range"
                   value={["off","low","medium","high"].indexOf((htrRange ?? "").toLowerCase())}
                   onChange={e => pvwsWriter.write("29idARPES:LS335:TC1:HTR1:Range", parseInt(e.target.value))}
                   style={{ width: 80, background: "rgb(162,186,221)", color: heaterColor(htrRange), border: "1px solid rgb(120,150,190)", borderRadius: 3, fontSize: 11, padding: "1px 2px", cursor: "pointer" }}>
@@ -300,6 +302,7 @@ export function ChamberDiagramV2() {
                 <span style={{ color: "#333333", minWidth: 52 }}>Scan</span>
                 <span style={{ flex: 1 }} />
                 <select
+                  aria-label="Temperature scan rate"
                   value={SCAN_OPTS.indexOf((scanStr ?? "").toLowerCase())}
                   onChange={e => pvwsWriter.write("29idARPES:LS335:TC1:read.SCAN", parseInt(e.target.value))}
                   style={{ width: 80, background: "rgb(162,186,221)", color: "rgb(10,37,159)", border: "1px solid rgb(120,150,190)", borderRadius: 3, fontSize: 11, padding: "1px 2px", cursor: "pointer" }}>
@@ -370,6 +373,7 @@ export function ChamberDiagramV2() {
             <span style={{ fontFamily: "monospace", fontSize: 12, color: "rgb(10,37,159)", width: 80, textAlign: "right", cursor: "context-menu", flexShrink: 0, marginLeft: -4 }}
               onContextMenu={e => pvCtx("29idc:ca2:read", vD16, e)}>{d16}</span>
             <select
+              aria-label="D16 TFY scan rate"
               value={SCAN_OPTS.indexOf(d16scan.toLowerCase())}
               onChange={e => pvwsWriter.write("29idc:ca2:read.SCAN", parseInt(e.target.value))}
               style={{ width: 40, background: "rgb(162,186,221)", color: "rgb(10,37,159)", border: "1px solid rgb(120,150,190)", borderRadius: 3, fontSize: 11, padding: "1px 0", cursor: "pointer" }}>
@@ -390,6 +394,7 @@ export function ChamberDiagramV2() {
             <span style={{ fontFamily: "monospace", fontSize: 12, color: "rgb(10,37,159)", width: 80, textAlign: "right", cursor: "context-menu", flexShrink: 0, marginLeft: -4 }}
               onContextMenu={e => pvCtx("29idb:ca14:read", vD14, e)}>{d14}</span>
             <select
+              aria-label="D14 TEY scan rate"
               value={SCAN_OPTS.indexOf(d14scan.toLowerCase())}
               onChange={e => pvwsWriter.write("29idb:ca14:read.SCAN", parseInt(e.target.value))}
               style={{ width: 40, background: "rgb(162,186,221)", color: "rgb(10,37,159)", border: "1px solid rgb(120,150,190)", borderRadius: 3, fontSize: 11, padding: "1px 0", cursor: "pointer" }}>

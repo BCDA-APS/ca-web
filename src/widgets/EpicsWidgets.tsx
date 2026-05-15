@@ -69,6 +69,7 @@ export function SpBox({ value, prec = 3, width, onCommit, disabled = false, onCo
       <input
         ref={ref}
         value={input}
+        aria-label="Setpoint"
         onChange={e => setInput(e.target.value)}
         onKeyDown={e => {
           if (e.key === "Enter") {
@@ -142,6 +143,7 @@ export function TweakValue({ value, onCommit, prec, style, onContextMenu }: {
       <input
         ref={ref}
         value={input}
+        aria-label="Tweak step"
         onChange={e => setInput(e.target.value)}
         onKeyDown={e => {
           if (e.key === "Enter") {

@@ -128,6 +128,7 @@ export function SettingsPanel({ panelDefaults, hiddenPanels, overlays, sharedLay
             autoFocus
             value={nameInput}
             placeholder="Layout name…"
+            aria-label="Layout name"
             onChange={e => setNameInput(e.target.value)}
             onKeyDown={e => {
               if (e.key === "Enter") saveDraft();

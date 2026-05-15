@@ -180,7 +180,8 @@ export function CameraViewer({
           borderBottom: `1px solid ${colors.sectionHdrBorder}`, padding: "0 4px 3px", flex: 1,
         }}>{title}</h3>
         <label style={{ fontSize: fontSize.small, color: colors.dim, display: "flex", alignItems: "center", gap: 4 }}>
-          <input type="checkbox" checked={showXhair} onChange={e => setShowXhair(e.target.checked)} />
+          <input type="checkbox" checked={showXhair} onChange={e => setShowXhair(e.target.checked)}
+            aria-label="Crosshair" />
           Crosshair
         </label>
       </div>

@@ -377,10 +377,13 @@ function uiSearchPathPlugin(paths: LoadedPaths) {
 // repo. There is no production-static deployment path: ca-web runs from the
 // repo so the server can always write.
 const LAYOUT_NAME_RX = /^[a-z0-9-]{1,64}$/;
+// Deployment IDs may contain underscores (e.g. "29id_dev"). Layout names must
+// be filesystem-safe but stay restrictive for tidy filenames.
+const DEPLOYMENT_ID_RX = /^[a-z0-9_-]{1,64}$/;
 
 function layoutsApiPlugin() {
   function layoutDir(deploymentId: string): string | null {
-    if (!LAYOUT_NAME_RX.test(deploymentId)) return null;
+    if (!DEPLOYMENT_ID_RX.test(deploymentId)) return null;
     const deploymentRoot = path.join(DEPLOYMENTS_DIR, deploymentId);
     if (!fs.existsSync(deploymentRoot)) return null;
     return path.join(deploymentRoot, "layouts");

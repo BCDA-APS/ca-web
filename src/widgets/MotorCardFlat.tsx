@@ -94,6 +94,7 @@ export function MotorCardFlat({ pv }: MotorCardFlatProps) {
 
       {editingVal ? (
         <input ref={valRef} style={{ ...S.field, ...S.valField }} value={valInput}
+          aria-label={`${pv} setpoint`}
           onChange={e => setValInput(e.target.value)}
           onKeyDown={e => { if (e.key === "Enter") commitVal(); if (e.key === "Escape") cancelVal(); }}
           onBlur={cancelVal} />
@@ -110,7 +111,8 @@ export function MotorCardFlat({ pv }: MotorCardFlatProps) {
         <button style={S.tweakBtn} onClick={m.tweakBack} disabled={m.disabled || !m.connected}>‹</button>
         {editingTwv ? (
           <input ref={twvRef} style={{ ...S.field, width: 60, textAlign: "center", padding: "2px 4px" }}
-            value={twvInput} onChange={e => setTwvInput(e.target.value)}
+            value={twvInput} aria-label={`${pv} tweak step`}
+            onChange={e => setTwvInput(e.target.value)}
             onKeyDown={handleTwvKey} onBlur={cancelTwv} />
         ) : (
           <div style={{ ...S.field, ...S.twvField }} title="Click to change step (↑ ×10, ↓ ÷10)" onClick={startTwvEdit}>

@@ -339,6 +339,7 @@ export function StripChart({
         <label style={{ display: "flex", alignItems: "center", gap: 4 }}>
           Window:
           <select value={windowMs} onChange={e => setWindowMs(Number(e.target.value))}
+            aria-label="Window"
             style={{ ...ctrlBtn, padding: "1px 4px" }}>
             {WINDOWS.map(w => <option key={w.ms} value={w.ms}>{w.label}</option>)}
           </select>
@@ -355,8 +356,10 @@ export function StripChart({
         {yMode === "manual" && (
           <>
             <input type="number" placeholder="min" value={yMin ?? ""} style={numInput}
+              aria-label="Y axis minimum"
               onChange={e => setYMin(e.target.value === "" ? null : Number(e.target.value))} />
             <input type="number" placeholder="max" value={yMax ?? ""} style={numInput}
+              aria-label="Y axis maximum"
               onChange={e => setYMax(e.target.value === "" ? null : Number(e.target.value))} />
           </>
         )}
@@ -366,6 +369,7 @@ export function StripChart({
           cursor: logDisabled ? "not-allowed" : "pointer",
         }} title={logDisabled ? "Log scale doesn't apply to normalized mode" : ""}>
           <input type="checkbox" checked={logY && !logDisabled} disabled={logDisabled}
+            aria-label="Log Y"
             onChange={e => setLogY(e.target.checked)} />
           Log Y
         </label>
@@ -391,7 +395,8 @@ export function StripChart({
                   display: "flex", alignItems: "center", gap: 4,
                   padding: "1px 0", cursor: "pointer",
                 }} title={p.pv}>
-                  <input type="checkbox" checked={checked} onChange={() => toggle(p.pv)} />
+                  <input type="checkbox" checked={checked} onChange={() => toggle(p.pv)}
+                    aria-label={`Show ${p.label ?? p.pv}`} />
                   <span style={{
                     width: 10, height: 10, borderRadius: 2,
                     background: swatch ?? "transparent",
@@ -419,6 +424,7 @@ export function StripChart({
           {/* Add input */}
           <div style={{ marginTop: "auto", display: "flex", gap: 2, paddingTop: 6 }}>
             <input value={addInput} placeholder="add PV"
+              aria-label="Add PV by name"
               onChange={e => setAddInput(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter") addPv(); }}
               style={{

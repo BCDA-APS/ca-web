@@ -396,7 +396,9 @@ function CaTextEntryWidget({ widget, ns }: { widget: ParsedWidget; ns: string })
   return (
     <input
       type="text"
+      name={channel}
       title={channel}
+      aria-label={channel}
       value={displayVal}
       onChange={e => setDraft(e.target.value)}
       onFocus={handleFocus}
@@ -817,7 +819,9 @@ function CaMenuWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
 
   return (
     <select
+      name={channel}
       title={channel}
+      aria-label={channel}
       value={currentIdx}
       disabled={!connected}
       onChange={e => pvwsWriter.write(channel, parseInt(e.target.value))}
@@ -1028,14 +1032,17 @@ function CaCameraWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
       <div style={{ ...barStyle, height: TOPBAR_H }}>
         <span>Min:</span>
         <input style={inputStyle} type="number" value={autoLevels ? frameMinMax[0] : manMin}
+          aria-label="Display minimum"
           readOnly={autoLevels}
           onChange={e => { setAutoLevels(false); setManMin(Number(e.target.value)); }} />
         <span>Max:</span>
         <input style={inputStyle} type="number" value={autoLevels ? frameMinMax[1] : manMax}
+          aria-label="Display maximum"
           readOnly={autoLevels}
           onChange={e => { setAutoLevels(false); setManMax(Number(e.target.value)); }} />
         <span>Auto:</span>
-        <input type="checkbox" checked={autoLevels} onChange={e => setAutoLevels(e.target.checked)} />
+        <input type="checkbox" checked={autoLevels} onChange={e => setAutoLevels(e.target.checked)}
+          aria-label="Auto levels" />
         <span style={{ marginLeft: 4, color: "#444" }}>{cursorInfo || "\u00a0"}</span>
         <span style={{ marginLeft: "auto" }}>{fps} U/s (Mono,)</span>
       </div>
@@ -1068,6 +1075,7 @@ function CaCameraWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
             </svg>
           </div>
           <input type="range" min={0} max={3} step={0.1}
+            aria-label="Zoom"
             value={Math.log2(zoomMult)}
             onChange={e => setZoomMult(parseFloat(Math.pow(2, Number(e.target.value)).toFixed(2)))}
             style={{ flex: 1, writingMode: "vertical-lr", direction: "rtl", width: 16, cursor: "pointer" }}
@@ -1837,6 +1845,7 @@ function CaSpinboxWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
     <div style={{ ...geoStyle(widget.geometry, widget.zIndex), display: "flex", alignItems: "center", border: "1px solid #4a90d9", borderRadius: 3, background: "#1e2a3a", overflow: "hidden" }}>
       {editing ? (
         <input autoFocus value={input} onChange={e => setInput(e.target.value)}
+          name={pv} aria-label={pv}
           onKeyDown={e => { if (e.key === "Enter") commit(); if (e.key === "Escape") { setEditing(false); setInput(""); } }}
           onBlur={() => { setEditing(false); setInput(""); }}
           style={{ flex: 1, background: "none", border: "none", color: "#fff", fontFamily: "monospace", fontSize: 12, padding: "0 4px", outline: "none" }} />
@@ -1885,6 +1894,7 @@ function CaSliderWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
   return (
     <div style={geoStyle(widget.geometry, widget.zIndex)}>
       <input type="range" min={minVal} max={maxVal} step={(maxVal - minVal) / 100}
+        name={pv} aria-label={pv}
         value={connected && val !== null ? val : minVal}
         disabled={!connected}
         onChange={e => pvwsWriter.write(pv, parseFloat(e.target.value))}
@@ -1912,6 +1922,7 @@ function CaToggleButtonWidget({ widget, ns }: { widget: ParsedWidget; ns: string
   return (
     <div style={{ ...geoStyle(widget.geometry, widget.zIndex), display: "flex", alignItems: "center", gap: 6 }}>
       <input type="checkbox" checked={checked} disabled={!connected}
+        name={pv} aria-label={label || pv}
         onChange={e => pvwsWriter.write(pv, e.target.checked ? 1 : 0)}
         style={{ accentColor: "#4a90d9", width: 14, height: 14, cursor: connected ? "pointer" : "default" }} />
       <span style={{ color: fg, fontSize: scaledFont(widget.geometry.height), fontFamily: "sans-serif" }}>{label}</span>
@@ -1991,11 +2002,12 @@ function CaStripPlotWidget({ widget, ns }: { widget: ParsedWidget; ns: string })
   const latestRef  = useRef<(number | null)[]>([null, null, null, null]);
   const [, forceRender] = useState(0);
 
-  // Fixed 4 hook calls (pad missing pvs with "")
-  const [,,, raw0] = useConnection(`${ns}-strip-${widget.name}-0`, pvs[0] ? `ca://${pvs[0]}` : "");
-  const [,,, raw1] = useConnection(`${ns}-strip-${widget.name}-1`, pvs[1] ? `ca://${pvs[1]}` : "");
-  const [,,, raw2] = useConnection(`${ns}-strip-${widget.name}-2`, pvs[2] ? `ca://${pvs[2]}` : "");
-  const [,,, raw3] = useConnection(`${ns}-strip-${widget.name}-3`, pvs[3] ? `ca://${pvs[3]}` : "");
+  // Fixed 4 hook calls. Pass `undefined` (not "") for missing pvs so cs-web-lib
+  // skips the subscription instead of trying to connect to an empty PV name.
+  const [,,, raw0] = useConnection(`${ns}-strip-${widget.name}-0`, pvs[0] ? `ca://${pvs[0]}` : undefined);
+  const [,,, raw1] = useConnection(`${ns}-strip-${widget.name}-1`, pvs[1] ? `ca://${pvs[1]}` : undefined);
+  const [,,, raw2] = useConnection(`${ns}-strip-${widget.name}-2`, pvs[2] ? `ca://${pvs[2]}` : undefined);
+  const [,,, raw3] = useConnection(`${ns}-strip-${widget.name}-3`, pvs[3] ? `ca://${pvs[3]}` : undefined);
 
   // Keep latest numeric values in ref so the interval can sample them
   useEffect(() => { latestRef.current[0] = extractDouble(raw0); }, [raw0]);
