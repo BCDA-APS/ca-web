@@ -1,9 +1,7 @@
 import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { layoutGet, layoutSet } from "../lib/layoutStorage";
 import { PanelSizeContext } from "../lib/deployment";
-
-// Global z-index counter so clicking a panel brings it to the front.
-let gZ = 10;
+import { nextZ } from "./zStack";
 
 interface PanelState { x: number; y: number; w?: number; h?: number; locked: boolean }
 
@@ -25,7 +23,7 @@ export function DraggablePanel({ id, title, defaultPos, defaultSize, scale, onCl
     if (saved) return saved;
     return { ...def, locked: false, w: defaultSize?.w, h: defaultSize?.h };
   });
-  const [zIdx, setZIdx] = useState(gZ);
+  const [zIdx, setZIdx] = useState(() => nextZ());
   const dragRef = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const measureRef = useRef<HTMLDivElement>(null);
@@ -46,8 +44,7 @@ export function DraggablePanel({ id, title, defaultPos, defaultSize, scale, onCl
   }, [id, ps]);
 
   function bringToFront() {
-    const z = ++gZ;
-    setZIdx(z);
+    setZIdx(nextZ());
   }
 
   function onHandleMouseDown(e: React.MouseEvent) {

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { UiRenderer } from "../lib/UiRenderer";
 import { layoutGet, layoutSet } from "../lib/layoutStorage";
+import { nextZ } from "./zStack";
 
 interface OverlayState { x: number; y: number; locked: boolean }
 
@@ -22,7 +23,12 @@ export function OverlayPanel({ ov, onClose }: { ov: AppOverlay; onClose: () => v
     saved ? { x: saved.x, y: saved.y } : ov.pos
   );
   const [locked, setLocked] = useState<boolean>(() => saved?.locked ?? false);
+  const [zIdx, setZIdx] = useState(() => nextZ());
   const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
+
+  function bringToFront() {
+    setZIdx(nextZ());
+  }
 
   useEffect(() => {
     layoutSet(storageKey, { x: pos.x, y: pos.y, locked });
@@ -31,6 +37,7 @@ export function OverlayPanel({ ov, onClose }: { ov: AppOverlay; onClose: () => v
   function onMouseDown(e: React.MouseEvent) {
     if (locked) return;
     e.preventDefault();
+    bringToFront();
     dragRef.current = { startX: e.clientX, startY: e.clientY, origX: pos.x, origY: pos.y };
     function onMove(ev: MouseEvent) {
       if (!dragRef.current) return;
@@ -43,7 +50,7 @@ export function OverlayPanel({ ov, onClose }: { ov: AppOverlay; onClose: () => v
   }
 
   return createPortal(
-    <div style={{ position: "fixed", top: pos.y, left: pos.x, zIndex: 9999, background: "rgb(222,222,227)", borderRadius: 4, boxShadow: "0 4px 20px rgba(0,0,0,0.25)", border: "1px solid #b0b0b8" }}>
+    <div onMouseDown={bringToFront} style={{ position: "fixed", top: pos.y, left: pos.x, zIndex: zIdx, background: "rgb(222,222,227)", borderRadius: 4, boxShadow: "0 4px 20px rgba(0,0,0,0.25)", border: "1px solid #b0b0b8" }}>
       <div onMouseDown={onMouseDown} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 8px", background: "rgb(200,200,207)", borderRadius: "4px 4px 0 0", cursor: locked ? "default" : "grab" }}>
         <span style={{ color: "#546e8a", fontSize: 11, fontFamily: "monospace" }}>{ov.label}</span>
         <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
