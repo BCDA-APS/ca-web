@@ -112,7 +112,17 @@ export function StripChart({
   const [logY, setLogY]         = useState<boolean>(() => persisted?.logY ?? false);
   const [yMin, setYMin]         = useState<number | null>(() => persisted?.yMin ?? null);
   const [yMax, setYMax]         = useState<number | null>(() => persisted?.yMax ?? null);
+  // Separate text state so partial scientific notation (e.g. "-1e-") stays
+  // visible while the user types; yMin/yMax only commit on a finite parse.
+  const [yMinText, setYMinText] = useState<string>(() => persisted?.yMin == null ? "" : String(persisted.yMin));
+  const [yMaxText, setYMaxText] = useState<string>(() => persisted?.yMax == null ? "" : String(persisted.yMax));
   const [addInput, setAddInput] = useState("");
+
+  function commitNum(text: string, set: (n: number | null) => void) {
+    if (text === "") { set(null); return; }
+    const n = Number(text);
+    if (Number.isFinite(n)) set(n);
+  }
 
   // Persist any state change.
   useEffect(() => {
@@ -124,6 +134,22 @@ export function StripChart({
     };
     layoutSet(`stripchart:${id}`, payload);
   }, [id, enabled, colorsMap, extraPvs, windowMs, yMode, logY, yMin, yMax]);
+
+  // Assign a palette color to any enabled PV that doesn't already have one.
+  // Covers pre-checked initialPvs at mount as well as runtime checks.
+  useEffect(() => {
+    setColorsMap(prev => {
+      let next = prev;
+      for (const pv of enabled) {
+        if (!next[pv]) {
+          const used = new Set(Object.values(next));
+          const free = PALETTE.find(c => !used.has(c)) ?? PALETTE[Object.keys(next).length % PALETTE.length];
+          next = { ...next, [pv]: free };
+        }
+      }
+      return next === prev ? prev : next;
+    });
+  }, [enabled]);
 
   // ── Sidebar entries: pre-loaded (from props) + ad-hoc (from state) ─────────
   const sidebar = useMemo(() => [
@@ -171,11 +197,6 @@ export function StripChart({
       else next.add(pv);
       return next;
     });
-    if (!enabled.has(pv) && !colorsMap[pv]) {
-      const used = new Set(Object.values(colorsMap));
-      const free = PALETTE.find(c => !used.has(c)) ?? PALETTE[Object.keys(colorsMap).length % PALETTE.length];
-      setColorsMap(prev => ({ ...prev, [pv]: free }));
-    }
   }
 
   function addPv() {
@@ -184,11 +205,6 @@ export function StripChart({
     if (sidebar.some(s => s.pv === pv)) { setAddInput(""); return; }
     setExtraPvs(prev => [...prev, { pv }]);
     setEnabled(prev => new Set(prev).add(pv));
-    if (!colorsMap[pv]) {
-      const used = new Set(Object.values(colorsMap));
-      const free = PALETTE.find(c => !used.has(c)) ?? PALETTE[Object.keys(colorsMap).length % PALETTE.length];
-      setColorsMap(prev => ({ ...prev, [pv]: free }));
-    }
     setAddInput("");
   }
 
@@ -355,12 +371,12 @@ export function StripChart({
         ))}
         {yMode === "manual" && (
           <>
-            <input type="number" placeholder="min" value={yMin ?? ""} style={numInput}
+            <input type="text" inputMode="decimal" placeholder="min" value={yMinText} style={numInput}
               aria-label="Y axis minimum"
-              onChange={e => setYMin(e.target.value === "" ? null : Number(e.target.value))} />
-            <input type="number" placeholder="max" value={yMax ?? ""} style={numInput}
+              onChange={e => { setYMinText(e.target.value); commitNum(e.target.value, setYMin); }} />
+            <input type="text" inputMode="decimal" placeholder="max" value={yMaxText} style={numInput}
               aria-label="Y axis maximum"
-              onChange={e => setYMax(e.target.value === "" ? null : Number(e.target.value))} />
+              onChange={e => { setYMaxText(e.target.value); commitNum(e.target.value, setYMax); }} />
           </>
         )}
         <label style={{
@@ -470,18 +486,23 @@ export function StripChart({
           <line x1={CHART_PAD.l} y1={chartH - CHART_PAD.b} x2={chartW - CHART_PAD.r} y2={chartH - CHART_PAD.b}
             stroke={UI.axis} strokeWidth={1.5}/>
 
-          {/* Traces */}
+          {/* Traces — start a new sub-path on any time gap > 2.5 sample intervals
+              so reconnect after uncheck doesn't bridge with one long segment. */}
           {traces.map((tr, idx) => {
             const range = perTraceRange[idx];
             if (!range || tr.points.length === 0) return null;
             const toY = makeYMapper(range.lo, range.hi);
+            const GAP_MS = 2500;
             const segments: string[] = [];
+            let prevT = -Infinity;
             let started = false;
             for (const p of tr.points) {
               const y = toY(p.v);
               if (!Number.isFinite(y)) { started = false; continue; }
-              segments.push(`${started ? "L" : "M"}${toX(p.t).toFixed(1)},${y.toFixed(1)}`);
+              const gap = p.t - prevT > GAP_MS;
+              segments.push(`${(!started || gap) ? "M" : "L"}${toX(p.t).toFixed(1)},${y.toFixed(1)}`);
               started = true;
+              prevT = p.t;
             }
             return segments.length === 0 ? null : (
               <path key={tr.pv} d={segments.join(" ")} fill="none"
