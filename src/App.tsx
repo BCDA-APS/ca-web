@@ -50,11 +50,24 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
 
   useEffect(() => {
     function handler(e: Event) {
-      const { file, macros, label, replace, sourceFile, singleton } = (e as CustomEvent).detail;
+      const { file, macros, label, replace, sourceFile, hostOverlayId, singleton } = (e as CustomEvent).detail;
       const tabId = activeTabRef.current;
       const id = ++counter.current;
       const offset = ((id - 1) % 6) * 24;
-      if (replace && sourceFile) {
+      if (replace && hostOverlayId != null) {
+        // Replace the host overlay: remove that specific overlay by id, then
+        // open the new one inheriting its position so the replacement feels
+        // in-place. Falls back to the original sourceFile filter if no
+        // hostOverlayId (e.g. caRelatedDisplay clicked outside any overlay).
+        setOverlays(prev => {
+          const host = prev.find(o => o.id === hostOverlayId);
+          const pos = host?.pos ?? { x: 120, y: 80 };
+          return [
+            ...prev.filter(o => o.id !== hostOverlayId),
+            { id, file, macros, label, pos, sourceFile, tabId },
+          ];
+        });
+      } else if (replace && sourceFile) {
         setOverlays(prev => [
           ...prev.filter(o => o.sourceFile !== sourceFile),
           { id, file, macros, label, pos: { x: 120, y: 80 }, sourceFile, tabId },

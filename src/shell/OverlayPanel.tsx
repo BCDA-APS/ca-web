@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { UiRenderer } from "../lib/UiRenderer";
+import { UiRenderer, HostOverlayContext } from "../lib/UiRenderer";
 import { layoutGet, layoutSet } from "../lib/layoutStorage";
 import { nextZ } from "./zStack";
 
@@ -68,7 +68,9 @@ export function OverlayPanel({ ov, onClose }: { ov: AppOverlay; onClose: () => v
           <button onClick={onClose} style={{ background: "none", border: "none", color: "#546e8a", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: "0 2px" }}>×</button>
         </div>
       </div>
-      <UiRenderer file={ov.file} macros={ov.macros} />
+      <HostOverlayContext.Provider value={ov.id}>
+        <UiRenderer file={ov.file} macros={ov.macros} />
+      </HostOverlayContext.Provider>
     </div>,
     document.body
   );

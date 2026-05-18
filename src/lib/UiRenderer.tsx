@@ -17,6 +17,10 @@ const OpenContext = createContext<(s: OverlayState) => void>(() => {});
 const BaseDirContext = createContext("/ui");
 // Current macros — inherited by caInclude widgets.
 const MacrosContext = createContext<Record<string, string>>({});
+// Host overlay id (if this UiRenderer is rendered inside an OverlayPanel).
+// caRelatedDisplay's removeParent=true uses this to remove the specific host
+// overlay rather than filtering by sourceFile (which can match other panels).
+export const HostOverlayContext = createContext<number | null>(null);
 
 // ── value extraction ──────────────────────────────────────────────────────────
 
@@ -2406,6 +2410,7 @@ export function UiRenderer({ file, macros = {}, scale }: UiRendererProps) {
   const [error, setError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [autoScale, setAutoScale] = useState(1);
+  const hostOverlayId = useContext(HostOverlayContext);
 
   // Fetch and parse the .ui file
   useEffect(() => {
@@ -2460,7 +2465,7 @@ export function UiRenderer({ file, macros = {}, scale }: UiRendererProps) {
 
   function openOverlay(s: OverlayState) {
     window.dispatchEvent(new CustomEvent("open-ui", {
-      detail: { file: s.file, macros: s.macros, label: s.label, replace: s.replace, sourceFile: file },
+      detail: { file: s.file, macros: s.macros, label: s.label, replace: s.replace, sourceFile: file, hostOverlayId },
     }));
   }
 
