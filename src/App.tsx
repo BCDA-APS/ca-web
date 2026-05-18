@@ -141,6 +141,7 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
               defaultSize={{ w: 380, h: 440 }}
               scale="fit"
               aspectLock
+              transient
               onClose={close}
             >
               <CameraViewer initialPrefix={ov.initialPrefix} knownCameras={ov.knownCameras} />

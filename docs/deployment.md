@@ -68,7 +68,7 @@ See [how-to-start-pvws.md](how-to-start-pvws.md) for build/load, env vars,
 and host-specific notes. On `mite` the invocation is:
 
 ```bash
-./scripts/start-pvws.sh --name pvws-29id --no-hosts --rootless-nfs
+./scripts/start-pvws.sh --name pvws-29id --no-hosts
 ```
 
 ### Step 2 — Start the dev server

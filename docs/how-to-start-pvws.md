@@ -54,20 +54,32 @@ is writable.
 ### mite / 29ID beamline
 
 ```bash
-./scripts/start-pvws.sh --name pvws-29id --no-hosts --rootless-nfs
+./scripts/start-pvws.sh --name pvws-29id --no-hosts
 ```
 
 - `--name pvws-29id` avoids conflicts with other instances on the shared
   machine.
 - `--no-hosts` is required because `/etc/hosts` is not writable by regular
   users on beamline machines.
-- `--rootless-nfs` redirects podman's storage to `/var/tmp/$USER-containers`
-  because podman's overlay filesystem cannot use NFS-mounted home
-  directories.
+- `--rootless-nfs` is **only** needed when podman's storage itself sits
+  on NFS (the overlay filesystem can't use NFS extended attributes).
+  Having `$HOME` on NFS doesn't automatically mean you need it — check
+  the actual storage path:
 
-If you are running as `rodolakis` (or any user whose `$XDG_RUNTIME_DIR` is
-not set in non-login shells), the script sets it for you. To make it
-persistent, add to `~/.bashrc`:
+  ```bash
+  podman info --format '{{.Store.GraphRoot}}'
+  df -hT $(podman info --format '{{.Store.GraphRoot}}')
+  ```
+
+  If that path is `nfs`/`nfs4`, pass `--rootless-nfs` for a one-off
+  fix (puts everything in `/var/tmp/$USER-containers` for this host
+  only), or — better, persistent — point podman at a local-disk path
+  in `~/.config/containers/storage.conf` (see "Common pitfalls"
+  below). On APS hosts that have `/local/$USER/` available, the
+  permanent config is much cleaner than `--rootless-nfs`.
+
+If `$XDG_RUNTIME_DIR` is not set in your non-login shells, the script
+sets it for you. To make it persistent, add to `~/.bashrc`:
 
 ```bash
 export XDG_RUNTIME_DIR=/var/tmp/${USER}-runtime
@@ -81,10 +93,14 @@ ca-web widgets misbehave without them.
 
 - **`PV_WRITE_SUPPORT=true`** — enables PV write support (required for
   `caTextEntry`, `caMessageButton`, etc.).
-- **`EPICS_CA_MAX_ARRAY_BYTES=8000000`** — required for area detector
-  waveform PVs (e.g. `ArrayData`). The container does **not** inherit the
-  host shell's environment. Without this, the default is 16 KB and image
-  PVs will connect but return 0 elements.
+- **`EPICS_CA_MAX_ARRAY_BYTES=64000000`** — 64 MB cap on waveform
+  payloads, sized for typical area-detector image PVs (e.g. `ArrayData`).
+  The container does **not** inherit the host shell's environment.
+  Without this, the default is 16 KB and image PVs will connect but
+  return 0 elements. Raise further if a camera's `ArrayData` element
+  count × bytes-per-element exceeds 64 MB (check with `cainfo` —
+  remember the underlying record is sized for the worst-case bit depth,
+  not whatever DataType_RBV currently reports).
 - **`PV_ARRAY_THROTTLE_MS=1000`** — maximum update rate for waveform/array
   PVs (default is 10000 ms = 10 s, which makes strip charts and line
   profiles sluggish). Set to 1000 ms for ~1 Hz updates; lower values (e.g.
@@ -128,21 +144,19 @@ podman load -i ~/workspace/pvws/pvws-image.tar
 
 ## After a reboot
 
-Beamline machines lose podman state on reboot (storage is in `/var/tmp`).
+A reboot stops the pvws container but the image stays in podman's
+storage (`~/.local/share/containers` by default), so you just need to
+restart it. If you ever used `--rootless-nfs` and `/var/tmp` got wiped,
+re-load the image first.
+
 To restart pvws without rebuilding:
 
 ```bash
 podman load -i ~/workspace/pvws/pvws-image.tar
-./scripts/start-pvws.sh --name pvws-29id --no-hosts --rootless-nfs
+./scripts/start-pvws.sh --name pvws-29id --no-hosts
 ```
 
 ## Common pitfalls
-
-### Build as yourself, not as `29iduser`
-
-`29iduser` has no subuid/subgid entries configured on APS machines, so
-rootless podman fails immediately. Build the image as `rodolakis` (or your
-own account), save it to NFS, then load it as `29iduser` if needed.
 
 ### `XDG_RUNTIME_DIR` is unset in non-login shells
 
@@ -157,19 +171,29 @@ mkdir -p $XDG_RUNTIME_DIR
 
 ### NFS home directories break podman overlay storage
 
-Overlay requires extended attributes that NFS does not support. `--rootless-nfs`
-on the script handles this for `podman run` and `podman build`. To make it
-permanent for all podman commands on that host, create
-`~/.config/containers/storage.conf`:
+Overlay requires extended attributes that NFS does not support. The
+real fix is to point podman at a local-disk path **once**, in a
+`~/.config/containers/storage.conf` that lives in your (NFS) home —
+the same file then applies on every host you log into, as long as
+each host has the target path available. For APS workstations with a
+local `/local/$USER/` mount this is the cleanest setup:
 
 ```
 [storage]
 driver = "overlay"
-graphRoot = "/var/tmp/rodolakis-containers"
+graphRoot = "/local/<your-username>/.local/share/containers/storage"
+runroot  = "/run/user/<your-uid>/containers"
 
 [storage.options]
 ignore_chown_errors = "true"
 ```
+
+After this, the script runs fine without `--rootless-nfs` on any host.
+
+`--rootless-nfs` is a fallback for hosts that don't have a local-disk
+path you can point graphRoot at — it stashes everything under
+`/var/tmp/$USER-containers` on the current machine only. Easy, but
+`/var/tmp` is often small and may get wiped on reboot.
 
 `ignore_chown_errors` suppresses chown failures that rootless podman hits
 because it cannot chown files it doesn't own on NFS.

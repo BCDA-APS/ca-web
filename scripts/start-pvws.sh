@@ -17,7 +17,7 @@ Usage: scripts/start-pvws.sh [--name NAME] [--port PORT] [--image IMAGE]
 
 Starts pvws as a detached podman container with the env vars ca-web expects:
   PV_WRITE_SUPPORT=true
-  EPICS_CA_MAX_ARRAY_BYTES=8000000
+  EPICS_CA_MAX_ARRAY_BYTES=64000000   # 64 MB — needed for camera images
   PV_ARRAY_THROTTLE_MS=1000
 
 Options:
@@ -38,7 +38,8 @@ Examples:
     ./scripts/start-pvws.sh
 
   mite / 29ID beamline:
-    ./scripts/start-pvws.sh --name pvws-29id --no-hosts --rootless-nfs
+    ./scripts/start-pvws.sh --name pvws-29id --no-hosts
+  (add --rootless-nfs only if \$HOME is on NFS — mite's isn't.)
 EOF
 }
 
@@ -97,7 +98,7 @@ run_args=(
     -d
     --name "$name"
     -e PV_WRITE_SUPPORT=true
-    -e EPICS_CA_MAX_ARRAY_BYTES=8000000
+    -e EPICS_CA_MAX_ARRAY_BYTES=64000000
     -e PV_ARRAY_THROTTLE_MS=1000
 )
 if [[ "$no_hosts" -eq 1 ]]; then

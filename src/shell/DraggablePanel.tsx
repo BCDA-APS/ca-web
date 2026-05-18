@@ -8,20 +8,27 @@ interface PanelState { x: number; y: number; w?: number; h?: number; locked: boo
 const MIN_W = 200;
 const MIN_H = 120;
 
-export function DraggablePanel({ id, title, defaultPos, defaultSize, scale, aspectLock, onClose, children }: {
+export function DraggablePanel({ id, title, defaultPos, defaultSize, scale, aspectLock, transient, onClose, children }: {
   id: string;
   title: string;
   defaultPos?: { x: number; y: number };
   defaultSize?: { w: number; h: number };
   scale?: "transform" | "fit" | "none";
   aspectLock?: boolean;
+  /** When true, panel state is NOT read from / written to layoutStorage.
+   * Used for transient overlay-style panels (camera overlays) where the
+   * panel id is per-instance and persisted state would only cause
+   * collisions across sessions. */
+  transient?: boolean;
   onClose?: () => void;
   children: React.ReactNode;
 }) {
   const def = defaultPos ?? { x: 60, y: 60 };
   const [ps, setPs] = useState<PanelState>(() => {
-    const saved = layoutGet<PanelState>(`panel:${id}`);
-    if (saved) return saved;
+    if (!transient) {
+      const saved = layoutGet<PanelState>(`panel:${id}`);
+      if (saved) return saved;
+    }
     return { ...def, locked: false, w: defaultSize?.w, h: defaultSize?.h };
   });
   const [zIdx, setZIdx] = useState(() => nextZ());
@@ -41,8 +48,9 @@ export function DraggablePanel({ id, title, defaultPos, defaultSize, scale, aspe
   }, [scale, naturalSize, children]);
 
   useEffect(() => {
+    if (transient) return;
     layoutSet(`panel:${id}`, ps);
-  }, [id, ps]);
+  }, [id, ps, transient]);
 
   // Bring this panel to the front whenever someone fires show-panel for our
   // id. Lets external buttons (e.g. ChamberDiagramV2 Gauge/Pump) raise an

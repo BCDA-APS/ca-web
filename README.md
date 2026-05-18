@@ -118,7 +118,7 @@ pvws runs as a podman container. From the repo root:
 
 ```bash
 ./scripts/start-pvws.sh                                              # workstation / nefarian
-./scripts/start-pvws.sh --name pvws-29id --no-hosts --rootless-nfs   # mite / 29ID beamline
+./scripts/start-pvws.sh --name pvws-29id --no-hosts                  # mite / 29ID beamline
 ```
 
 See [docs/how-to-start-pvws.md](docs/how-to-start-pvws.md) for env vars,

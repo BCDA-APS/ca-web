@@ -25,9 +25,16 @@ export interface CameraViewerProps {
    * so the canvas adapts to detector resizing / ROI / binning. */
   imageWPv?: string;
   imageHPv?: string;
+  /** Optional third dimension PV (e.g. "myad:image1:ArraySize2_RBV"). When
+   * `imageWPv`'s value is exactly 3, the data is treated as RGB1 (interleaved
+   * 3-channel) with width = imageHPv and height = imageSize2Pv. This is the
+   * actual AreaDetector layout for RGB1, regardless of what ColorMode_RBV
+   * reports. */
+  imageSize2Pv?: string;
   /** Optional AreaDetector ColorMode_RBV PV (e.g. "myad:cam1:ColorMode_RBV").
    * Supported values: 0 = Mono (grayscale), 3 = RGB1 (interleaved). All
-   * other modes (Bayer, RGB2/3, YUV) currently fall back to mono. */
+   * other modes (Bayer, RGB2/3, YUV) currently fall back to mono. Note that
+   * the ArraySize0==3 heuristic wins over this PV when both are present. */
   colorModePv?: string;
 
   // ── Prefix mode ─────────────────────────────────────────────────────────
@@ -73,45 +80,25 @@ function WaveformCanvas({ imagePv, acquirePv, imageW, imageH, displayW, displayH
    * is provided. Lets the parent show the auto values as a readback. */
   onAutoRange?: (min: number, max: number) => void;
 }) {
-  const [, connected, , raw] = useConnection(`cam-${imagePv}`, `ca://${imagePv}`);
-  const [, , , acquireRaw] = useConnection(`cam-acq-rbv-${acquirePv ?? "none"}`,
-    acquirePv ? `ca://${acquirePv}` : undefined);
-  const acquiring = toDouble(acquireRaw) === 1;
+  const [, , , raw] = useConnection(`cam-${imagePv}`, `ca://${imagePv}`);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  // acquirePv was used by an earlier IOC-liveness heuristic that turned out
+  // to be unreliable. The prop is still accepted (callers pass it; future
+  // logic may want it) but we no longer subscribe to it here.
+  void acquirePv;
 
-  // Staleness detection: when the IOC dies, pvws often keeps the connection
-  // up and the last value cached, so neither `connected` nor alarm severity
-  // catches it. Watch the PV timestamp — if it hasn't advanced for > 5 s
-  // AND the detector is currently acquiring (so frames should be arriving),
-  // the source is gone. When Acquire_RBV is 0 (or unknown) we skip the
-  // check — an idle detector legitimately stops pushing new frames.
-  const lastDtRef = useRef<string | undefined>();
-  const lastSeenRef = useRef<number>(Date.now());
-  const [stale, setStale] = useState(false);
-  useEffect(() => {
-    const dt = (raw as { time?: { datetime?: string } })?.time?.datetime;
-    if (dt && dt !== lastDtRef.current) {
-      lastDtRef.current = dt;
-      lastSeenRef.current = Date.now();
-      if (stale) setStale(false);
-    }
-  }, [raw, stale]);
-  useEffect(() => {
-    const t = setInterval(() => {
-      if (!acquiring) { if (stale) setStale(false); return; }
-      if (Date.now() - lastSeenRef.current > 5000) setStale(s => s || true);
-    }, 1000);
-    return () => clearInterval(t);
-  }, [acquiring, stale]);
-
-  function drawPlaceholder(ctx: CanvasRenderingContext2D, msg: string) {
+  // Honest blank — pvws-side connection signals turned out to be unreliable
+  // enough that any text-based status here was misleading more often than
+  // useful. The Acquire/Stop button colour and Done/Acquiring readback
+  // already convey connection state truthfully where they can.
+  function drawBlank(ctx: CanvasRenderingContext2D) {
+    const cv = ctx.canvas;
+    const w = Math.max(imageW || 0, 240);
+    const h = Math.max(imageH || 0, 180);
+    cv.width = w;
+    cv.height = h;
     ctx.fillStyle = "#0f2035";
-    ctx.fillRect(0, 0, imageW, imageH);
-    ctx.fillStyle = "#5c7a99";
-    ctx.font = `${Math.max(11, Math.round(imageH / 24))}px sans-serif`;
-    ctx.textAlign = "left";
-    ctx.textBaseline = "top";
-    ctx.fillText(msg, 8, 6);
+    ctx.fillRect(0, 0, w, h);
   }
 
   useEffect(() => {
@@ -119,16 +106,12 @@ function WaveformCanvas({ imagePv, acquirePv, imageW, imageH, displayW, displayH
     if (!cv) return;
     const ctx = cv.getContext("2d");
     if (!ctx) return;
-    // Disconnected when: no pvws connection, invalid/undefined alarm, OR the
-    // PV timestamp hasn't advanced for > 5 s (catches the case where pvws
-    // keeps the connection alive and reuses the last frame after the IOC
-    // dies — neither connection nor alarm flag this).
-    const alarm = (raw as { alarm?: { quality?: string } })?.alarm?.quality;
-    if (!connected || alarm === "invalid" || alarm === "undefined" || stale) {
-      drawPlaceholder(ctx, "Disconnected"); return;
-    }
+    // No usable image: just go blank. Other UI elements (Acquire button,
+    // Done/Acquiring readback) carry the connection signal more honestly.
+    const dimsValid = imageW >= 16 && imageH >= 16 && imageW <= 65536 && imageH <= 65536;
+    if (!dimsValid) { drawBlank(ctx); return; }
     const val = (raw as { value?: { arrayValue?: unknown } })?.value?.arrayValue;
-    if (!val) { drawPlaceholder(ctx, "Waiting for image…"); return; }
+    if (!val) { drawBlank(ctx); return; }
     // pvws sends arrays as either typed arrays/regular arrays (length-indexed)
     // or as {"0": v, "1": v, ...} objects. Normalise to indexed access.
     const asAny = val as { length?: number; [k: number]: number };
@@ -145,15 +128,18 @@ function WaveformCanvas({ imagePv, acquirePv, imageW, imageH, displayW, displayH
     }
 
     const n = imageW * imageH;
-    const isRGB1 = colorMode === 3;
+    // Auto-detect RGB1 when the ColorMode PV says Mono (or isn't readable)
+    // but the buffer is ~3× the mono expectation. Some cameras don't expose
+    // ColorMode_RBV reliably; the buffer length is a good fallback signal.
+    let isRGB1 = colorMode === 3;
+    if (!isRGB1 && Math.abs(totalLen - n * 3) <= n * 3 * 0.05) isRGB1 = true;
     const expectedLen = isRGB1 ? n * 3 : n;
-    // Bidirectional size mismatch (typical when the size PVs disconnected
-    // but the image-data buffer is still cached). Don't render torn output —
-    // just treat as disconnected; that's the practical meaning for the user.
-    if (Math.abs(totalLen - expectedLen) > expectedLen * 0.05) {
-      drawPlaceholder(ctx, "Disconnected");
-      return;
-    }
+    // Buffer must hold AT LEAST one full frame. Many AreaDetector records
+    // are sized for the worst-case ROI / binning / bit depth and the current
+    // frame only fills the first expectedLen elements — that's fine.
+    // Only bail if the buffer is too small (size PVs lost, stale buffer,
+    // etc.) so we don't render torn / partial output.
+    if (totalLen < expectedLen * 0.95) { drawBlank(ctx); return; }
     const img = ctx.createImageData(imageW, imageH);
     const sliceLen = Math.min(expectedLen, totalLen);
 
@@ -187,14 +173,19 @@ function WaveformCanvas({ imagePv, acquirePv, imageW, imageH, displayW, displayH
       dispMin = manualMin;
       dispMax = manualMax;
     } else {
-      let mn = Infinity, mx = -Infinity;
-      for (let i = 0; i < sliceLen; i++) {
-        const v = getValue(i);
-        if (v < mn) mn = v;
-        if (v > mx) mx = v;
-      }
-      dispMin = mn;
-      dispMax = Math.max(mn + 1, mx);
+      // Percentile-based auto-contrast: 1st / 99th percentile of an evenly-
+      // sampled subset of pixels. Robust to one bright or one dead pixel
+      // that would otherwise crush the visible range with strict min/max.
+      const SAMPLE_TARGET = 10000;
+      const step = Math.max(1, Math.floor(sliceLen / SAMPLE_TARGET));
+      const sampleN = Math.ceil(sliceLen / step);
+      const sample = new Float64Array(sampleN);
+      let k = 0;
+      for (let i = 0; i < sliceLen; i += step) sample[k++] = getValue(i);
+      const used = k < sample.length ? sample.subarray(0, k) : sample;
+      used.sort();
+      dispMin = used[Math.floor(k * 0.01)];
+      dispMax = Math.max(dispMin + 1, used[Math.floor(k * 0.99)]);
       if (onAutoRange) onAutoRange(dispMin, dispMax);
     }
     const range = dispMax - dispMin;
@@ -221,7 +212,7 @@ function WaveformCanvas({ imagePv, acquirePv, imageW, imageH, displayW, displayH
       }
     }
     ctx.putImageData(img, 0, 0);
-  }, [raw, connected, stale, imageW, imageH, colorMode, manualMin, manualMax]);
+  }, [raw, imageW, imageH, colorMode, manualMin, manualMax]);
 
   return (
     <canvas
@@ -268,17 +259,23 @@ function Crosshair({ width, height, cx, cy }: { width: number; height: number; c
 
 function AcquireBtn({ pv }: { pv: string }) {
   const [, , , raw] = useConnection(`cam-acq-${pv}`, `ca://${pv}`);
-  const acquiring = toDouble(raw) === 1;
+  const val = toDouble(raw);
+  const alarm = (raw as { alarm?: { quality?: string } })?.alarm?.quality;
+  const hasValue = val !== null && alarm !== "invalid" && alarm !== "undefined";
+  const acquiring = hasValue && val === 1;
   return (
     <button
-      onClick={() => pvwsWriter.write(pv, acquiring ? 0 : 1)}
+      onClick={() => hasValue && pvwsWriter.write(pv, acquiring ? 0 : 1)}
       onContextMenu={e => pvCtx(pv, raw, e)}
+      disabled={!hasValue}
       style={{
-        padding: "4px 12px", borderRadius: 3, border: "none", cursor: "pointer",
+        padding: "4px 12px", borderRadius: 3, border: "none",
+        cursor: hasValue ? "pointer" : "not-allowed",
         fontSize: fontSize.label, fontFamily: "sans-serif", fontWeight: 700, color: "#fff",
-        background: acquiring ? colors.statusError : colors.statusOk,
+        background: !hasValue ? colors.dim : acquiring ? colors.statusError : colors.statusOk,
+        opacity: hasValue ? 1 : 0.6,
       }}
-    >{acquiring ? "Stop" : "Acquire"}</button>
+    >{!hasValue ? "—" : acquiring ? "Stop" : "Acquire"}</button>
   );
 }
 
@@ -311,19 +308,25 @@ function SettingsButton({ prefix }: { prefix: string }) {
 
 function DoneIndicator({ pv }: { pv: string }) {
   const [, , , raw] = useConnection(`cam-done-${pv}`, `ca://${pv}`);
-  const acquiring = toDouble(raw) === 1;
+  const val = toDouble(raw);
+  const alarm = (raw as { alarm?: { quality?: string } })?.alarm?.quality;
+  // Match the ChanSpBox convention: when we can't get a real value (no
+  // parseable doubleValue, or the alarm went invalid/undefined), show "—"
+  // instead of falsely reporting "Done" from a stale cached 0.
+  const hasValue = val !== null && alarm !== "invalid" && alarm !== "undefined";
+  const acquiring = hasValue && val === 1;
   return (
     <span
       onContextMenu={e => pvCtx(pv, raw, e)}
       style={{
         padding: "4px 8px",
         background: colors.rbvBg, border: `1px solid ${colors.rbvBorder}`,
-        color: acquiring ? colors.rbvText : colors.statusOk,
+        color: !hasValue ? colors.dim : acquiring ? colors.rbvText : colors.statusOk,
         fontSize: fontSize.label, fontFamily: "monospace",
         lineHeight: 1,
         cursor: "context-menu",
       }}
-    >{acquiring ? "Acquiring…" : "Done"}</span>
+    >{!hasValue ? "—" : acquiring ? "Acquiring…" : "Done"}</span>
   );
 }
 
@@ -353,6 +356,7 @@ export function CameraViewer({
   imageH = 480,
   imageWPv: imageWPvProp,
   imageHPv: imageHPvProp,
+  imageSize2Pv: imageSize2PvProp,
   colorModePv: colorModePvProp,
   initialPrefix,
   knownCameras,
@@ -369,19 +373,35 @@ export function CameraViewer({
 
   // Derived PVs. Explicit props always win; otherwise compute from prefix.
   const trimmedPrefix = prefix.trim();
-  const adPrefix    = adPrefixProp    ?? (trimmedPrefix ? `${trimmedPrefix}cam1:`               : undefined);
-  const imagePv     = imagePvProp     ?? (trimmedPrefix ? `${trimmedPrefix}image1:ArrayData`     : undefined);
-  const imageWPv    = imageWPvProp    ?? (trimmedPrefix ? `${trimmedPrefix}image1:ArraySize0_RBV` : undefined);
-  const imageHPv    = imageHPvProp    ?? (trimmedPrefix ? `${trimmedPrefix}image1:ArraySize1_RBV` : undefined);
-  const colorModePv = colorModePvProp ?? (trimmedPrefix ? `${trimmedPrefix}cam1:ColorMode_RBV`    : undefined);
+  const adPrefix     = adPrefixProp     ?? (trimmedPrefix ? `${trimmedPrefix}cam1:`               : undefined);
+  const imagePv      = imagePvProp      ?? (trimmedPrefix ? `${trimmedPrefix}image1:ArrayData`     : undefined);
+  const imageWPv     = imageWPvProp     ?? (trimmedPrefix ? `${trimmedPrefix}image1:ArraySize0_RBV` : undefined);
+  const imageHPv     = imageHPvProp     ?? (trimmedPrefix ? `${trimmedPrefix}image1:ArraySize1_RBV` : undefined);
+  const imageSize2Pv = imageSize2PvProp ?? (trimmedPrefix ? `${trimmedPrefix}image1:ArraySize2_RBV` : undefined);
+  const colorModePv  = colorModePvProp  ?? (trimmedPrefix ? `${trimmedPrefix}cam1:ColorMode_RBV`    : undefined);
   const [showXhair, setShowXhair] = useState(crosshair);
   // PV-driven dimensions and color mode: fall back when not connected.
   const [, , , wRaw]  = useConnection(`cam-w-${imageWPv  ?? title}`, imageWPv  ? `ca://${imageWPv}`  : undefined);
   const [, , , hRaw]  = useConnection(`cam-h-${imageHPv  ?? title}`, imageHPv  ? `ca://${imageHPv}`  : undefined);
+  const [, , , s2Raw] = useConnection(`cam-s2-${imageSize2Pv ?? title}`, imageSize2Pv ? `ca://${imageSize2Pv}` : undefined);
   const [, , , cmRaw] = useConnection(`cam-cm-${colorModePv ?? title}`, colorModePv ? `ca://${colorModePv}` : undefined);
-  const effW = (imageWPv ? toDouble(wRaw) : null) ?? imageW;
-  const effH = (imageHPv ? toDouble(hRaw) : null) ?? imageH;
-  const colorMode = (colorModePv ? toDouble(cmRaw) : null) ?? 0;
+  // AreaDetector lays RGB1 out as ArraySize0=3 (channels), ArraySize1=width,
+  // ArraySize2=height. So when the first size PV reports 3, treat as RGB1
+  // and use the next two as width/height. Otherwise plain Mono with
+  // width=ArraySize0, height=ArraySize1.
+  //
+  // When an *Pv is provided but its current value is null (PV disconnected
+  // or never connected), DON'T fall back to the static imageW/imageH props
+  // — pass 0 so WaveformCanvas's dimsValid check flags the panel as
+  // "Disconnected" instead of rendering the cached image data at wrong
+  // dimensions (tile-garbage on IOC stop).
+  const s0 = imageWPv ? (toDouble(wRaw) ?? 0) : imageW;
+  const s1 = imageHPv ? (toDouble(hRaw) ?? 0) : imageH;
+  const s2 = imageSize2Pv ? toDouble(s2Raw) : null;
+  const isRGB1ByLayout = s0 === 3 && s2 != null && s2 > 0;
+  const effW = isRGB1ByLayout ? s1 : s0;
+  const effH = isRGB1ByLayout ? (s2 as number) : s1;
+  const colorMode = isRGB1ByLayout ? 3 : ((colorModePv ? toDouble(cmRaw) : null) ?? 0);
 
   // Display contrast (Min/Max/Auto) — when Auto is on, manual values are
   // ignored, the canvas auto-scans the data, and the inputs show those
@@ -443,7 +463,13 @@ export function CameraViewer({
   // Suppress unused-var warning when panel context is absent (still useful to
   // reference for future tweaks; harmless to read).
   void panelSize;
-  const sourceAspect = effH / Math.max(1, effW);
+  // Source aspect from current dims, clamped to a sane range so a transient
+  // bogus value (e.g. effW=1 before ArraySize PVs connect, or stale dims
+  // after the IOC dies) doesn't render the image as a one-pixel-wide strip
+  // and lock the panel into a weird shape.
+  const rawAspect = effH / Math.max(1, effW);
+  const sourceAspect = Number.isFinite(rawAspect) && rawAspect >= 0.1 && rawAspect <= 10
+    ? rawAspect : 1;
   let dispW = boxSize.w;
   let dispH = dispW * sourceAspect;
   if (dispH > boxSize.h) {
