@@ -75,8 +75,10 @@ export function BLLayoutAB() {
   const s2bX   = Math.round(72  * scale);
   const s1aX   = Math.round(122 * scale);
   const msX    = Math.round(156 * scale);
-  const msW    = Math.round(42  * scale);
-  const msH    = Math.round(18  * scale);
+  // 48x21 — match the C-Shutter (BLLayoutC) and D-Shutter (BLLayoutD)
+  // boxes so MS CLOSE button text doesn't overflow.
+  const msW    = Math.round(42  * scale * 300 / 260); // 48
+  const msH    = Math.round(18  * scale * 300 / 260); // 21
   const ss2X   = Math.round(220 * scale);
   const ss2W   = Math.round(26  * scale);
   const ss2H   = Math.min(Math.round(40 * scale), 38);
