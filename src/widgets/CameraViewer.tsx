@@ -52,8 +52,12 @@ export interface CameraViewerProps {
 
 // ── WaveformCanvas (fallback) ─────────────────────────────────────────────────
 
-function WaveformCanvas({ imagePv, imageW, imageH, displayW, displayH, colorMode = 0, manualMin, manualMax, onAutoRange }: {
+function WaveformCanvas({ imagePv, acquirePv, imageW, imageH, displayW, displayH, colorMode = 0, manualMin, manualMax, onAutoRange }: {
   imagePv: string;
+  /** Optional AreaDetector Acquire_RBV PV. Used to gate the "no new frames
+   * for > 5 s" disconnect check — a detector that isn't acquiring isn't
+   * supposed to push frames, so staleness there is normal, not a failure. */
+  acquirePv?: string;
   imageW: number;
   imageH: number;
   displayW: number;
@@ -70,12 +74,17 @@ function WaveformCanvas({ imagePv, imageW, imageH, displayW, displayH, colorMode
   onAutoRange?: (min: number, max: number) => void;
 }) {
   const [, connected, , raw] = useConnection(`cam-${imagePv}`, `ca://${imagePv}`);
+  const [, , , acquireRaw] = useConnection(`cam-acq-rbv-${acquirePv ?? "none"}`,
+    acquirePv ? `ca://${acquirePv}` : undefined);
+  const acquiring = toDouble(acquireRaw) === 1;
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   // Staleness detection: when the IOC dies, pvws often keeps the connection
   // up and the last value cached, so neither `connected` nor alarm severity
-  // catches it. Instead, watch the PV timestamp — if it hasn't advanced for
-  // > 5 s the source is gone, regardless of what cs-web-lib reports.
+  // catches it. Watch the PV timestamp — if it hasn't advanced for > 5 s
+  // AND the detector is currently acquiring (so frames should be arriving),
+  // the source is gone. When Acquire_RBV is 0 (or unknown) we skip the
+  // check — an idle detector legitimately stops pushing new frames.
   const lastDtRef = useRef<string | undefined>();
   const lastSeenRef = useRef<number>(Date.now());
   const [stale, setStale] = useState(false);
@@ -89,10 +98,11 @@ function WaveformCanvas({ imagePv, imageW, imageH, displayW, displayH, colorMode
   }, [raw, stale]);
   useEffect(() => {
     const t = setInterval(() => {
+      if (!acquiring) { if (stale) setStale(false); return; }
       if (Date.now() - lastSeenRef.current > 5000) setStale(s => s || true);
     }, 1000);
     return () => clearInterval(t);
-  }, []);
+  }, [acquiring, stale]);
 
   function drawPlaceholder(ctx: CanvasRenderingContext2D, msg: string) {
     ctx.fillStyle = "#0f2035";
@@ -137,11 +147,11 @@ function WaveformCanvas({ imagePv, imageW, imageH, displayW, displayH, colorMode
     const n = imageW * imageH;
     const isRGB1 = colorMode === 3;
     const expectedLen = isRGB1 ? n * 3 : n;
-    // Detect bidirectional size mismatch (typical when the size PVs are
-    // disconnected and we're using stale or default fallback values).
-    // Tolerate ~5% slack for any padding/alignment.
+    // Bidirectional size mismatch (typical when the size PVs disconnected
+    // but the image-data buffer is still cached). Don't render torn output —
+    // just treat as disconnected; that's the practical meaning for the user.
     if (Math.abs(totalLen - expectedLen) > expectedLen * 0.05) {
-      drawPlaceholder(ctx, "Image size mismatch");
+      drawPlaceholder(ctx, "Disconnected");
       return;
     }
     const img = ctx.createImageData(imageW, imageH);
@@ -269,6 +279,33 @@ function AcquireBtn({ pv }: { pv: string }) {
         background: acquiring ? colors.statusError : colors.statusOk,
       }}
     >{acquiring ? "Stop" : "Acquire"}</button>
+  );
+}
+
+// Gear button that opens the camera's underlying AD settings .ui screen.
+// Picks the right ADAravis / ADVimba / ADBase file based on the prefix.
+function SettingsButton({ prefix }: { prefix: string }) {
+  function open() {
+    let file: string;
+    if (/_arv\d+:/.test(prefix)) {
+      file = "/ui/29id/ADAravis.ui";
+    } else if (/_vmb\d+:/.test(prefix)) {
+      file = "/ui/ADVimba/ADVimba.ui";
+    } else {
+      file = "/ui/ADBase/ADBase.ui";
+    }
+    window.dispatchEvent(new CustomEvent("open-ui", {
+      detail: { file, macros: { P: prefix, R: "cam1:" }, label: `${prefix}cam1: settings` },
+    }));
+  }
+  return (
+    <button onClick={open} title="Camera settings"
+      style={{
+        width: 24, height: 24, padding: 0, cursor: "pointer",
+        background: colors.relatedBg, color: colors.relatedFg,
+        border: `1px solid ${colors.relatedBorder}`, borderRadius: 3,
+        fontSize: 14, lineHeight: 1, fontFamily: "sans-serif",
+      }}>⚙</button>
   );
 }
 
@@ -533,6 +570,7 @@ export function CameraViewer({
             ) : imagePv ? (
               <WaveformCanvas
                 imagePv={imagePv}
+                acquirePv={adPrefix ? `${adPrefix}Acquire_RBV` : undefined}
                 imageW={Math.max(1, Math.round(effW))}
                 imageH={Math.max(1, Math.round(effH))}
                 displayW={zoomedW}
@@ -583,6 +621,13 @@ export function CameraViewer({
           <div style={{ marginLeft: "auto" }}>
             <SpRow label="Exposure"  pv={`${adPrefix}AcquireTime`}   prec={4} unit="s" />
           </div>
+          {(() => {
+            // Pick the AD record prefix for the gear-icon macro `P`. In prefix
+            // mode we have it directly. Otherwise derive from the explicit
+            // adPrefix prop by stripping the trailing `cam1:` segment.
+            const gearPrefix = trimmedPrefix || (adPrefix ? adPrefix.replace(/cam1:$/, "") : "");
+            return gearPrefix ? <SettingsButton prefix={gearPrefix} /> : null;
+          })()}
         </div>
       )}
     </div>

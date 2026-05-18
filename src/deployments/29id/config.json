@@ -41,9 +41,11 @@
   ],
   "paths": {
     "uiDirs": {
-      "29id":   "/net/s29dserv/xorApps/ui/29id",
-      "ADCore": "/APSshare/epics/synApps_6_2_1/support/areaDetector-R3-12-1/ADCore/ADApp/op/ui",
-      "motors": "/APSshare/epics/synApps_6_2_1/support/motor-R7-2-2/motorApp/op/ui/autoconvert"
+      "29id":    "/net/s29dserv/xorApps/ui/29id",
+      "ADCore":  "/APSshare/epics/synApps_6_2_1/support/areaDetector-R3-12-1/ADCore/ADApp/op/ui",
+      "ADBase":  "/APSshare/epics/synApps_6_2_1/support/areaDetector-R3-12-1/ADCore/ADApp/op/ui/autoconvert",
+      "ADVimba": "/APSshare/epics/synApps_6_3/support/areaDetector-R3-13/ADVimba/vimbaApp/op/ui/autoconvert",
+      "motors":  "/APSshare/epics/synApps_6_2_1/support/motor-R7-2-2/motorApp/op/ui/autoconvert"
     },
     "startupScript": "/net/s29dserv/xorApps/ui/start_epics_29id",
     "adl2ui": "/APSshare/bin/adl2ui"

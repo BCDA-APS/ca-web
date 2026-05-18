@@ -138,7 +138,7 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
               id={`camera-${ov.id}`}
               title={ov.label}
               defaultPos={ov.pos}
-              defaultSize={{ w: 560, h: 640 }}
+              defaultSize={{ w: 380, h: 440 }}
               scale="fit"
               aspectLock
               onClose={close}

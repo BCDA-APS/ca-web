@@ -14,5 +14,10 @@
     "motor-card-test":      { "x": 108, "y": 400 },
     "motor-card-row-test":  { "x": 500, "y": 400 },
     "motor-card-flat-test": { "x": 108, "y": 700 }
+  },
+  "paths": {
+    "uiDirs": {
+      "ADBase": "/APSshare/epics/synApps_6_2_1/support/areaDetector-R3-12-1/ADCore/ADApp/op/ui/autoconvert"
+    }
   }
 }
