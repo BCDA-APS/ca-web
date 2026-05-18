@@ -82,7 +82,7 @@ const TABS: TabCfg[] = [
   { label: "ARPES",    Q: "29idARPES:", accent: "rgb(200,176,255)" },
   { label: "Kappa",    Q: "29idKappa:", accent: "rgb(191,255,179)" },
   { label: "Octupole", Q: "29ide:",     accent: "rgb(255,208,160)" },
-  { label: "C",        Q: "29idc:",     accent: "rgb(255,200,200)" },
+  { label: "C",        Q: "29idc:",     accent: "rgb(228,216,255)" },
 ];
 
 const B = "scanProgress:";
