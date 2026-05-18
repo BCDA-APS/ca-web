@@ -47,6 +47,15 @@ export interface SavedOverlay {
   locked?: boolean;
 }
 
+export interface SavedCameraOverlay {
+  label: string;
+  prefix?: string;
+  knownCameras?: Array<{ label: string; prefix: string }>;
+  pos: { x: number; y: number };
+  size?: { w: number; h: number };
+  tabId?: number;
+}
+
 export interface SavedLayout {
   name: string;
   // w/h are optional for backwards-compat: layouts written before sizes were
@@ -54,6 +63,7 @@ export interface SavedLayout {
   positions: Record<string, { x: number; y: number; w?: number; h?: number; locked: boolean }>;
   hidden?: string[];
   overlays?: SavedOverlay[];
+  cameras?: SavedCameraOverlay[];
 }
 
 export interface DeploymentConfig {

@@ -8,6 +8,7 @@ import { OverlayPanel, type AppOverlay } from "./shell/OverlayPanel";
 import { CameraViewer } from "./widgets/CameraViewer";
 import { Sidebar } from "./shell/Sidebar";
 import { SettingsPanel, type SavedOverlay } from "./shell/SettingsPanel";
+import type { SavedCameraOverlay } from "./lib/deployment";
 import { FilePickerDialog, useUiFiles } from "./shell/FilePickerDialog";
 import { PvContextMenu, type PvContextEvent } from "./shell/PvContextMenu";
 import apsLogoUrl from "./assets/aps-logo.png";
@@ -116,7 +117,29 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
   function restoreOverlays(saved: SavedOverlay[]) {
     saved.forEach(ov => layoutSet(`overlay:${ov.file}`, { x: ov.pos.x, y: ov.pos.y, locked: ov.locked ?? false }));
     const tabId = activeTabRef.current;
-    setOverlays(saved.map(ov => ({ id: ++counter.current, file: ov.file, macros: ov.macros, label: ov.label, pos: ov.pos, tabId })));
+    // Replace UI overlays only; cameras are restored by restoreCameras().
+    setOverlays(prev => [
+      ...prev.filter(o => o.kind === "camera"),
+      ...saved.map(ov => ({ id: ++counter.current, file: ov.file, macros: ov.macros, label: ov.label, pos: ov.pos, tabId })),
+    ]);
+  }
+
+  function restoreCameras(saved: SavedCameraOverlay[]) {
+    const tabId = activeTabRef.current;
+    setOverlays(prev => [
+      ...prev.filter(o => o.kind !== "camera"),
+      ...saved.map(cam => ({
+        id: ++counter.current,
+        kind: "camera" as const,
+        file: "", macros: {},
+        label: cam.label,
+        pos: cam.pos,
+        size: cam.size,
+        initialPrefix: cam.prefix,
+        knownCameras: cam.knownCameras,
+        tabId: cam.tabId ?? tabId,
+      })),
+    ]);
   }
 
   return (
@@ -126,28 +149,41 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
       onClick={() => settingsOpen && setSettingsOpen(false)}
     >
 
-      {overlays.filter(ov => ov.tabId == null || ov.tabId === activeTab).map(ov => {
+      {overlays.map(ov => {
         const close = () => setOverlays(prev => prev.filter(o => o.id !== ov.id));
+        const visible = ov.tabId == null || ov.tabId === activeTab;
         if (ov.kind === "camera") {
-          // Render via DraggablePanel so camera overlays get full resize /
-          // aspect-lock / PanelSizeContext behaviour (same as Nefarian's
-          // pre-registered camera panel).
+          // Always render so React state survives tab switches; lift the
+          // prefix / pos / size up via callbacks so the overlay record is
+          // the source of truth (needed for save/restore).
+          const onPrefix = (prefix: string) => setOverlays(prev =>
+            prev.map(o => o.id === ov.id ? { ...o, initialPrefix: prefix } : o));
+          const onPanelState = (s: { x: number; y: number; w?: number; h?: number }) =>
+            setOverlays(prev => prev.map(o => o.id === ov.id ? {
+              ...o,
+              pos: { x: s.x, y: s.y },
+              size: (s.w != null && s.h != null) ? { w: s.w, h: s.h } : o.size,
+            } : o));
           return (
-            <DraggablePanel
-              key={ov.id}
-              id={`camera-${ov.id}`}
-              title={ov.label}
-              defaultPos={ov.pos}
-              defaultSize={{ w: 380, h: 440 }}
-              scale="fit"
-              aspectLock
-              transient
-              onClose={close}
-            >
-              <CameraViewer initialPrefix={ov.initialPrefix} knownCameras={ov.knownCameras} />
-            </DraggablePanel>
+            <div key={ov.id} style={{ display: visible ? "contents" : "none" }}>
+              <DraggablePanel
+                id={`camera-${ov.id}`}
+                title={ov.label}
+                defaultPos={ov.pos}
+                defaultSize={ov.size ?? { w: 380, h: 440 }}
+                scale="fit"
+                aspectLock
+                transient
+                onState={onPanelState}
+                onClose={close}
+              >
+                <CameraViewer initialPrefix={ov.initialPrefix} knownCameras={ov.knownCameras}
+                  onPrefixChange={onPrefix} />
+              </DraggablePanel>
+            </div>
           );
         }
+        if (!visible) return null;
         return <OverlayPanel key={ov.id} ov={ov} onClose={close} />;
       })}
 
@@ -214,6 +250,7 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
             onResetHidden={() => setHiddenPanels(new Set(config.defaultHiddenPanels ?? []))}
             onRestoreHidden={hidden => setHiddenPanels(new Set(hidden))}
             onRestoreOverlays={restoreOverlays}
+            onRestoreCameras={restoreCameras}
           />, document.body)}
         </div>
         </div>

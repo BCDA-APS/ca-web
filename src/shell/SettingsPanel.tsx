@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import type { AppOverlay } from "./OverlayPanel";
-import type { SavedLayout, SavedOverlay } from "../lib/deployment";
+import type { SavedLayout, SavedOverlay, SavedCameraOverlay } from "../lib/deployment";
 import {
   layoutGet,
   layoutSet,
@@ -13,7 +13,7 @@ import {
 
 export type { SavedLayout, SavedOverlay } from "../lib/deployment";
 
-export function SettingsPanel({ panelDefaults, hiddenPanels, overlays, sharedLayouts, onClose, onBumpLayout, onResetHidden, onRestoreHidden, onRestoreOverlays }: {
+export function SettingsPanel({ panelDefaults, hiddenPanels, overlays, sharedLayouts, onClose, onBumpLayout, onResetHidden, onRestoreHidden, onRestoreOverlays, onRestoreCameras }: {
   panelDefaults: Record<string, { x: number; y: number }>;
   hiddenPanels: Set<string>;
   overlays: AppOverlay[];
@@ -23,6 +23,7 @@ export function SettingsPanel({ panelDefaults, hiddenPanels, overlays, sharedLay
   onResetHidden: () => void;
   onRestoreHidden: (hidden: string[]) => void;
   onRestoreOverlays: (ovs: SavedOverlay[]) => void;
+  onRestoreCameras: (cams: SavedCameraOverlay[]) => void;
 }) {
   const panelIds = Object.keys(panelDefaults);
   const [naming, setNaming] = useState(false);
@@ -49,13 +50,26 @@ export function SettingsPanel({ panelDefaults, hiddenPanels, overlays, sharedLay
       const p = layoutGet<{ x: number; y: number; w?: number; h?: number; locked: boolean }>(`panel:${id}`);
       if (p) positions[id] = p;
     });
-    const savedOverlays: SavedOverlay[] = overlays.map(ov => {
+    // UI overlays (kind:"ui") and camera overlays go into separate lists so
+    // restore knows which factory to invoke. Cameras carry their own size and
+    // prefix because they are not file-backed.
+    const uiOverlays = overlays.filter(o => o.kind !== "camera");
+    const cameraOverlays = overlays.filter(o => o.kind === "camera");
+    const savedOverlays: SavedOverlay[] = uiOverlays.map(ov => {
       const p = layoutGet<{ x: number; y: number; locked?: boolean }>(`overlay:${ov.file}`);
       const pos = p ? { x: p.x, y: p.y } : ov.pos;
       const locked = p?.locked ?? false;
       return { file: ov.file, macros: ov.macros, label: ov.label, pos, locked };
     });
-    return { name, positions, hidden: [...hiddenPanels], overlays: savedOverlays };
+    const savedCameras: SavedCameraOverlay[] = cameraOverlays.map(ov => ({
+      label: ov.label,
+      prefix: ov.initialPrefix,
+      knownCameras: ov.knownCameras,
+      pos: ov.pos,
+      size: ov.size,
+      tabId: ov.tabId,
+    }));
+    return { name, positions, hidden: [...hiddenPanels], overlays: savedOverlays, cameras: savedCameras };
   }
 
   async function saveDraft() {
@@ -77,6 +91,7 @@ export function SettingsPanel({ panelDefaults, hiddenPanels, overlays, sharedLay
     });
     onRestoreHidden(layout.hidden ?? []);
     onRestoreOverlays(layout.overlays ?? []);
+    onRestoreCameras(layout.cameras ?? []);
     onBumpLayout();
     onClose();
   }
@@ -88,6 +103,7 @@ export function SettingsPanel({ panelDefaults, hiddenPanels, overlays, sharedLay
     });
     onResetHidden();
     onRestoreOverlays([]);
+    onRestoreCameras([]);
     onBumpLayout();
     onClose();
   }

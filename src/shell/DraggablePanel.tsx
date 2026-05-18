@@ -8,7 +8,7 @@ interface PanelState { x: number; y: number; w?: number; h?: number; locked: boo
 const MIN_W = 200;
 const MIN_H = 120;
 
-export function DraggablePanel({ id, title, defaultPos, defaultSize, scale, aspectLock, transient, onClose, children }: {
+export function DraggablePanel({ id, title, defaultPos, defaultSize, scale, aspectLock, transient, onState, onClose, children }: {
   id: string;
   title: string;
   defaultPos?: { x: number; y: number };
@@ -20,6 +20,10 @@ export function DraggablePanel({ id, title, defaultPos, defaultSize, scale, aspe
    * panel id is per-instance and persisted state would only cause
    * collisions across sessions. */
   transient?: boolean;
+  /** Called whenever the panel's persistable state changes (drag / resize /
+   * lock toggle). Independent of `transient`. Lets external owners (e.g.
+   * App.tsx camera overlay records) lift state up for serialization. */
+  onState?: (s: { x: number; y: number; w?: number; h?: number; locked: boolean }) => void;
   onClose?: () => void;
   children: React.ReactNode;
 }) {
@@ -48,9 +52,9 @@ export function DraggablePanel({ id, title, defaultPos, defaultSize, scale, aspe
   }, [scale, naturalSize, children]);
 
   useEffect(() => {
-    if (transient) return;
-    layoutSet(`panel:${id}`, ps);
-  }, [id, ps, transient]);
+    if (!transient) layoutSet(`panel:${id}`, ps);
+    if (onState) onState(ps);
+  }, [id, ps, transient, onState]);
 
   // Bring this panel to the front whenever someone fires show-panel for our
   // id. Lets external buttons (e.g. ChamberDiagramV2 Gauge/Pump) raise an

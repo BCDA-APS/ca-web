@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+### Camera overlays survive tab switches and saved layouts
+
+- Tab switches no longer reset open cameras
+  (`src/App.tsx`). Camera overlays are now always rendered; off-tab
+  ones are hidden via `display: none` on a `display: contents` wrapper
+  so React state (selected prefix, image buffer, contrast) survives.
+- Saved layouts include open cameras (`src/lib/deployment.ts`,
+  `src/shell/OverlayPanel.tsx`, `src/shell/SettingsPanel.tsx`,
+  `src/shell/DraggablePanel.tsx`, `src/widgets/CameraViewer.tsx`,
+  `src/App.tsx`). New `SavedCameraOverlay` type records label, prefix,
+  known-cameras list, position, size, and tab. `DraggablePanel` gained
+  an `onState` callback and `CameraViewer` gained an `onPrefixChange`
+  callback so App lifts pos / size / prefix into the overlay record.
+  Restoring a layout rebuilds both UI overlays and camera overlays.
+
 ### Bug fixes from browser dogfooding
 
 - **Layout API rejected `29id_dev`** (`vite.config.ts`). The

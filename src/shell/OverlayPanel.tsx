@@ -21,6 +21,9 @@ export interface AppOverlay {
   // For kind:"camera":
   initialPrefix?: string;
   knownCameras?: Array<{ label: string; prefix: string }>;
+  /** Live size — updated when the DraggablePanel emits an onState change.
+   * Stored so saved layouts can reproduce the panel exactly. */
+  size?: { w: number; h: number };
 }
 
 export function OverlayPanel({ ov, onClose }: { ov: AppOverlay; onClose: () => void }) {

@@ -49,6 +49,10 @@ export interface CameraViewerProps {
   // Explicit props above still win when given (overrides).
   initialPrefix?: string;
   knownCameras?: Array<{ label: string; prefix: string }>;
+  /** Called when the user picks or types a new camera prefix (committed,
+   * not per-keystroke). Lets the parent lift the selection up — e.g. so
+   * tab switches and saved layouts can restore the right camera. */
+  onPrefixChange?: (prefix: string) => void;
 
   /** Display size (px). */
   width?: number;
@@ -360,6 +364,7 @@ export function CameraViewer({
   colorModePv: colorModePvProp,
   initialPrefix,
   knownCameras,
+  onPrefixChange,
   width  = 480,
   height = 360,
   crosshair = true,
@@ -368,8 +373,14 @@ export function CameraViewer({
   // yet (placeholders show). The input is debounced via Enter/blur so we
   // don't re-subscribe on every keystroke.
   const prefixMode = initialPrefix !== undefined || (knownCameras && knownCameras.length > 0);
-  const [prefix, setPrefix] = useState<string>(initialPrefix ?? "");
+  const [prefix, setPrefixRaw] = useState<string>(initialPrefix ?? "");
   const [prefixDraft, setPrefixDraft] = useState<string>(initialPrefix ?? "");
+  // Wrapped setter so external listeners (parent overlay record, saved
+  // layouts) see committed prefix changes.
+  const setPrefix = (p: string) => {
+    setPrefixRaw(p);
+    if (onPrefixChange) onPrefixChange(p);
+  };
 
   // Derived PVs. Explicit props always win; otherwise compute from prefix.
   const trimmedPrefix = prefix.trim();
@@ -607,11 +618,9 @@ export function CameraViewer({
                 onAutoRange={(mn, mx) => { setAutoMin(mn); setAutoMax(mx); }}
               />
             ) : (
-              <div style={{
-                width: zoomedW, height: zoomedH, color: "#5c7a99",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: fontSize.label,
-              }}>{prefixMode ? "Pick a camera or type its prefix" : "No image source"}</div>
+              // Blank panel — the Cam dropdown / input above already conveys
+              // that no camera is picked yet, no need for an in-image label.
+              <div style={{ width: zoomedW, height: zoomedH, background: "#0f2035", borderRadius: 3 }} />
             )}
             {showXhair && (
               <Crosshair width={zoomedW} height={zoomedH}
