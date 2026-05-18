@@ -3,10 +3,14 @@ import { useConnection } from "@diamondlightsource/cs-web-lib";
 import { pvwsWriter } from "../../../lib/pvwsWriter";
 import { toDouble, toStr, pvCtx } from "../../../lib/epics";
 
-function openStripChart(pv: string, label: string) {
-  window.dispatchEvent(new CustomEvent("open-ui", {
-    detail: { file: "/ui/29id/29id_stripChart_trend.ui", macros: { Q: pv }, label }
-  }));
+// Singleton React StripChart panels pre-loaded with the relevant PVs.
+// show-panel un-hides if hidden; DraggablePanel also listens to show-panel
+// and bumps z so a visible panel comes to front.
+function showPressureTrend() {
+  window.dispatchEvent(new CustomEvent("show-panel", { detail: { id: "29idc-pressure-trend" } }));
+}
+function showTempTrend() {
+  window.dispatchEvent(new CustomEvent("show-panel", { detail: { id: "29idc-temp-trend" } }));
 }
 
 function fmtPressure(n: number | null): string {
@@ -199,7 +203,7 @@ export function ChamberDiagramV2() {
             <div style={{ fontSize: 12, fontWeight: 700, color: "#7c6fa0", letterSpacing: "0.5px", marginBottom: 4 }}>Pressure</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <button onClick={() => openStripChart("29idc:VS11C.VAL", "VS11C trend")}
+                <button onClick={showPressureTrend}
                   style={{ width: 58, padding: "2px 4px", background: "rgb(210,220,240)", color: "rgb(0,53,132)", border: "1px solid rgb(160,180,220)", borderRadius: 3, fontSize: 11, cursor: "pointer" }}>
                   Gauge
                 </button>
@@ -208,7 +212,7 @@ export function ChamberDiagramV2() {
                 <span style={{ color: "#444444", fontSize: 10 }}>T</span>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <button onClick={() => openStripChart("29idc:IP11C1.VAL", "IP11C1 trend")}
+                <button onClick={showPressureTrend}
                   style={{ width: 58, padding: "2px 4px", background: "rgb(210,220,240)", color: "rgb(0,53,132)", border: "1px solid rgb(160,180,220)", borderRadius: 3, fontSize: 11, cursor: "pointer" }}>
                   Pump
                 </button>
@@ -233,7 +237,7 @@ export function ChamberDiagramV2() {
               {/* Sample */}
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <button
-                  onClick={() => window.dispatchEvent(new CustomEvent("open-ui", { detail: { file: "/ui/29id/29id_stripChart_trend.ui", macros: { Q: "29idARPES:LS335:TC1:INA", R: "29idARPES:LS335:TC1:INB" }, label: "T chart", singleton: true } }))}
+                  onClick={showTempTrend}
                   style={{ width: 58, padding: "2px 4px", background: "rgb(210,220,240)", color: "rgb(0,53,132)", border: "1px solid rgb(160,180,220)", borderRadius: 3, fontSize: 11, cursor: "pointer", whiteSpace: "nowrap" }}>
                   Sample
                 </button>
@@ -244,7 +248,7 @@ export function ChamberDiagramV2() {
               {/* Cold finger */}
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <button
-                  onClick={() => window.dispatchEvent(new CustomEvent("open-ui", { detail: { file: "/ui/29id/29id_stripChart_trend.ui", macros: { Q: "29idARPES:LS335:TC1:INA", R: "29idARPES:LS335:TC1:INB" }, label: "T chart", singleton: true } }))}
+                  onClick={showTempTrend}
                   style={{ width: 58, padding: "2px 4px", background: "rgb(210,220,240)", color: "rgb(0,53,132)", border: "1px solid rgb(160,180,220)", borderRadius: 3, fontSize: 11, cursor: "pointer", whiteSpace: "nowrap" }}>
                   Cold fngr
                 </button>

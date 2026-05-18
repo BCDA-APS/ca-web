@@ -24,7 +24,9 @@
     "29id-slits":           { "x": 400, "y":  55 },
     "29id-diagon":          { "x": 100, "y": 200 },
     "29id-scan-records":    { "x": 700, "y":  55 },
-    "29id-strip-tool":      { "x": 700, "y": 300 }
+    "29id-strip-tool":      { "x": 700, "y": 300 },
+    "29idc-pressure-trend": { "x": 500, "y": 300 },
+    "29idc-temp-trend":     { "x": 500, "y": 650 }
   },
   "defaultHiddenPanels": [
     "29id-mirrors",
@@ -33,7 +35,9 @@
     "29id-slits",
     "29id-diagon",
     "29id-scan-records",
-    "29id-strip-tool"
+    "29id-strip-tool",
+    "29idc-pressure-trend",
+    "29idc-temp-trend"
   ],
   "paths": {
     "uiDirs": {

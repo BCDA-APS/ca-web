@@ -25,10 +25,12 @@ void _paths;
 
 const tabPanels: DeploymentConfig["tabPanels"] = {
   1: [
-    { id: "29idc-chamber-v2", title: "Chamber",         Content: ChamberDiagramV2,  scale: "transform" },
+    { id: "29idc-chamber-v2", title: "ARPES Chamber",   Content: ChamberDiagramV2,  scale: "transform" },
     { id: "29idc-motors",     title: "29ID-C Motors",   Content: ArpesMotorsContent, scale: "transform" },
     { id: "29idc-arpes",      title: "29ID-C ARPES",    Content: ArpesContent,       scale: "transform" },
     { id: "29idc-energy",     title: "Beamline Energy", Content: BeamlineEnergy,     scale: "transform" },
+    { id: "29idc-pressure-trend", title: "Pressure Trend",    Content: () => <StripChart id="29idc-pressure-trend" initialPvs={PRESSURE_TREND_PVS} />, defaultSize: { w: 700, h: 320 } },
+    { id: "29idc-temp-trend",     title: "Temperature Trend", Content: () => <StripChart id="29idc-temp-trend"     initialPvs={TEMP_TREND_PVS} />,     defaultSize: { w: 700, h: 320 } },
   ],
   2: [{ id: "29idd-kappa", title: "29ID-D Kappa", Content: KappaContent, scale: "transform" }],
   3: [
@@ -58,6 +60,16 @@ const CA_PVS: TraceConfig[] = [
   { pv: "29idb:ca13:read", label: "CA13" },
   { pv: "29idb:ca14:read", label: "CA14" },
   { pv: "29idb:ca15:read", label: "CA15", enabled: true },
+];
+
+const PRESSURE_TREND_PVS: TraceConfig[] = [
+  { pv: "29idc:VS11C.VAL",  label: "Gauge", enabled: true },
+  { pv: "29idc:IP11C1.VAL", label: "Pump",  enabled: true },
+];
+
+const TEMP_TREND_PVS: TraceConfig[] = [
+  { pv: "29idARPES:LS335:TC1:INA", label: "Sample",     enabled: true },
+  { pv: "29idARPES:LS335:TC1:INB", label: "Cold fngr",  enabled: true },
 ];
 
 const ARPES_MOTORS = ["m1", "m2", "m3", "m4", "m5", "m6"];
