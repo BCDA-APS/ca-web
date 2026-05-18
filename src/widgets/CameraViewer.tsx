@@ -228,11 +228,13 @@ function MjpegImg({ url, width, height }: { url: string; width: number; height: 
 
 // ── Crosshair overlay ─────────────────────────────────────────────────────────
 
-function Crosshair({ width, height }: { width: number; height: number }) {
+function Crosshair({ width, height, cx, cy }: { width: number; height: number; cx?: number; cy?: number }) {
+  const x = cx ?? width / 2;
+  const y = cy ?? height / 2;
   return (
     <svg width={width} height={height} style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
-      <line x1={width / 2} y1={0} x2={width / 2} y2={height} stroke="rgba(255,224,0,0.6)" strokeWidth={1} />
-      <line x1={0} y1={height / 2} x2={width} y2={height / 2} stroke="rgba(255,224,0,0.6)" strokeWidth={1} />
+      <line x1={x} y1={0} x2={x} y2={height} stroke="rgba(255,224,0,0.6)" strokeWidth={1} />
+      <line x1={0} y1={y} x2={width} y2={y} stroke="rgba(255,224,0,0.6)" strokeWidth={1} />
     </svg>
   );
 }
@@ -329,6 +331,24 @@ export function CameraViewer({
   // Zoom — display-only canvas scaling. 1.0 = native displayW/displayH.
   const [zoom, setZoom] = useState(1);
 
+  // Crosshair position in IMAGE PIXEL coordinates. Default to image centre;
+  // user clicks anywhere on the canvas to relocate. Stored in image coords
+  // so it stays correct as the display size / zoom change.
+  const [crossImg, setCrossImg] = useState<{ x: number; y: number } | null>(null);
+  const effImgW = Math.max(1, Math.round(effW));
+  const effImgH = Math.max(1, Math.round(effH));
+  const crossX = crossImg?.x ?? Math.round(effImgW / 2);
+  const crossY = crossImg?.y ?? Math.round(effImgH / 2);
+  function handleImageClick(e: React.MouseEvent<HTMLDivElement>) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const cssX = e.clientX - rect.left;
+    const cssY = e.clientY - rect.top;
+    if (rect.width <= 0 || rect.height <= 0) return;
+    const ix = Math.max(0, Math.min(effImgW - 1, Math.floor(cssX / rect.width  * effImgW)));
+    const iy = Math.max(0, Math.min(effImgH - 1, Math.floor(cssY / rect.height * effImgH)));
+    setCrossImg({ x: ix, y: iy });
+  }
+
   // The image container is sized by the parent's flex layout (flex:1, fills
   // remaining vertical space inside CameraViewer). We measure it to derive
   // aspect-preserving canvas dimensions. No feedback loop: the canvas inside
@@ -388,7 +408,7 @@ export function CameraViewer({
           <input type="text" inputMode="decimal" value={minDisplay} disabled={autoContrast} readOnly={autoContrast}
             onChange={e => setMinText(e.target.value)}
             aria-label="Display min"
-            style={{ width: 44, fontFamily: "monospace", fontSize: fontSize.label,
+            style={{ width: 36, fontFamily: "monospace", fontSize: fontSize.label,
               padding: "1px 4px", border: `1px solid ${colors.inputBorder}`,
               background: autoContrast ? colors.rbvBg : colors.inputBg, color: colors.spText,
               borderRadius: 2, textAlign: "right" }} />
@@ -398,7 +418,7 @@ export function CameraViewer({
           <input type="text" inputMode="decimal" value={maxDisplay} disabled={autoContrast} readOnly={autoContrast}
             onChange={e => setMaxText(e.target.value)}
             aria-label="Display max"
-            style={{ width: 44, fontFamily: "monospace", fontSize: fontSize.label,
+            style={{ width: 36, fontFamily: "monospace", fontSize: fontSize.label,
               padding: "1px 4px", border: `1px solid ${colors.inputBorder}`,
               background: autoContrast ? colors.rbvBg : colors.inputBg, color: colors.spText,
               borderRadius: 2, textAlign: "right" }} />
@@ -409,6 +429,16 @@ export function CameraViewer({
             aria-label="Auto contrast" />
           Auto
         </label>
+        {/* X/Y crosshair pixel readout — only shown when crosshair is on. */}
+        {showXhair && (
+          <span style={{
+            marginLeft: "auto", fontFamily: "monospace", fontSize: fontSize.label,
+            padding: "1px 6px", background: colors.rbvBg,
+            border: `1px solid ${colors.rbvBorder}`, borderRadius: 2, color: colors.rbvText,
+          }}>
+            x:{crossX} y:{crossY}
+          </span>
+        )}
       </div>
 
       <div style={{ display: "flex", alignItems: "stretch", gap: 6, flex: 1, minHeight: 0, minWidth: 0 }}>
@@ -420,13 +450,15 @@ export function CameraViewer({
         <div ref={imageBoxRef} style={{ position: "relative", flex: 1, minWidth: 0, minHeight: 0,
           overflow: zoom > 1 ? "auto" : "hidden",
           background: "#0f2035", borderRadius: 3 }}>
-          <div style={{
-            width: zoomedW, height: zoomedH, position: "relative", flexShrink: 0,
-            // Centre when content fits the box, top-left when it overflows
-            // (so the scrollbars expose every corner).
-            margin: zoom > 1 ? 0 : "auto",
-            marginTop: zoom > 1 ? 0 : Math.max(0, (boxSize.h - zoomedH) / 2),
-          }}>
+          <div onClick={handleImageClick}
+            style={{
+              width: zoomedW, height: zoomedH, position: "relative", flexShrink: 0,
+              cursor: "crosshair",
+              // Centre when content fits the box, top-left when it overflows
+              // (so the scrollbars expose every corner).
+              margin: zoom > 1 ? 0 : "auto",
+              marginTop: zoom > 1 ? 0 : Math.max(0, (boxSize.h - zoomedH) / 2),
+            }}>
             {mjpegUrl ? (
               <MjpegImg url={mjpegUrl} width={zoomedW} height={zoomedH} />
             ) : imagePv ? (
@@ -448,7 +480,11 @@ export function CameraViewer({
                 fontSize: fontSize.label,
               }}>No image source</div>
             )}
-            {showXhair && <Crosshair width={zoomedW} height={zoomedH} />}
+            {showXhair && (
+              <Crosshair width={zoomedW} height={zoomedH}
+                cx={(crossX + 0.5) / effImgW * zoomedW}
+                cy={(crossY + 0.5) / effImgH * zoomedH} />
+            )}
           </div>
         </div>
 
