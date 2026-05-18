@@ -105,7 +105,7 @@ function LorentzianContent() {
 function AreaDetectorContent() {
   return (
     <CameraViewer
-      title="myad cam1"
+      title="myad:cam1"
       adPrefix="myad:cam1:"
       imagePv="myad:image1:ArrayData"
       imageWPv="myad:image1:ArraySize0_RBV"

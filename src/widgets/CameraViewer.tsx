@@ -7,8 +7,9 @@ import { pvwsWriter } from "../lib/pvwsWriter";
 import { PanelSizeContext } from "../lib/deployment";
 
 export interface CameraViewerProps {
-  /** Title shown above the image, e.g. "Cam 29ID". */
-  title: string;
+  /** Title shown above the image, e.g. "Cam 29ID". Ignored when prefix mode
+   * is active (the editable PV input takes the title slot). */
+  title?: string;
   /** Live MJPEG stream URL (preferred). If absent, falls back to 2D waveform render. */
   mjpegUrl?: string;
   /** AreaDetector PV prefix (e.g. "29idc_cam1:cam1:"). Used for Acquire/Exposure/Gain controls. */
@@ -28,6 +29,20 @@ export interface CameraViewerProps {
    * Supported values: 0 = Mono (grayscale), 3 = RGB1 (interleaved). All
    * other modes (Bayer, RGB2/3, YUV) currently fall back to mono. */
   colorModePv?: string;
+
+  // ── Prefix mode ─────────────────────────────────────────────────────────
+  // When `initialPrefix` or `knownCameras` is supplied, a text input (with
+  // optional dropdown suggestions) appears at the top. Derived PVs follow
+  // standard AreaDetector convention from the active prefix `PFX:`:
+  //   adPrefix    = `${PFX}cam1:`
+  //   imagePv     = `${PFX}image1:ArrayData`
+  //   imageWPv    = `${PFX}image1:ArraySize0_RBV`
+  //   imageHPv    = `${PFX}image1:ArraySize1_RBV`
+  //   colorModePv = `${PFX}cam1:ColorMode_RBV`
+  // Explicit props above still win when given (overrides).
+  initialPrefix?: string;
+  knownCameras?: Array<{ label: string; prefix: string }>;
+
   /** Display size (px). */
   width?: number;
   height?: number;
@@ -295,17 +310,33 @@ function SpRow({ label, pv, prec = 3, unit }: { label: string; pv: string; prec?
 export function CameraViewer({
   title,
   mjpegUrl,
-  adPrefix,
-  imagePv,
+  adPrefix: adPrefixProp,
+  imagePv: imagePvProp,
   imageW = 640,
   imageH = 480,
-  imageWPv,
-  imageHPv,
-  colorModePv,
+  imageWPv: imageWPvProp,
+  imageHPv: imageHPvProp,
+  colorModePv: colorModePvProp,
+  initialPrefix,
+  knownCameras,
   width  = 480,
   height = 360,
   crosshair = true,
 }: CameraViewerProps) {
+  // Active PV prefix when in prefix mode. Empty string = no camera selected
+  // yet (placeholders show). The input is debounced via Enter/blur so we
+  // don't re-subscribe on every keystroke.
+  const prefixMode = initialPrefix !== undefined || (knownCameras && knownCameras.length > 0);
+  const [prefix, setPrefix] = useState<string>(initialPrefix ?? "");
+  const [prefixDraft, setPrefixDraft] = useState<string>(initialPrefix ?? "");
+
+  // Derived PVs. Explicit props always win; otherwise compute from prefix.
+  const trimmedPrefix = prefix.trim();
+  const adPrefix    = adPrefixProp    ?? (trimmedPrefix ? `${trimmedPrefix}cam1:`               : undefined);
+  const imagePv     = imagePvProp     ?? (trimmedPrefix ? `${trimmedPrefix}image1:ArrayData`     : undefined);
+  const imageWPv    = imageWPvProp    ?? (trimmedPrefix ? `${trimmedPrefix}image1:ArraySize0_RBV` : undefined);
+  const imageHPv    = imageHPvProp    ?? (trimmedPrefix ? `${trimmedPrefix}image1:ArraySize1_RBV` : undefined);
+  const colorModePv = colorModePvProp ?? (trimmedPrefix ? `${trimmedPrefix}cam1:ColorMode_RBV`    : undefined);
   const [showXhair, setShowXhair] = useState(crosshair);
   // PV-driven dimensions and color mode: fall back when not connected.
   const [, , , wRaw]  = useConnection(`cam-w-${imageWPv  ?? title}`, imageWPv  ? `ca://${imageWPv}`  : undefined);
@@ -390,10 +421,48 @@ export function CameraViewer({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6, height: "100%", fontFamily: "sans-serif" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <h3 style={{
-          margin: 0, fontSize: fontSize.badge, color: colors.sectionHdr,
-          borderBottom: `1px solid ${colors.sectionHdrBorder}`, padding: "0 4px 3px", flex: 1,
-        }}>{title}</h3>
+        {prefixMode ? (
+          // Visible dropdown of known cameras + always-editable text input.
+          // Picking from the dropdown immediately loads that camera. Typing
+          // in the input is committed on Enter or blur (so we don't re-
+          // subscribe on every keystroke).
+          <>
+            <span style={{ fontSize: fontSize.badge, color: colors.sectionHdr, fontWeight: 600 }}>Cam:</span>
+            <select value={knownCameras?.some(c => c.prefix === prefix) ? prefix : ""}
+              aria-label="Pick known camera"
+              onChange={e => {
+                const v = e.target.value;
+                if (v) { setPrefix(v); setPrefixDraft(v); }
+              }}
+              style={{
+                fontFamily: "monospace", fontSize: fontSize.label,
+                padding: "2px 6px", border: `1px solid ${colors.inputBorder}`,
+                background: colors.inputBg, color: colors.spText, borderRadius: 2,
+                cursor: "pointer",
+              }}>
+              <option value="">— pick —</option>
+              {(knownCameras ?? []).map(c => (
+                <option key={c.prefix} value={c.prefix}>{c.label}</option>
+              ))}
+            </select>
+            <input type="text" value={prefixDraft}
+              onChange={e => setPrefixDraft(e.target.value)}
+              onBlur={() => setPrefix(prefixDraft)}
+              onKeyDown={e => { if (e.key === "Enter") setPrefix(prefixDraft); }}
+              placeholder="or type prefix"
+              aria-label="Camera PV prefix"
+              style={{
+                flex: 1, minWidth: 80, fontFamily: "monospace", fontSize: fontSize.label,
+                padding: "2px 6px", border: `1px solid ${colors.inputBorder}`,
+                background: colors.inputBg, color: colors.spText, borderRadius: 2,
+              }} />
+          </>
+        ) : (
+          <h3 style={{
+            margin: 0, fontSize: fontSize.badge, color: colors.sectionHdr,
+            borderBottom: `1px solid ${colors.sectionHdrBorder}`, padding: "0 4px 3px", flex: 1,
+          }}>{title}</h3>
+        )}
         <label style={{ fontSize: fontSize.small, color: colors.dim, display: "flex", alignItems: "center", gap: 4 }}>
           <input type="checkbox" checked={showXhair} onChange={e => setShowXhair(e.target.checked)}
             aria-label="Crosshair" />
@@ -478,7 +547,7 @@ export function CameraViewer({
                 width: zoomedW, height: zoomedH, color: "#5c7a99",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: fontSize.label,
-              }}>No image source</div>
+              }}>{prefixMode ? "Pick a camera or type its prefix" : "No image source"}</div>
             )}
             {showXhair && (
               <Crosshair width={zoomedW} height={zoomedH}
@@ -490,7 +559,7 @@ export function CameraViewer({
 
         {/* Zoom controls — column to the right of the image */}
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center",
-          gap: 4, fontSize: fontSize.small, color: colors.label }}>
+          gap: 4, fontSize: fontSize.small, color: colors.label, paddingTop: 24 }}>
           <button onClick={() => setZoom(z => Math.min(8, z * 1.25))} title="Zoom in"
             style={{ width: 24, height: 24, padding: 0, fontSize: 14, cursor: "pointer",
               border: `1px solid ${colors.relatedBorder}`, background: colors.relatedBg,

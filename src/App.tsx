@@ -5,6 +5,7 @@ import { layoutGet, layoutSet } from "./lib/layoutStorage";
 import { ErrorBoundary } from "./shell/ErrorBoundary";
 import { DraggablePanel } from "./shell/DraggablePanel";
 import { OverlayPanel, type AppOverlay } from "./shell/OverlayPanel";
+import { CameraViewer } from "./widgets/CameraViewer";
 import { Sidebar } from "./shell/Sidebar";
 import { SettingsPanel, type SavedOverlay } from "./shell/SettingsPanel";
 import { FilePickerDialog, useUiFiles } from "./shell/FilePickerDialog";
@@ -83,7 +84,27 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
       }
     }
     window.addEventListener("open-ui", handler);
-    return () => window.removeEventListener("open-ui", handler);
+
+    function cameraHandler(e: Event) {
+      const { label, initialPrefix, knownCameras } = (e as CustomEvent).detail ?? {};
+      const tabId = activeTabRef.current;
+      const id = ++counter.current;
+      const offset = ((id - 1) % 6) * 24;
+      setOverlays(prev => [...prev, {
+        id, kind: "camera",
+        file: "", macros: {},
+        label: label ?? "Camera",
+        pos: { x: 120 + offset, y: 80 + offset },
+        initialPrefix, knownCameras,
+        tabId,
+      }]);
+    }
+    window.addEventListener("open-camera", cameraHandler);
+
+    return () => {
+      window.removeEventListener("open-ui", handler);
+      window.removeEventListener("open-camera", cameraHandler);
+    };
   }, []);
 
   function openFromPicker(file: string, macros: Record<string, string>) {
@@ -105,9 +126,29 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
       onClick={() => settingsOpen && setSettingsOpen(false)}
     >
 
-      {overlays.filter(ov => ov.tabId == null || ov.tabId === activeTab).map(ov => (
-        <OverlayPanel key={ov.id} ov={ov} onClose={() => setOverlays(prev => prev.filter(o => o.id !== ov.id))} />
-      ))}
+      {overlays.filter(ov => ov.tabId == null || ov.tabId === activeTab).map(ov => {
+        const close = () => setOverlays(prev => prev.filter(o => o.id !== ov.id));
+        if (ov.kind === "camera") {
+          // Render via DraggablePanel so camera overlays get full resize /
+          // aspect-lock / PanelSizeContext behaviour (same as Nefarian's
+          // pre-registered camera panel).
+          return (
+            <DraggablePanel
+              key={ov.id}
+              id={`camera-${ov.id}`}
+              title={ov.label}
+              defaultPos={ov.pos}
+              defaultSize={{ w: 560, h: 640 }}
+              scale="fit"
+              aspectLock
+              onClose={close}
+            >
+              <CameraViewer initialPrefix={ov.initialPrefix} knownCameras={ov.knownCameras} />
+            </DraggablePanel>
+          );
+        }
+        return <OverlayPanel key={ov.id} ov={ov} onClose={close} />;
+      })}
 
       <Sidebar tabs={config.tabs} active={activeTab} onSelect={setActiveTab} />
 

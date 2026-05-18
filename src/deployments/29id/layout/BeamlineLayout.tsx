@@ -13,6 +13,27 @@ function showPanel(id: string) {
   window.dispatchEvent(new CustomEvent("show-panel", { detail: { id } }));
 }
 
+// 29ID cameras. Each entry's `prefix` is the AreaDetector record prefix
+// (PFX:cam1: + PFX:image1: pair). Edit labels to your preferred names.
+const CAMERAS_29ID: Array<{ label: string; prefix: string }> = [
+  { label: "Cam 1", prefix: "29id_arv1:" },
+  { label: "Cam 2", prefix: "29id_vmb2:" },
+  { label: "Cam 3", prefix: "29id_vmb3:" },
+  { label: "Cam 4", prefix: "29id_vmb4:" },
+  { label: "Cam 5", prefix: "29id_arv5:" },
+  { label: "Cam 6", prefix: "29id_vmb6:" },
+  { label: "Cam 7", prefix: "29id_vmb7:" },
+  { label: "Cam 8", prefix: "29id_arv8:" },
+  { label: "Cam 9", prefix: "29id_arv9:" },
+];
+
+function openCamera() {
+  window.dispatchEvent(new CustomEvent("open-camera", { detail: {
+    label: "Camera",
+    knownCameras: CAMERAS_29ID,
+  }}));
+}
+
 const shortcutBtn: React.CSSProperties = {
   background: colors.relatedBg, color: colors.relatedFg,
   border: `1px solid ${colors.relatedBorder}`, borderRadius: 4,
@@ -47,7 +68,7 @@ function MoreMenu() {
   ];
 
   return (
-    <div ref={ref} style={{ position: "relative" }}>
+    <div ref={ref} style={{ position: "relative", display: "flex" }}>
       <button style={shortcutBtn} onClick={() => setOpen(v => !v)}>More {open ? "▴" : "▾"}</button>
       {open && (
         <div style={{
@@ -183,7 +204,8 @@ export function BeamlineLayout() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 0, position: "relative" }}>
       {/* Shortcut buttons — top right corner */}
-      <div style={{ position: "absolute", top: 0, right: 0, display: "flex", gap: 4 }}>
+      <div style={{ position: "absolute", top: 0, right: 0, display: "flex", alignItems: "center", gap: 4 }}>
+        <button style={shortcutBtn} onClick={openCamera}>Camera</button>
         <button style={shortcutBtn} onClick={() => showPanel("29id-strip-tool")}>StripTool</button>
         <MoreMenu />
       </div>

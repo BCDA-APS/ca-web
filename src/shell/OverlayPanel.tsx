@@ -8,12 +8,19 @@ interface OverlayState { x: number; y: number; locked: boolean }
 
 export interface AppOverlay {
   id: number;
-  file: string;
-  macros: Record<string, string>;
+  /** "ui" (default) renders a caQtDM-style file via UiRenderer.
+   *  "camera" is rendered directly in App.tsx via DraggablePanel + CameraViewer
+   *  so it gets the full resize/aspect-lock/PanelSizeContext behaviour. */
+  kind?: "ui" | "camera";
+  file: string;                   // for kind:"ui"; empty for camera
+  macros: Record<string, string>; // for kind:"ui"
   label: string;
   pos: { x: number; y: number };
   sourceFile?: string;
   tabId?: number;
+  // For kind:"camera":
+  initialPrefix?: string;
+  knownCameras?: Array<{ label: string; prefix: string }>;
 }
 
 export function OverlayPanel({ ov, onClose }: { ov: AppOverlay; onClose: () => void }) {
