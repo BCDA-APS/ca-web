@@ -1711,8 +1711,10 @@ function CaIncludeWidget({ widget, ns }: { widget: ParsedWidget; ns: string }) {
 
   // Stacked: render N copies side-by-side (Column) or top-to-bottom (Row),
   // each with its own macro set from the semicolon-separated macro string.
+  // caQtDM defaults to Row stacking when numberOfItems > 1 and no explicit
+  // stacking property is set — treat absence as Row.
   const isColumn = stacking.includes("Column");
-  const isRow    = stacking.includes("Row");
+  const isRow    = stacking.includes("Row") || (n > 1 && !isColumn);
   if (n > 1 && (isColumn || isRow)) {
     const macroSets = macroStr.split(";").filter(Boolean).map(s => parseArgs(s));
     const itemW = isColumn ? Math.floor(width / n) : width;
