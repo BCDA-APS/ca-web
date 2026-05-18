@@ -195,6 +195,7 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
             defaultPos={config.panelDefaults[panel.id]}
             defaultSize={panel.defaultSize}
             scale={panel.scale}
+            aspectLock={panel.aspectLock}
             onClose={() => setHiddenPanels(prev => new Set([...prev, panel.id]))}
           >
             <panel.Content />

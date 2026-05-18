@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useContext } from "react";
 import { useConnection } from "@diamondlightsource/cs-web-lib";
 import { toDouble, pvCtx } from "../lib/epics";
 import { colors, fontSize } from "../lib/theme";
-import { ChanRbvBox, ChanSpBox } from "./EpicsWidgets";
+import { ChanSpBox } from "./EpicsWidgets";
 import { pvwsWriter } from "../lib/pvwsWriter";
+import { PanelSizeContext } from "../lib/deployment";
 
 export interface CameraViewerProps {
   /** Title shown above the image, e.g. "Cam 29ID". */
@@ -14,9 +15,19 @@ export interface CameraViewerProps {
   adPrefix?: string;
   /** PV for 2D image waveform (when mjpegUrl is absent). */
   imagePv?: string;
-  /** Image width / height for the canvas fallback. */
+  /** Image width / height for the canvas fallback. Used as fallback when
+   * the *Pv variants aren't connected. */
   imageW?: number;
   imageH?: number;
+  /** Optional PVs that publish current image dimensions (e.g.
+   * "myad:image1:ArraySize0_RBV"). When connected, override imageW/imageH
+   * so the canvas adapts to detector resizing / ROI / binning. */
+  imageWPv?: string;
+  imageHPv?: string;
+  /** Optional AreaDetector ColorMode_RBV PV (e.g. "myad:cam1:ColorMode_RBV").
+   * Supported values: 0 = Mono (grayscale), 3 = RGB1 (interleaved). All
+   * other modes (Bayer, RGB2/3, YUV) currently fall back to mono. */
+  colorModePv?: string;
   /** Display size (px). */
   width?: number;
   height?: number;
@@ -26,54 +37,166 @@ export interface CameraViewerProps {
 
 // ── WaveformCanvas (fallback) ─────────────────────────────────────────────────
 
-function WaveformCanvas({ imagePv, imageW, imageH, displayW, displayH }: {
+function WaveformCanvas({ imagePv, imageW, imageH, displayW, displayH, colorMode = 0, manualMin, manualMax, onAutoRange }: {
   imagePv: string;
   imageW: number;
   imageH: number;
   displayW: number;
   displayH: number;
+  /** AreaDetector ColorMode. 0 = Mono, 3 = RGB1 (interleaved). Other
+   * modes (Bayer / RGB2/3 / YUV) currently fall back to mono. */
+  colorMode?: number;
+  /** Display contrast range. When both are set the renderer maps
+   * [manualMin, manualMax] to [0, 255]; otherwise it auto-scans the data. */
+  manualMin?: number | null;
+  manualMax?: number | null;
+  /** Called with the auto-detected min/max each frame when no manual range
+   * is provided. Lets the parent show the auto values as a readback. */
+  onAutoRange?: (min: number, max: number) => void;
 }) {
-  const [, , , raw] = useConnection(`cam-${imagePv}`, `ca://${imagePv}`);
+  const [, connected, , raw] = useConnection(`cam-${imagePv}`, `ca://${imagePv}`);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Staleness detection: when the IOC dies, pvws often keeps the connection
+  // up and the last value cached, so neither `connected` nor alarm severity
+  // catches it. Instead, watch the PV timestamp — if it hasn't advanced for
+  // > 5 s the source is gone, regardless of what cs-web-lib reports.
+  const lastDtRef = useRef<string | undefined>();
+  const lastSeenRef = useRef<number>(Date.now());
+  const [stale, setStale] = useState(false);
+  useEffect(() => {
+    const dt = (raw as { time?: { datetime?: string } })?.time?.datetime;
+    if (dt && dt !== lastDtRef.current) {
+      lastDtRef.current = dt;
+      lastSeenRef.current = Date.now();
+      if (stale) setStale(false);
+    }
+  }, [raw, stale]);
+  useEffect(() => {
+    const t = setInterval(() => {
+      if (Date.now() - lastSeenRef.current > 5000) setStale(s => s || true);
+    }, 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  function drawPlaceholder(ctx: CanvasRenderingContext2D, msg: string) {
+    ctx.fillStyle = "#0f2035";
+    ctx.fillRect(0, 0, imageW, imageH);
+    ctx.fillStyle = "#5c7a99";
+    ctx.font = `${Math.max(11, Math.round(imageH / 24))}px sans-serif`;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillText(msg, 8, 6);
+  }
 
   useEffect(() => {
     const cv = canvasRef.current;
     if (!cv) return;
     const ctx = cv.getContext("2d");
     if (!ctx) return;
-    const val = (raw as { value?: { arrayValue?: unknown } })?.value?.arrayValue;
-    if (!val) {
-      ctx.fillStyle = "#0f2035";
-      ctx.fillRect(0, 0, imageW, imageH);
-      ctx.fillStyle = "#5c7a99";
-      ctx.font = "11px sans-serif";
-      ctx.fillText("Waiting for image…", 8, 18);
-      return;
+    // Disconnected when: no pvws connection, invalid/undefined alarm, OR the
+    // PV timestamp hasn't advanced for > 5 s (catches the case where pvws
+    // keeps the connection alive and reuses the last frame after the IOC
+    // dies — neither connection nor alarm flag this).
+    const alarm = (raw as { alarm?: { quality?: string } })?.alarm?.quality;
+    if (!connected || alarm === "invalid" || alarm === "undefined" || stale) {
+      drawPlaceholder(ctx, "Disconnected"); return;
     }
-    // Extract array (object form or typed array)
-    const n = imageW * imageH;
-    const arr: number[] = new Array(n);
+    const val = (raw as { value?: { arrayValue?: unknown } })?.value?.arrayValue;
+    if (!val) { drawPlaceholder(ctx, "Waiting for image…"); return; }
+    // pvws sends arrays as either typed arrays/regular arrays (length-indexed)
+    // or as {"0": v, "1": v, ...} objects. Normalise to indexed access.
     const asAny = val as { length?: number; [k: number]: number };
+    let rawGet: (i: number) => number;
+    let totalLen: number;
     if (typeof asAny.length === "number") {
-      for (let i = 0; i < n; i++) arr[i] = asAny[i] ?? 0;
+      totalLen = asAny.length;
+      rawGet = i => asAny[i] ?? 0;
     } else {
       const obj = val as Record<string, number>;
       const keys = Object.keys(obj).map(Number).sort((a, b) => a - b);
-      for (let i = 0; i < n; i++) arr[i] = obj[keys[i]] ?? 0;
+      totalLen = keys.length;
+      rawGet = i => obj[keys[i]] ?? 0;
     }
-    // Find max for gray-scaling
-    let max = 1;
-    for (const v of arr) if (v > max) max = v;
+
+    const n = imageW * imageH;
+    const isRGB1 = colorMode === 3;
+    const expectedLen = isRGB1 ? n * 3 : n;
+    // Detect bidirectional size mismatch (typical when the size PVs are
+    // disconnected and we're using stale or default fallback values).
+    // Tolerate ~5% slack for any padding/alignment.
+    if (Math.abs(totalLen - expectedLen) > expectedLen * 0.05) {
+      drawPlaceholder(ctx, "Image size mismatch");
+      return;
+    }
     const img = ctx.createImageData(imageW, imageH);
-    for (let i = 0; i < n; i++) {
-      const g = Math.min(255, Math.round((arr[i] / max) * 255));
-      img.data[i * 4 + 0] = g;
-      img.data[i * 4 + 1] = g;
-      img.data[i * 4 + 2] = g;
-      img.data[i * 4 + 3] = 255;
+    const sliceLen = Math.min(expectedLen, totalLen);
+
+    // Detect signed/unsigned mismatch: pvws often delivers unsigned detector
+    // data (caCHAR / UInt16 / UInt32) as signed values, wrapping high pixels
+    // into negatives. Pick the shift based on the most-negative value seen:
+    //   [-128,   -1]  → 8-bit  (CHAR), add 256
+    //   [-32768, -1]  → 16-bit (UInt16), add 65536
+    //   else          → 32-bit (UInt32), add 2^32
+    // Genuine signed imaging data is rare; if it ever shows up here we can
+    // wire DataType_RBV through to be precise.
+    let mostNeg = 0;
+    for (let i = 0; i < sliceLen; i++) {
+      const v = rawGet(i);
+      if (v < mostNeg) mostNeg = v;
+    }
+    let shift = 0;
+    if (mostNeg < 0) {
+      if (mostNeg >= -128)        shift = 256;
+      else if (mostNeg >= -32768) shift = 65536;
+      else                        shift = 4294967296;
+    }
+    const getValue = shift > 0
+      ? (i: number) => { const v = rawGet(i); return v < 0 ? v + shift : v; }
+      : rawGet;
+
+    // Determine the contrast range [dispMin, dispMax]. Manual values win
+    // when both supplied; otherwise auto-scan the data.
+    let dispMin: number, dispMax: number;
+    if (manualMin != null && manualMax != null && manualMax > manualMin) {
+      dispMin = manualMin;
+      dispMax = manualMax;
+    } else {
+      let mn = Infinity, mx = -Infinity;
+      for (let i = 0; i < sliceLen; i++) {
+        const v = getValue(i);
+        if (v < mn) mn = v;
+        if (v > mx) mx = v;
+      }
+      dispMin = mn;
+      dispMax = Math.max(mn + 1, mx);
+      if (onAutoRange) onAutoRange(dispMin, dispMax);
+    }
+    const range = dispMax - dispMin;
+    const clamp = (v: number) => {
+      if (v <= dispMin) return 0;
+      if (v >= dispMax) return 255;
+      return Math.round((v - dispMin) / range * 255);
+    };
+
+    if (isRGB1) {
+      for (let i = 0; i < n; i++) {
+        img.data[i * 4 + 0] = clamp(getValue(i * 3 + 0));
+        img.data[i * 4 + 1] = clamp(getValue(i * 3 + 1));
+        img.data[i * 4 + 2] = clamp(getValue(i * 3 + 2));
+        img.data[i * 4 + 3] = 255;
+      }
+    } else {
+      for (let i = 0; i < n; i++) {
+        const g = clamp(getValue(i));
+        img.data[i * 4 + 0] = g;
+        img.data[i * 4 + 1] = g;
+        img.data[i * 4 + 2] = g;
+        img.data[i * 4 + 3] = 255;
+      }
     }
     ctx.putImageData(img, 0, 0);
-  }, [raw, imageW, imageH]);
+  }, [raw, connected, stale, imageW, imageH, colorMode, manualMin, manualMax]);
 
   return (
     <canvas
@@ -132,6 +255,24 @@ function AcquireBtn({ pv }: { pv: string }) {
   );
 }
 
+function DoneIndicator({ pv }: { pv: string }) {
+  const [, , , raw] = useConnection(`cam-done-${pv}`, `ca://${pv}`);
+  const acquiring = toDouble(raw) === 1;
+  return (
+    <span
+      onContextMenu={e => pvCtx(pv, raw, e)}
+      style={{
+        padding: "4px 8px",
+        background: colors.rbvBg, border: `1px solid ${colors.rbvBorder}`,
+        color: acquiring ? colors.rbvText : colors.statusOk,
+        fontSize: fontSize.label, fontFamily: "monospace",
+        lineHeight: 1,
+        cursor: "context-menu",
+      }}
+    >{acquiring ? "Acquiring…" : "Done"}</span>
+  );
+}
+
 function SpRow({ label, pv, prec = 3, unit }: { label: string; pv: string; prec?: number; unit?: string }) {
   const [, conn, , raw] = useConnection(`cam-sp-${pv}`, `ca://${pv}`);
   return (
@@ -146,16 +287,6 @@ function SpRow({ label, pv, prec = 3, unit }: { label: string; pv: string; prec?
   );
 }
 
-function RbvRow({ label, pv, prec = 0 }: { label: string; pv: string; prec?: number }) {
-  const [, , , raw] = useConnection(`cam-rbv-${pv}`, `ca://${pv}`);
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      <span style={{ width: 70, fontSize: fontSize.label, color: colors.label }}>{label}</span>
-      <ChanRbvBox raw={raw} width={70} fallbackPrec={prec}
-        onContextMenu={e => pvCtx(pv, raw, e)} />
-    </div>
-  );
-}
 
 // ── CameraViewer ──────────────────────────────────────────────────────────────
 
@@ -166,14 +297,78 @@ export function CameraViewer({
   imagePv,
   imageW = 640,
   imageH = 480,
+  imageWPv,
+  imageHPv,
+  colorModePv,
   width  = 480,
   height = 360,
   crosshair = true,
 }: CameraViewerProps) {
   const [showXhair, setShowXhair] = useState(crosshair);
+  // PV-driven dimensions and color mode: fall back when not connected.
+  const [, , , wRaw]  = useConnection(`cam-w-${imageWPv  ?? title}`, imageWPv  ? `ca://${imageWPv}`  : undefined);
+  const [, , , hRaw]  = useConnection(`cam-h-${imageHPv  ?? title}`, imageHPv  ? `ca://${imageHPv}`  : undefined);
+  const [, , , cmRaw] = useConnection(`cam-cm-${colorModePv ?? title}`, colorModePv ? `ca://${colorModePv}` : undefined);
+  const effW = (imageWPv ? toDouble(wRaw) : null) ?? imageW;
+  const effH = (imageHPv ? toDouble(hRaw) : null) ?? imageH;
+  const colorMode = (colorModePv ? toDouble(cmRaw) : null) ?? 0;
+
+  // Display contrast (Min/Max/Auto) — when Auto is on, manual values are
+  // ignored, the canvas auto-scans the data, and the inputs show those
+  // computed values as a live readback.
+  const [autoContrast, setAutoContrast] = useState(true);
+  const [minText, setMinText] = useState("");
+  const [maxText, setMaxText] = useState("");
+  const [autoMin, setAutoMin] = useState<number | null>(null);
+  const [autoMax, setAutoMax] = useState<number | null>(null);
+  const manualMin = autoContrast || minText === "" ? null : Number(minText);
+  const manualMax = autoContrast || maxText === "" ? null : Number(maxText);
+  const minDisplay = autoContrast ? (autoMin != null ? String(Math.round(autoMin)) : "") : minText;
+  const maxDisplay = autoContrast ? (autoMax != null ? String(Math.round(autoMax)) : "") : maxText;
+
+  // Zoom — display-only canvas scaling. 1.0 = native displayW/displayH.
+  const [zoom, setZoom] = useState(1);
+
+  // The image container is sized by the parent's flex layout (flex:1, fills
+  // remaining vertical space inside CameraViewer). We measure it to derive
+  // aspect-preserving canvas dimensions. No feedback loop: the canvas inside
+  // is sized FROM this measurement and never the other way around.
+  const panelSize = useContext(PanelSizeContext);
+  const imageBoxRef = useRef<HTMLDivElement>(null);
+  const [boxSize, setBoxSize] = useState<{ w: number; h: number }>(() => ({ w: width, h: height }));
+  useEffect(() => {
+    const el = imageBoxRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        const { width: bw, height: bh } = entry.contentRect;
+        if (bw > 10 && bh > 10) {
+          setBoxSize(prev => (Math.round(bw) === prev.w && Math.round(bh) === prev.h)
+            ? prev
+            : { w: Math.round(bw), h: Math.round(bh) });
+        }
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  // Suppress unused-var warning when panel context is absent (still useful to
+  // reference for future tweaks; harmless to read).
+  void panelSize;
+  const sourceAspect = effH / Math.max(1, effW);
+  let dispW = boxSize.w;
+  let dispH = dispW * sourceAspect;
+  if (dispH > boxSize.h) {
+    dispH = boxSize.h;
+    dispW = dispH / sourceAspect;
+  }
+  dispW = Math.max(80, Math.round(dispW));
+  dispH = Math.max(80, Math.round(dispH));
+  const zoomedW = Math.round(dispW * zoom);
+  const zoomedH = Math.round(dispH * zoom);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: 10, fontFamily: "sans-serif" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 6, height: "100%", fontFamily: "sans-serif" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <h3 style={{
           margin: 0, fontSize: fontSize.badge, color: colors.sectionHdr,
@@ -186,36 +381,103 @@ export function CameraViewer({
         </label>
       </div>
 
-      <div style={{ position: "relative", width, height }}>
-        {mjpegUrl ? (
-          <MjpegImg url={mjpegUrl} width={width} height={height} />
-        ) : imagePv ? (
-          <WaveformCanvas
-            imagePv={imagePv}
-            imageW={imageW}
-            imageH={imageH}
-            displayW={width}
-            displayH={height}
-          />
-        ) : (
+      {/* Min / Max / Auto contrast controls */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: fontSize.label, color: colors.label }}>
+        <label style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          Min:
+          <input type="text" inputMode="decimal" value={minDisplay} disabled={autoContrast} readOnly={autoContrast}
+            onChange={e => setMinText(e.target.value)}
+            aria-label="Display min"
+            style={{ width: 44, fontFamily: "monospace", fontSize: fontSize.label,
+              padding: "1px 4px", border: `1px solid ${colors.inputBorder}`,
+              background: autoContrast ? colors.rbvBg : colors.inputBg, color: colors.spText,
+              borderRadius: 2, textAlign: "right" }} />
+        </label>
+        <label style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          Max:
+          <input type="text" inputMode="decimal" value={maxDisplay} disabled={autoContrast} readOnly={autoContrast}
+            onChange={e => setMaxText(e.target.value)}
+            aria-label="Display max"
+            style={{ width: 44, fontFamily: "monospace", fontSize: fontSize.label,
+              padding: "1px 4px", border: `1px solid ${colors.inputBorder}`,
+              background: autoContrast ? colors.rbvBg : colors.inputBg, color: colors.spText,
+              borderRadius: 2, textAlign: "right" }} />
+        </label>
+        <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}>
+          <input type="checkbox" checked={autoContrast}
+            onChange={e => setAutoContrast(e.target.checked)}
+            aria-label="Auto contrast" />
+          Auto
+        </label>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "stretch", gap: 6, flex: 1, minHeight: 0, minWidth: 0 }}>
+        {/* Image box — flex:1 fills remaining space. ResizeObserver measures
+            this box; the inner image is sized FROM that measurement with
+            aspect preserved. Centred via auto margin when it fits; when
+            zoomed past the box, it sits at top-left and the box scrolls so
+            every corner is reachable. */}
+        <div ref={imageBoxRef} style={{ position: "relative", flex: 1, minWidth: 0, minHeight: 0,
+          overflow: zoom > 1 ? "auto" : "hidden",
+          background: "#0f2035", borderRadius: 3 }}>
           <div style={{
-            width, height, background: "#0f2035", color: "#5c7a99",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: fontSize.label, borderRadius: 3,
-          }}>No image source</div>
-        )}
-        {showXhair && <Crosshair width={width} height={height} />}
+            width: zoomedW, height: zoomedH, position: "relative", flexShrink: 0,
+            // Centre when content fits the box, top-left when it overflows
+            // (so the scrollbars expose every corner).
+            margin: zoom > 1 ? 0 : "auto",
+            marginTop: zoom > 1 ? 0 : Math.max(0, (boxSize.h - zoomedH) / 2),
+          }}>
+            {mjpegUrl ? (
+              <MjpegImg url={mjpegUrl} width={zoomedW} height={zoomedH} />
+            ) : imagePv ? (
+              <WaveformCanvas
+                imagePv={imagePv}
+                imageW={Math.max(1, Math.round(effW))}
+                imageH={Math.max(1, Math.round(effH))}
+                displayW={zoomedW}
+                displayH={zoomedH}
+                colorMode={colorMode}
+                manualMin={manualMin}
+                manualMax={manualMax}
+                onAutoRange={(mn, mx) => { setAutoMin(mn); setAutoMax(mx); }}
+              />
+            ) : (
+              <div style={{
+                width: zoomedW, height: zoomedH, color: "#5c7a99",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: fontSize.label,
+              }}>No image source</div>
+            )}
+            {showXhair && <Crosshair width={zoomedW} height={zoomedH} />}
+          </div>
+        </div>
+
+        {/* Zoom controls — column to the right of the image */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center",
+          gap: 4, fontSize: fontSize.small, color: colors.label }}>
+          <button onClick={() => setZoom(z => Math.min(8, z * 1.25))} title="Zoom in"
+            style={{ width: 24, height: 24, padding: 0, fontSize: 14, cursor: "pointer",
+              border: `1px solid ${colors.relatedBorder}`, background: colors.relatedBg,
+              color: colors.relatedFg, borderRadius: 3 }}>+</button>
+          <span style={{ fontFamily: "monospace" }}>{zoom.toFixed(2)}x</span>
+          <button onClick={() => setZoom(z => Math.max(0.25, z / 1.25))} title="Zoom out"
+            style={{ width: 24, height: 24, padding: 0, fontSize: 14, cursor: "pointer",
+              border: `1px solid ${colors.relatedBorder}`, background: colors.relatedBg,
+              color: colors.relatedFg, borderRadius: 3 }}>−</button>
+          <button onClick={() => setZoom(1)} title="Reset zoom"
+            style={{ width: 24, height: 18, padding: 0, fontSize: 10, cursor: "pointer",
+              border: `1px solid ${colors.relatedBorder}`, background: colors.relatedBg,
+              color: colors.relatedFg, borderRadius: 3 }}>1x</button>
+        </div>
       </div>
 
       {adPrefix && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <AcquireBtn pv={`${adPrefix}Acquire`} />
-            <RbvRow label="Counter" pv={`${adPrefix}NumImagesCounter_RBV`} />
+        <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", flexShrink: 0 }}>
+          <AcquireBtn pv={`${adPrefix}Acquire`} />
+          <DoneIndicator pv={`${adPrefix}Acquire_RBV`} />
+          <div style={{ marginLeft: "auto" }}>
+            <SpRow label="Exposure"  pv={`${adPrefix}AcquireTime`}   prec={4} unit="s" />
           </div>
-          <SpRow label="Exposure"  pv={`${adPrefix}AcquireTime`}   prec={3} unit="s" />
-          <SpRow label="Gain"      pv={`${adPrefix}Gain`}          prec={2} />
-          <SpRow label="N images"  pv={`${adPrefix}NumImages`}     prec={0} />
         </div>
       )}
     </div>

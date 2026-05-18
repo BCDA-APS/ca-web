@@ -25,6 +25,12 @@ export interface PanelConfig {
   // - "fit": content handles its own sizing (e.g. StripChart via PanelSizeContext,
   //   or SVG diagrams using viewBox). DraggablePanel does nothing extra.
   scale?: "transform" | "fit" | "none";
+  // Override the resize handle behaviour. By default it's freeform; if
+  // `scale === "transform"` it's aspect-locked (panel keeps the design
+  // aspect). Set this explicitly to true/false to override either way
+  // (e.g. a "fit" panel like CameraViewer that wants aspect lock so the
+  // image doesn't develop empty letterbox margins on non-proportional drag).
+  aspectLock?: boolean;
 }
 
 export interface QuickLink {

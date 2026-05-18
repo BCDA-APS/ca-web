@@ -4,6 +4,7 @@ import { MotorCardRow } from "../../widgets/MotorCardRow";
 import { MotorCardFlat } from "../../widgets/MotorCardFlat";
 import { ReadbackRow } from "../../widgets/ReadbackRow";
 import { StripChart } from "../../widgets/StripChart";
+import { CameraViewer } from "../../widgets/CameraViewer";
 import { UiRenderer } from "../../lib/UiRenderer";
 import type { DeploymentConfig, DeploymentConfigData } from "../../lib/deployment";
 import rawConfig from "./config.json";
@@ -18,7 +19,7 @@ const tabPanels: DeploymentConfig["tabPanels"] = {
   1: [
     { id: "motors",        title: "Motors",                          Content: MotorsContent },
     { id: "lorentzian",    title: "Detector — Simulated Lorentzian", Content: LorentzianContent, defaultSize: { w: 900, h: 360 } },
-    { id: "area-detector", title: "Area Detector — myad:cam1",       Content: AreaDetectorContent },
+    { id: "area-detector", title: "Area Detector — myad:cam1",       Content: AreaDetectorContent, defaultSize: { w: 560, h: 640 }, scale: "fit", aspectLock: true },
   ],
   2: [
     { id: "test",                 title: "Widget Test",        Content: TestContent },
@@ -103,19 +104,16 @@ function LorentzianContent() {
 
 function AreaDetectorContent() {
   return (
-    <div style={{ display: "flex", alignItems: "flex-start", gap: 24 }}>
-      <table style={tableStyle}>
-        <thead><tr><th style={thStyle}>Name</th><th style={thStyle}>Value</th></tr></thead>
-        <tbody>
-          <ReadbackRow label="Acquire"      pv="myad:cam1:Acquire_RBV" />
-          <ReadbackRow label="Frame count"  pv="myad:cam1:ArrayCounter_RBV" />
-          <ReadbackRow label="Exposure (s)" pv="myad:cam1:AcquireTime_RBV" />
-          <ReadbackRow label="Image size X" pv="myad:cam1:SizeX_RBV" />
-          <ReadbackRow label="Image size Y" pv="myad:cam1:SizeY_RBV" />
-        </tbody>
-      </table>
-      <UiRenderer file="/ui/29id/29id_cam.ui" macros={{ P: "myad:" }} />
-    </div>
+    <CameraViewer
+      title="myad cam1"
+      adPrefix="myad:cam1:"
+      imagePv="myad:image1:ArrayData"
+      imageWPv="myad:image1:ArraySize0_RBV"
+      imageHPv="myad:image1:ArraySize1_RBV"
+      colorModePv="myad:cam1:ColorMode_RBV"
+      width={480}
+      height={480}
+    />
   );
 }
 

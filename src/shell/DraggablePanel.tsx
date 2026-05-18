@@ -8,12 +8,13 @@ interface PanelState { x: number; y: number; w?: number; h?: number; locked: boo
 const MIN_W = 200;
 const MIN_H = 120;
 
-export function DraggablePanel({ id, title, defaultPos, defaultSize, scale, onClose, children }: {
+export function DraggablePanel({ id, title, defaultPos, defaultSize, scale, aspectLock, onClose, children }: {
   id: string;
   title: string;
   defaultPos?: { x: number; y: number };
   defaultSize?: { w: number; h: number };
   scale?: "transform" | "fit" | "none";
+  aspectLock?: boolean;
   onClose?: () => void;
   children: React.ReactNode;
 }) {
@@ -88,9 +89,11 @@ export function DraggablePanel({ id, title, defaultPos, defaultSize, scale, onCl
     const startW = ps.w ?? rootRef.current?.offsetWidth ?? MIN_W;
     const startH = ps.h ?? rootRef.current?.offsetHeight ?? MIN_H;
     const sx = e.clientX, sy = e.clientY;
-    // Aspect-lock when content is CSS-scaled — non-uniform resize would just
-    // create empty space (one dimension hits the scale ceiling first).
-    const aspectLocked = scale === "transform";
+    // Aspect-lock the resize drag. Explicit prop wins; otherwise locked only
+    // when content is CSS-scaled (non-uniform resize there just makes empty
+    // letterbox space). Set aspectLock:true on a "fit" panel that has a
+    // natural aspect ratio (e.g. CameraViewer with the detector image).
+    const aspectLocked = aspectLock ?? (scale === "transform");
     function onMove(ev: MouseEvent) {
       const dx = ev.clientX - sx;
       const dy = ev.clientY - sy;
