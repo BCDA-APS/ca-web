@@ -518,8 +518,15 @@ export default defineConfig(() => {
     },
     server: {
       port: 4200,
-      host: "0.0.0.0",
+      host: "127.0.0.1",
       allowedHosts: true,
+      // Polling-based file watching is opt-in for dev on NFS-mounted repos
+      // (inotify events don't propagate to NFS clients). Set VITE_POLL=1
+      // when you want HMR to fire on saves. Leave unset for production-ish
+      // use so staff browsers don't auto-reload mid-task.
+      ...(process.env.VITE_POLL === "1" && {
+        watch: { usePolling: true, interval: 1000 },
+      }),
     },
   };
 });

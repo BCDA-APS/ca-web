@@ -4,6 +4,8 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 name="pvws"
 port="8080"
 image="pvws:latest"
@@ -93,13 +95,34 @@ fi
 podman "${podman_args[@]}" stop "$name" >/dev/null 2>&1 || true
 podman "${podman_args[@]}" rm   "$name" >/dev/null 2>&1 || true
 
+# Build the EPICS CA search list as every unicast address in the beamline
+# /24 subnet. We can't use broadcast (10.54.118.255) because the default
+# rootless podman bridge masquerades the container's source IP into a
+# non-routable range, so IOC responses to broadcasts never come back.
+# Pasta networking has the same limitation in our setup. Brute-force
+# unicast to every IP in the subnet works reliably and means new IOCs
+# (cameras booting later, new hardware added next month) are covered
+# automatically without re-scanning. ~254 UDP packets per PV search;
+# negligible load.
+ca_addr_list=""
+for i in $(seq 1 254); do
+    ca_addr_list+="10.54.118.${i} "
+done
+ca_addr_list="${ca_addr_list% }"
+
 run_args=(
-    --network=host
     -d
     --name "$name"
+    -p "127.0.0.1:${port}:${port}"
+    # Override the image's baked-in /usr/local/tomcat/bin/setenv.sh — it
+    # hardcodes EPICS_CA_ADDR_LIST=164.54.112.168 which silently clobbers
+    # the -e value below. Our replacement is a no-op (just comments).
+    -v "${SCRIPT_DIR}/pvws-setenv.sh:/usr/local/tomcat/bin/setenv.sh:ro"
     -e PV_WRITE_SUPPORT=true
     -e EPICS_CA_MAX_ARRAY_BYTES=64000000
     -e PV_ARRAY_THROTTLE_MS=1000
+    -e EPICS_CA_AUTO_ADDR_LIST=NO
+    -e "EPICS_CA_ADDR_LIST=${ca_addr_list}"
 )
 if [[ "$no_hosts" -eq 1 ]]; then
     run_args+=(--no-hosts)

@@ -1,7 +1,7 @@
 {
   "id": "29id_dev",
   "title": "29ID Beamline (dev)",
-  "pvws": { "socket": "mite:8080", "ssl": false },
+  "pvws": { "socket": "localhost:8080", "ssl": false },
   "quickLinks": [
     { "label": "29ID", "file": "/ui/29id/29id.ui", "macros": {} }
   ],
