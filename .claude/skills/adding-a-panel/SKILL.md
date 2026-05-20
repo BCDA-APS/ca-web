@@ -40,6 +40,24 @@ Practical effect:
   renders but its position never persists (the storage write goes
   to a key nothing reads).
 
+## Naming conventions
+
+For 29ID-family deployments (`29id`, `29id_dev`):
+
+- **Panel id** (storage key, never user-visible): start with the hutch
+  letter — `29ida-*`, `29idb-*`, `29idc-*`, `29idd-*`, `29ide-*`.
+  Example: `29idc-motors`. IDs are stable storage keys; once shipped,
+  rename only if absolutely necessary (saved layouts reference them
+  and must be migrated in lockstep).
+- **Panel title** (shown in title bar + the "Open react…" picker):
+  use the subsystem name, not the hutch letter — "ARPES Motors",
+  "Kappa Motors", "Octupole Motors". Lets users find a panel by what
+  it does regardless of where it lives. Same convention for trends
+  ("ARPES Pressure Trend", "Kappa Temperature Trend", etc.).
+- **PV-list constants in `index.tsx`** (`AHUTCH_CA_PVS`,
+  `ARPES_PRESSURE_TREND_PVS`, ...): scope-prefix the constant name so
+  future per-section variants don't collide.
+
 ## Steps
 
 1. **Read the deployment.** Open `src/deployments/<id>/config.json`
