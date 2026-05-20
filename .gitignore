@@ -4,6 +4,10 @@ dist/
 .loglogin
 .ui-cache/
 
+# NFS leftover placeholders (created when a still-open file is deleted)
+.nfs*
+**/.nfs*
+
 # AI tooling working dirs
 .claude/agent-memory/
 .claude/audits/
