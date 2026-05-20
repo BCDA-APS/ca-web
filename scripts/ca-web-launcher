@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# Launcher script for beamline users.
+#
+# Install once on a beamline machine (sleepy/nerdy/sneezy/mite) as 29iduser:
+#   cp /home/beams3/RODOLAKIS/workspace/ca-web/scripts/ca-web-launcher \
+#      ~/bin/ca-web
+#   chmod +x ~/bin/ca-web
+# Because /home/beams/29IDUSER is NFS-shared across beamline machines,
+# one install covers all four.
+#
+# Usage (run as 29iduser on any beamline machine):
+#   ca-web start   - open ca-web (opens an ssh session to mite if needed,
+#                    then firefox)
+#   ca-web stop    - close the ssh session
+#   ca-web status  - is the connection up?
+
+case "$1" in
+  start)
+    if ! nc -z localhost 4200 2>/dev/null; then
+      ssh -fN -L 4200:localhost:4200 -L 8080:localhost:8080 29iduser@mite || exit 1
+    fi
+    firefox http://localhost:4200/ &
+    ;;
+  stop)
+    if pkill -f "ssh.*-L 4200:localhost:4200"; then
+      echo "connection closed"
+    else
+      echo "no active connection"
+    fi
+    ;;
+  status)
+    if nc -z localhost 4200 2>/dev/null; then
+      echo "connection is up"
+    else
+      echo "connection is down"
+    fi
+    ;;
+  *)
+    echo "usage: ca-web {start|stop|status}" >&2
+    exit 2
+    ;;
+esac
