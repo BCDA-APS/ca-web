@@ -23,7 +23,8 @@
     "29id-scan-records":    { "x": 700, "y":  55 },
     "29id-strip-tool":      { "x": 700, "y": 300 },
     "29idc-pressure-trend": { "x": 500, "y": 300 },
-    "29idc-temp-trend":     { "x": 500, "y": 650 }
+    "29idc-temp-trend":     { "x": 500, "y": 650 },
+    "29idc-strip-tool":     { "x": 500, "y": 1000 }
   },
   "defaultHiddenPanels": [
     "29id-mirrors",
@@ -32,7 +33,8 @@
     "29id-scan-records",
     "29id-strip-tool",
     "29idc-pressure-trend",
-    "29idc-temp-trend"
+    "29idc-temp-trend",
+    "29idc-strip-tool"
   ],
   "paths": {
     "uiDirs": {

@@ -525,20 +525,28 @@ export function StripChart({
               textAnchor="middle">Check a PV in the sidebar to start monitoring</text>
           )}
 
-          {/* Legend */}
+          {/* Legend — laid out left-to-right with per-label widths so
+              long labels like "CA15 (Diode)" don't overlap the next
+              entry. Width estimate: ~6.6px per char at fontSize 11
+              plus 14px for the color line + 4px gap + 14px trailing. */}
           {traces.length > 0 && (
             <g>
-              {traces.map((tr, i) => {
-                const x = CHART_PAD.l + 8 + i * 88;
-                return (
-                  <g key={`lg-${tr.pv}`}>
-                    <line x1={x} y1={CHART_PAD.t - 6} x2={x + 14} y2={CHART_PAD.t - 6}
-                      stroke={tr.color} strokeWidth={2}/>
-                    <text x={x + 18} y={CHART_PAD.t - 2} fill={tr.color} fontSize={11}
-                      textAnchor="start">{tr.label}</text>
-                  </g>
-                );
-              })}
+              {(() => {
+                let cursor = CHART_PAD.l + 8;
+                return traces.map(tr => {
+                  const x = cursor;
+                  const label = tr.label ?? "";
+                  cursor += 14 + 4 + Math.ceil(label.length * 6.6) + 14;
+                  return (
+                    <g key={`lg-${tr.pv}`}>
+                      <line x1={x} y1={CHART_PAD.t - 6} x2={x + 14} y2={CHART_PAD.t - 6}
+                        stroke={tr.color} strokeWidth={2}/>
+                      <text x={x + 18} y={CHART_PAD.t - 2} fill={tr.color} fontSize={11}
+                        textAnchor="start">{label}</text>
+                    </g>
+                  );
+                });
+              })()}
             </g>
           )}
         </svg>

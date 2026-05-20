@@ -177,6 +177,19 @@ export function ChamberDiagram() {
           <text x="288" y="129" textAnchor="middle" fill="#a5d6a7" fontSize="13"
             fontWeight="700" fontFamily="sans-serif">LEED</text>
 
+          {/* ── "more" button — opens the ARPES StripTool panel ── */}
+          <g
+            cursor="pointer"
+            onClick={() => window.dispatchEvent(new CustomEvent("show-panel", { detail: { id: "29idc-strip-tool" } }))}
+          >
+            <rect x="44" y="240" width="42" height="20" rx="3"
+              fill="rgb(210,220,240)" stroke="rgb(160,180,220)" />
+            <text x="65" y="254" textAnchor="middle"
+              fill="rgb(0,53,132)" fontSize="11" fontFamily="sans-serif">
+              More
+            </text>
+          </g>
+
           {/* ── EA — truncated cone + rectangle ── */}
           <polygon
             points={`${sx - 14},208 ${sx + 14},208 ${sx + 36},226 ${sx + 36},254 ${sx - 36},254 ${sx - 36},226`}

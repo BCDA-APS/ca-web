@@ -28,6 +28,7 @@ const tabPanels: DeploymentConfig["tabPanels"] = {
     { id: "29idc-energy",     title: "Beamline Energy", Content: BeamlineEnergy,     scale: "transform" },
     { id: "29idc-pressure-trend", title: "ARPES Pressure Trend",    Content: () => <StripChart id="29idc-pressure-trend" initialPvs={ARPES_PRESSURE_TREND_PVS} />, defaultSize: { w: 700, h: 320 } },
     { id: "29idc-temp-trend",     title: "ARPES Temperature Trend", Content: () => <StripChart id="29idc-temp-trend"     initialPvs={ARPES_TEMP_TREND_PVS} />,     defaultSize: { w: 700, h: 320 } },
+    { id: "29idc-strip-tool",     title: "ARPES StripTool",         Content: () => <StripChart id="29idc-strip-tool"     initialPvs={ARPES_STRIP_TOOL_PVS} />,     defaultSize: { w: 700, h: 320 } },
   ],
   2: [{ id: "29idd-kappa", title: "29ID-D Kappa", Content: KappaContent, scale: "transform" }],
   3: [
@@ -37,13 +38,13 @@ const tabPanels: DeploymentConfig["tabPanels"] = {
     { id: "29id-slits",           title: "Slits",           Content: Slits,           scale: "transform" },
     { id: "29id-diagon",          title: "DiaGon",          Content: Diagon,          scale: "transform" },
     { id: "29id-scan-records",    title: "Scan Records",    Content: ScanRecords, defaultSize: { w: 360, h: 320 }, scale: "transform" },
-    { id: "29id-strip-tool",      title: "StripTool",       Content: () => <StripChart id="29id-strip-tool" initialPvs={AHUTCH_CA_PVS} />, defaultSize: { w: 700, h: 320 } },
+    { id: "29id-strip-tool",      title: "StripTool",       Content: () => <StripChart id="29id-strip-tool" initialPvs={AHUTCH_STRIP_TOOL_PVS} />, defaultSize: { w: 700, h: 320 } },
   ],
 };
 
 export const config: DeploymentConfig = { ...deploymentFields, tabPanels };
 
-const AHUTCH_CA_PVS: TraceConfig[] = [
+const AHUTCH_STRIP_TOOL_PVS: TraceConfig[] = [
   { pv: "29idb:ca1:read",  label: "CA1"  },
   { pv: "29idb:ca2:read",  label: "CA2"  },
   { pv: "29idb:ca3:read",  label: "CA3"  },
@@ -65,6 +66,13 @@ const ARPES_PRESSURE_TREND_PVS: TraceConfig[] = [
 const ARPES_TEMP_TREND_PVS: TraceConfig[] = [
   { pv: "29idARPES:LS335:TC1:INA", label: "Sample",     enabled: true },
   { pv: "29idARPES:LS335:TC1:INB", label: "Cold fngr",  enabled: true },
+];
+
+const ARPES_STRIP_TOOL_PVS: TraceConfig[] = [
+  { pv: "29idc:ca1:read",                label: "CA1 (TEY)",   enabled: true },
+  { pv: "29idc:ca2:read",                label: "CA2 (TFY)",   enabled: true },
+  { pv: "29idb:ca15:read",               label: "CA15 (Diode)", enabled: true },
+  { pv: "29idcScienta:Stats4:Total_RBV", label: "EA",          enabled: true },
 ];
 
 const ARPES_MOTORS = ["m1", "m2", "m3", "m4", "m5", "m6"];
