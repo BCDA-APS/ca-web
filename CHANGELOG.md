@@ -2,35 +2,40 @@
 
 ## Unreleased
 
-### Lock down ca-web and pvws to mite's loopback (SSH-tunnel access)
+### Lock down ca-web (vite) to mite's loopback; pvws lockdown deferred
 
-- pvws and the vite dev server now bind to `127.0.0.1` only, not all
-  interfaces. Empirical testing confirmed mite is in a fully open APS
-  network zone (every TCP port reachable from off-beamline hosts), and
-  there's no host-level firewall available to filter. Loopback binding
-  closes the leak; beamline users access ca-web via SSH tunnel:
-  `ssh -fN -L 4200:localhost:4200 -L 8080:localhost:8080 mite`, then
-  `http://localhost:4200/` in a browser.
-- `scripts/start-pvws.sh` — replaced `--network=host` with
-  `-p 127.0.0.1:${port}:${port}`. Added a bind-mount that overrides the
-  pvws image's baked-in `setenv.sh`, which hardcodes
-  `EPICS_CA_ADDR_LIST=164.54.112.168` and silently clobbers any value
-  passed via `-e`. The replacement (`scripts/pvws-setenv.sh`) is a
-  no-op stub — all EPICS settings now flow through `-e` flags. CA
-  search list set to every unicast address in `10.54.118.0/24` because
-  broadcasts don't reach the host subnet from rootless podman bridge
-  (or pasta) networking; brute-force unicast is reliable and
-  auto-covers IOCs that aren't running at scan time (cameras, dev
-  IOCs).
-- `vite.config.ts` — `host` changed from `0.0.0.0` to `127.0.0.1`.
-  Added opt-in polling-based file watching (`server.watch.usePolling`)
-  gated on `VITE_POLL=1` env var, since inotify doesn't fire for
-  NFS-mounted repos. Enable during dev for HMR; leave off in production
-  so staff browsers don't auto-reload mid-task.
+Empirical testing confirmed mite is in a fully open APS network zone (every
+TCP port reachable from off-beamline hosts) with no host-level firewall
+available. This change locks down the vite dev server immediately and
+keeps pvws on `--network=host` for now — see the "outstanding follow-up"
+note below for the proper pvws fix.
+
+- `vite.config.ts` — `host` changed from `0.0.0.0` to `127.0.0.1`. Vite
+  now only listens on mite's loopback; beamline users access ca-web via
+  SSH tunnel: `ssh -fN -L 4200:localhost:4200 -L 8080:localhost:8080 mite`,
+  then `http://localhost:4200/` in a browser. Added opt-in polling-based
+  file watching (`server.watch.usePolling`) gated on `VITE_POLL=1` env
+  var, since inotify doesn't fire for NFS-mounted repos. Enable during
+  dev for HMR; leave off in production so staff browsers don't
+  auto-reload mid-task.
 - `src/deployments/29id/config.json` and
   `src/deployments/29id_dev/config.json` — `pvws.socket` changed from
-  `mite:8080` to `localhost:8080` so browsers reach pvws via the
-  user's SSH tunnel.
+  `mite:8080` to `localhost:8080` so browsers reach pvws via the user's
+  SSH tunnel (works whether pvws is loopback-bound or host-bound).
+- `scripts/start-pvws.sh` — added a bind-mount that overrides the pvws
+  image's baked-in `setenv.sh`, which hardcodes
+  `EPICS_CA_ADDR_LIST=164.54.112.168` and silently clobbers any value
+  passed via `-e` (regardless of network mode). The replacement
+  (`scripts/pvws-setenv.sh`) is a no-op stub.
+- **Outstanding follow-up (not yet shipped):** pvws still runs with
+  `--network=host` so its port is externally reachable on `mite:8080`.
+  Attempted bridge networking (default + pasta) but rootless podman
+  broke EPICS CA discovery — beacons don't reach the container, so any
+  IOC bound to a non-default UDP search port (cameras, mirrors, BLEPS
+  valves on shared hosts) became invisible. Proper fix is to keep
+  `--network=host` AND bind Tomcat's `<Connector>` to
+  `address="127.0.0.1"` via a bind-mounted `server.xml`. See the plan
+  file and the TODO comment in `scripts/start-pvws.sh`.
 
 ### Camera overlays survive tab switches and saved layouts
 
