@@ -66,10 +66,10 @@ export function ChamberDiagram() {
   // Detectors
   const [, , , vD15]    = useConnection("cd-d15",  "ca://29idb:ca15:read");
   const [, , , vD16]    = useConnection("cd-d16",  "ca://29idc:ca2:read");
-  const [, , , vD14]    = useConnection("cd-d14",  "ca://29idb:ca14:read");
+  const [, , , vD14]    = useConnection("cd-d14",  "ca://29idc:ca1:read");
   const [, , , vD18]    = useConnection("cd-d18",  "ca://29idcScienta:Stats4:Total_RBV");
   const [, , , vD16s]   = useConnection("cd-d16s", "ca://29idc:ca2:read.SCAN");
-  const [, , , vD14s]   = useConnection("cd-d14s", "ca://29idb:ca14:read.SCAN");
+  const [, , , vD14s]   = useConnection("cd-d14s", "ca://29idc:ca1:read.SCAN");
 
   const p1      = fmtPressure(c1 ? toDouble(v1) : null);
   const p2      = fmtPressure(c2 ? toDouble(v2) : null);
@@ -336,7 +336,7 @@ export function ChamberDiagram() {
               style={{ width: 42, padding: "1px 2px", background: "#fff3e0", color: "#e65100", border: "1px solid #ffa726", borderRadius: 3, fontSize: 11, cursor: "pointer" }}>
               Live
             </button>
-            <button onClick={() => window.dispatchEvent(new CustomEvent("open-ui", { detail: { file: "/ui/Keithley6485.ui", macros: { P: "29idb:", CA: "ca15" }, label: "Keithley D15" } }))}
+            <button onClick={() => window.dispatchEvent(new CustomEvent("open-ui", { detail: { file: "/ui/Keithley6485.ui", macros: { P: "29idb:", CA: "ca15" }, label: "Keithley CA15" } }))}
               style={{ width: 18, height: 18, padding: 0, background: "rgb(210,220,240)", color: "rgb(0,53,132)", border: "1px solid rgb(160,180,220)", borderRadius: 3, fontSize: 11, cursor: "pointer" }}>
               ⚙
             </button>
@@ -383,7 +383,7 @@ export function ChamberDiagram() {
               style={{ width: 40, background: "rgb(162,186,221)", color: "rgb(10,37,159)", border: "1px solid rgb(120,150,190)", borderRadius: 3, fontSize: 11, padding: "1px 0", cursor: "pointer" }}>
               {SCAN_OPTS.map((opt, i) => <option key={i} value={i}>{opt}</option>)}
             </select>
-            <button onClick={() => window.dispatchEvent(new CustomEvent("open-ui", { detail: { file: "/ui/Keithley6485.ui", macros: { P: "29idc:", CA: "ca2" }, label: "Keithley D16" } }))}
+            <button onClick={() => window.dispatchEvent(new CustomEvent("open-ui", { detail: { file: "/ui/Keithley6485.ui", macros: { P: "29idc:", CA: "ca2" }, label: "Keithley CA2" } }))}
               style={{ width: 18, height: 18, padding: 0, background: "rgb(210,220,240)", color: "rgb(0,53,132)", border: "1px solid rgb(160,180,220)", borderRadius: 3, fontSize: 11, cursor: "pointer" }}>
               ⚙
             </button>
@@ -396,15 +396,15 @@ export function ChamberDiagram() {
             </button>
             <span style={{ color: "#333333" }}>TEY</span>
             <span style={{ fontFamily: "monospace", fontSize: 12, color: "rgb(10,37,159)", width: 80, textAlign: "right", cursor: "context-menu", flexShrink: 0, marginLeft: -4 }}
-              onContextMenu={e => pvCtx("29idb:ca14:read", vD14, e)}>{d14}</span>
+              onContextMenu={e => pvCtx("29idc:ca1:read", vD14, e)}>{d14}</span>
             <select
               aria-label="D14 TEY scan rate"
               value={SCAN_OPTS.indexOf(d14scan.toLowerCase())}
-              onChange={e => pvwsWriter.write("29idb:ca14:read.SCAN", parseInt(e.target.value))}
+              onChange={e => pvwsWriter.write("29idc:ca1:read.SCAN", parseInt(e.target.value))}
               style={{ width: 40, background: "rgb(162,186,221)", color: "rgb(10,37,159)", border: "1px solid rgb(120,150,190)", borderRadius: 3, fontSize: 11, padding: "1px 0", cursor: "pointer" }}>
               {SCAN_OPTS.map((opt, i) => <option key={i} value={i}>{opt}</option>)}
             </select>
-            <button onClick={() => window.dispatchEvent(new CustomEvent("open-ui", { detail: { file: "/ui/Keithley6485.ui", macros: { P: "29idb:", CA: "ca14" }, label: "Keithley D14" } }))}
+            <button onClick={() => window.dispatchEvent(new CustomEvent("open-ui", { detail: { file: "/ui/Keithley6485.ui", macros: { P: "29idc:", CA: "ca1" }, label: "Keithley CA1" } }))}
               style={{ width: 18, height: 18, padding: 0, background: "rgb(210,220,240)", color: "rgb(0,53,132)", border: "1px solid rgb(160,180,220)", borderRadius: 3, fontSize: 11, cursor: "pointer" }}>
               ⚙
             </button>
