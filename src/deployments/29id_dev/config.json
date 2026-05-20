@@ -79,20 +79,13 @@
     "29idc-ses",
     "29idc-stripchart-t",
     "29idc-motors-detail",
-    "29idd-mpa",
-    "29idd-dxp-saturn",
-    "29idd-si9700",
     "29idd-stripchart-t",
     "29idd-scan-progress",
     "29idd-quantar",
     "29ide-motors",
     "29ide-scan",
     "29ide-lightfield",
-    "29ide-apertures",
-    "bleps-sector-b",
-    "bleps-sector-c",
-    "bleps-sector-d",
-    "bleps-sector-e"
+    "29ide-apertures"
   ],
   "paths": {
     "uiDirs": {
