@@ -25,3 +25,8 @@ docs/superpowers/
 
 # Test output
 test-results/
+
+# Per-user saved layouts (gear-menu "Save layout" output). These are
+# personal/session state — not for sharing. Shared layouts go in
+# deployments/<id>/config.json under the `layouts:` array instead.
+src/deployments/*/layouts/
