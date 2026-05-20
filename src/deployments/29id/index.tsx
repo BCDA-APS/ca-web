@@ -3,7 +3,7 @@ import { toDouble } from "../../lib/epics";
 import { colors } from "../../lib/theme";
 import { UiRenderer } from "../../lib/UiRenderer";
 import { MotorGrid } from "../../widgets/MotorGrid";
-import { ChamberDiagramV2 } from "./chamber/ChamberDiagramV2";
+import { ChamberDiagram } from "./chamber/ChamberDiagram";
 import { BeamlineEnergy } from "./energy/BeamlineEnergy";
 import { BeamlineEnergyA } from "./energy/BeamlineEnergyA";
 import { BeamlineLayout } from "./bl-layout/BeamlineLayout";
@@ -25,7 +25,7 @@ void _paths;
 
 const tabPanels: DeploymentConfig["tabPanels"] = {
   1: [
-    { id: "29idc-chamber-v2", title: "ARPES Chamber",   Content: ChamberDiagramV2,  scale: "transform" },
+    { id: "29idc-chamber", title: "ARPES Chamber",   Content: ChamberDiagram,  scale: "transform" },
     { id: "29idc-motors",     title: "29ID-C Motors",   Content: ArpesMotorsContent, scale: "transform" },
     { id: "29idc-arpes",      title: "29ID-C ARPES",    Content: ArpesContent,       scale: "transform" },
     { id: "29idc-energy",     title: "Beamline Energy", Content: BeamlineEnergy,     scale: "transform" },

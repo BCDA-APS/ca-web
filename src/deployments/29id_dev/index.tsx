@@ -3,7 +3,7 @@ import { toDouble } from "../../lib/epics";
 import { colors } from "../../lib/theme";
 import { UiRenderer } from "../../lib/UiRenderer";
 import { MotorGrid } from "../../widgets/MotorGrid";
-import { ChamberDiagramV2 } from "./chamber/ChamberDiagramV2";
+import { ChamberDiagram } from "./chamber/ChamberDiagram";
 import { BeamlineEnergy } from "./energy/BeamlineEnergy";
 import { BeamlineEnergyA } from "./energy/BeamlineEnergyA";
 import { BeamlineLayout } from "./bl-layout/BeamlineLayout";
@@ -29,7 +29,7 @@ void _paths;
 
 const tabPanels: DeploymentConfig["tabPanels"] = {
   1: [
-    { id: "29idc-chamber-v2",      title: "ARPES Chamber",      Content: ChamberDiagramV2 },
+    { id: "29idc-chamber",      title: "ARPES Chamber",      Content: ChamberDiagram },
     { id: "29idc-pressure-trend",  title: "Pressure Trend",     Content: () => <StripChart id="29idc-pressure-trend" initialPvs={PRESSURE_TREND_PVS} />, defaultSize: { w: 700, h: 320 } },
     { id: "29idc-temp-trend",      title: "Temperature Trend",  Content: () => <StripChart id="29idc-temp-trend"     initialPvs={TEMP_TREND_PVS} />,     defaultSize: { w: 700, h: 320 } },
     { id: "29idc-motors",          title: "29ID-C Motors",      Content: ArpesMotorsContent },

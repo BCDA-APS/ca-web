@@ -13,7 +13,7 @@
     { "id": 5, "icon": "🛡", "label": "29ID-BLEPS", "color": "rgb(230,210,180)" }
   ],
   "panelDefaults": {
-    "29idc-chamber-v2":     { "x": 100, "y":  55 },
+    "29idc-chamber":     { "x": 100, "y":  55 },
     "29idc-motors":         { "x": 650, "y":  55 },
     "29idc-arpes":          { "x": 100, "y": 1000 },
     "29idc-energy":         { "x": 100, "y": 500 },

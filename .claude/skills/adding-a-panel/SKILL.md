@@ -56,7 +56,7 @@ Practical effect:
 3. **Pick the slug.** Kebab-case, descriptive,
    collision-free against existing `panelDefaults` keys. Examples
    from the codebase: `motors`, `lorentzian`, `area-detector`,
-   `29idc-chamber-v2`, `29id-strip-tool`. Aim for a name that
+   `29idc-chamber`, `29id-strip-tool`. Aim for a name that
    doesn't need to change if the panel's contents evolve — once
    shipped, this slug is durable.
 

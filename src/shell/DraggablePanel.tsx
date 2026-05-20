@@ -57,7 +57,7 @@ export function DraggablePanel({ id, title, defaultPos, defaultSize, scale, aspe
   }, [id, ps, transient, onState]);
 
   // Bring this panel to the front whenever someone fires show-panel for our
-  // id. Lets external buttons (e.g. ChamberDiagramV2 Gauge/Pump) raise an
+  // id. Lets external buttons (e.g. ChamberDiagram Gauge/Pump) raise an
   // already-visible panel in addition to un-hiding a hidden one.
   useEffect(() => {
     function onShow(e: Event) {

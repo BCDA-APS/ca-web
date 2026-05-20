@@ -50,7 +50,7 @@ function heaterColor(s: string | null): string {
   return "#cce0ff";
 }
 
-export function ChamberDiagramV2() {
+export function ChamberDiagram() {
   // Pressure
   const [, c1, , v1] = useConnection("cd-vs11c",  "ca://29idc:VS11C.VAL");
   const [, c2, , v2] = useConnection("cd-ip11c1", "ca://29idc:IP11C1.VAL");
@@ -114,16 +114,16 @@ export function ChamberDiagramV2() {
         {/* ── SVG drawing only ── */}
         <svg width={290} height={265} viewBox="40 0 290 265" style={{ display: "block", flexShrink: 0 }}>
           <defs>
-            <marker id="cdv2-w" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+            <marker id="cd-w" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
               <polygon points="0,0 8,3 0,6" fill="#1565c0" />
             </marker>
-            <marker id="cdv2-r" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+            <marker id="cd-r" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
               <polygon points="0,0 8,3 0,6" fill="#ef5350" />
             </marker>
-            <marker id="cdv2-g" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+            <marker id="cd-g" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
               <polygon points="0,0 8,3 0,6" fill="#66bb6a" />
             </marker>
-            <marker id="cdv2-o" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+            <marker id="cd-o" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
               <polygon points="0,0 8,3 0,6" fill="#ffa726" />
             </marker>
           </defs>
@@ -137,7 +137,7 @@ export function ChamberDiagramV2() {
           {/* ── Chi rotation arc ── */}
           <text x="70" y="118" fill="#1565c0" fontSize="11" fontFamily="sans-serif">(−)</text>
           <path d="M 95,125 A 80,80 0 0 1 148,50"
-            stroke="#1565c0" strokeWidth="1.5" fill="none" markerEnd="url(#cdv2-w)" />
+            stroke="#1565c0" strokeWidth="1.5" fill="none" markerEnd="url(#cd-w)" />
 
           {/* ── Slit dashed line ── */}
           <line x1="50" y1={sy} x2="295" y2={sy}
@@ -155,19 +155,19 @@ export function ChamberDiagramV2() {
 
           {/* ── (−)y axis — right, green ── */}
           <line x1={sx + 11} y1={sy} x2={sx + 78} y2={sy}
-            stroke="#66bb6a" strokeWidth="2" markerEnd="url(#cdv2-g)" />
+            stroke="#66bb6a" strokeWidth="2" markerEnd="url(#cd-g)" />
           <text x={sx + 36} y={sy - 8} fill="#66bb6a" fontSize="11"
             fontFamily="sans-serif" textAnchor="middle">(−)y</text>
 
           {/* ── x axis — down, red ── */}
           <line x1={sx} y1={sy + 7} x2={sx} y2={sy + 78}
-            stroke="#ef5350" strokeWidth="2" markerEnd="url(#cdv2-r)" />
+            stroke="#ef5350" strokeWidth="2" markerEnd="url(#cd-r)" />
           <text x={sx - 9} y={sy + 40} fill="#ef5350" fontSize="12"
             fontFamily="sans-serif" fontWeight="600" textAnchor="end">x</text>
 
           {/* ── X-rays — orange, 55° from x-axis ── */}
           <line x1="303" y1="216" x2={sx + 16} y2={sy + 13}
-            stroke="#ffa726" strokeWidth="2" markerEnd="url(#cdv2-o)" />
+            stroke="#ffa726" strokeWidth="2" markerEnd="url(#cd-o)" />
           <text x="298" y="231" fill="#ffa726" fontSize="11"
             fontFamily="sans-serif" textAnchor="end">x-rays</text>
 
