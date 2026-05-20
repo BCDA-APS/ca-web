@@ -10,6 +10,7 @@ import { Sidebar } from "./shell/Sidebar";
 import { SettingsPanel, type SavedOverlay } from "./shell/SettingsPanel";
 import type { SavedCameraOverlay } from "./lib/deployment";
 import { FilePickerDialog, useUiFiles } from "./shell/FilePickerDialog";
+import { PanelPickerDialog } from "./shell/PanelPickerDialog";
 import { PvContextMenu, type PvContextEvent } from "./shell/PvContextMenu";
 import apsLogoUrl from "./assets/aps-logo.png";
 
@@ -20,6 +21,7 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
   const counter = useRef(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [panelPickerOpen, setPanelPickerOpen] = useState(false);
   const [layoutBump, setLayoutBump] = useState(0);
   const [activeTab, setActiveTab] = useState(config.tabs[0].id);
   const activeTabColor = config.tabs.find(t => t.id === activeTab)?.color ?? "#0a1520";
@@ -27,6 +29,13 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
     const saved = layoutGet<string[]>("panel-hidden");
     return saved ? new Set(saved) : new Set(config.defaultHiddenPanels ?? []);
   });
+  // Per-session "borrowed panel" map: panelId → set of tabIds where
+  // the user has opened it via "Open react…" (in addition to its home
+  // tab). Each entry adds the panel on the target tab without touching
+  // its native visibility on the home tab. Closing a borrowed instance
+  // (X button) removes only that tab from the set. Not persisted across
+  // reload.
+  const [borrowedPanels, setBorrowedPanels] = useState<Map<string, Set<number>>>(new Map());
   const activeTabRef = useRef(activeTab);
   activeTabRef.current = activeTab;
   const uiFiles = useUiFiles();
@@ -40,7 +49,31 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
   useEffect(() => {
     function handler(e: Event) {
       const { id } = (e as CustomEvent<{ id: string }>).detail;
-      setHiddenPanels(prev => { const next = new Set(prev); next.delete(id); return next; });
+      // Find which tab the panel is declared on (its home tab).
+      let homeTabId: number | null = null;
+      for (const tab of config.tabs) {
+        if ((config.tabPanels[tab.id] ?? []).some(p => p.id === id)) {
+          homeTabId = tab.id;
+          break;
+        }
+      }
+      // Unknown panel id (maybe a future feature, or an @-suffix already):
+      // fall through to plain unhide.
+      const currentTab = activeTabRef.current;
+      if (homeTabId === null || homeTabId === currentTab) {
+        setHiddenPanels(prev => { const next = new Set(prev); next.delete(id); return next; });
+        return;
+      }
+      // Panel lives on a different tab. Borrow it onto the current tab
+      // so the user sees it appear where they are (same logic as the
+      // "Open react…" picker).
+      setBorrowedPanels(prev => {
+        const next = new Map(prev);
+        const tabs = new Set(next.get(id) ?? []);
+        tabs.add(currentTab);
+        next.set(id, tabs);
+        return next;
+      });
     }
     window.addEventListener("show-panel", handler);
     return () => window.removeEventListener("show-panel", handler);
@@ -230,7 +263,13 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
             onClick={() => setPickerOpen(true)}
             style={{ background: "none", border: "1px solid transparent", borderRadius: 4, color: "#ffffff", cursor: "pointer", fontSize: 13, padding: "3px 10px" }}
           >
-            Open…
+            Open ui…
+          </button>
+          <button
+            onClick={() => setPanelPickerOpen(true)}
+            style={{ background: "none", border: "1px solid transparent", borderRadius: 4, color: "#ffffff", cursor: "pointer", fontSize: 13, padding: "3px 10px" }}
+          >
+            Open react…
           </button>
         <div style={{ position: "relative" }}>
           <button
@@ -264,22 +303,80 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
         />
       )}
 
-      {(config.tabPanels[activeTab] ?? [])
-        .filter(panel => !hiddenPanels.has(panel.id))
-        .map(panel => (
-          <DraggablePanel
-            key={`${panel.id}-${layoutBump}`}
-            id={panel.id}
-            title={panel.title}
-            defaultPos={config.panelDefaults[panel.id]}
-            defaultSize={panel.defaultSize}
-            scale={panel.scale}
-            aspectLock={panel.aspectLock}
-            onClose={() => setHiddenPanels(prev => new Set([...prev, panel.id]))}
-          >
-            <panel.Content />
-          </DraggablePanel>
-        ))}
+      {panelPickerOpen && (
+        <PanelPickerDialog
+          config={config}
+          onClose={() => setPanelPickerOpen(false)}
+          onOpen={(id, homeTabId) => {
+            if (activeTab === homeTabId) {
+              // Native: just unhide on the home tab.
+              setHiddenPanels(prev => {
+                const next = new Set(prev);
+                next.delete(id);
+                return next;
+              });
+            } else {
+              // Borrow onto the current tab. Home-tab state untouched.
+              setBorrowedPanels(prev => {
+                const next = new Map(prev);
+                const tabs = new Set(next.get(id) ?? []);
+                tabs.add(activeTab);
+                next.set(id, tabs);
+                return next;
+              });
+            }
+            // Bring to front if already visible.
+            window.dispatchEvent(new CustomEvent("show-panel", { detail: { id } }));
+          }}
+        />
+      )}
+
+      {/* Two render sources for the active tab:
+          1. Native panels (declared in config.tabPanels[activeTab]) that
+             aren't in `hiddenPanels`.
+          2. Borrowed panels — declared in some OTHER tab's tabPanels but
+             added to `borrowedPanels[id]` for the active tab via the
+             "Open react…" picker.
+          A panel can render in both modes simultaneously on different
+          tabs; the home-tab visibility and borrowed-tab visibility are
+          independent. */}
+      {[
+        ...(config.tabPanels[activeTab] ?? [])
+          .filter(panel => !hiddenPanels.has(panel.id))
+          .map(panel => ({ panel, borrowed: false as const })),
+        ...config.tabs.flatMap(tab =>
+          tab.id === activeTab ? [] :
+          (config.tabPanels[tab.id] ?? [])
+            .filter(panel => borrowedPanels.get(panel.id)?.has(activeTab))
+            .map(panel => ({ panel, borrowed: true as const }))
+        ),
+      ].map(({ panel, borrowed }) => (
+        <DraggablePanel
+          key={`${panel.id}-${borrowed ? `borrowed-${activeTab}` : "native"}-${layoutBump}`}
+          id={borrowed ? `${panel.id}@${activeTab}` : panel.id}
+          title={panel.title}
+          defaultPos={config.panelDefaults[panel.id]}
+          defaultSize={panel.defaultSize}
+          scale={panel.scale}
+          aspectLock={panel.aspectLock}
+          onClose={() => {
+            if (borrowed) {
+              setBorrowedPanels(prev => {
+                const next = new Map(prev);
+                const tabs = new Set(next.get(panel.id));
+                tabs.delete(activeTab);
+                if (tabs.size === 0) next.delete(panel.id);
+                else                 next.set(panel.id, tabs);
+                return next;
+              });
+            } else {
+              setHiddenPanels(prev => new Set([...prev, panel.id]));
+            }
+          }}
+        >
+          <panel.Content />
+        </DraggablePanel>
+      ))}
 
       {pvContext && <PvContextMenu ctx={pvContext} onClose={() => setPvContext(null)} />}
     </div>
