@@ -24,11 +24,10 @@ void _paths;
 const tabPanels: DeploymentConfig["tabPanels"] = {
   1: [
     { id: "29idc-chamber", title: "ARPES Chamber",   Content: ChamberDiagram,  scale: "transform" },
-    { id: "29idc-motors",     title: "29ID-C Motors",   Content: ArpesMotorsContent, scale: "transform" },
-    { id: "29idc-arpes",      title: "29ID-C ARPES",    Content: ArpesContent,       scale: "transform" },
+    { id: "29idc-motors",     title: "ARPES Motors",   Content: ArpesMotorsContent, scale: "transform" },
     { id: "29idc-energy",     title: "Beamline Energy", Content: BeamlineEnergy,     scale: "transform" },
-    { id: "29idc-pressure-trend", title: "Pressure Trend",    Content: () => <StripChart id="29idc-pressure-trend" initialPvs={ARPES_PRESSURE_TREND_PVS} />, defaultSize: { w: 700, h: 320 } },
-    { id: "29idc-temp-trend",     title: "Temperature Trend", Content: () => <StripChart id="29idc-temp-trend"     initialPvs={ARPES_TEMP_TREND_PVS} />,     defaultSize: { w: 700, h: 320 } },
+    { id: "29idc-pressure-trend", title: "ARPES Pressure Trend",    Content: () => <StripChart id="29idc-pressure-trend" initialPvs={ARPES_PRESSURE_TREND_PVS} />, defaultSize: { w: 700, h: 320 } },
+    { id: "29idc-temp-trend",     title: "ARPES Temperature Trend", Content: () => <StripChart id="29idc-temp-trend"     initialPvs={ARPES_TEMP_TREND_PVS} />,     defaultSize: { w: 700, h: 320 } },
   ],
   2: [{ id: "29idd-kappa", title: "29ID-D Kappa", Content: KappaContent, scale: "transform" }],
   3: [
@@ -134,7 +133,7 @@ function ArpesMotorsContent() {
         </button>
         {/* Gear — related display */}
         <button
-          onClick={() => window.dispatchEvent(new CustomEvent("open-ui", { detail: { file: "/ui/29idc_motors_more.ui", macros: {}, label: "29ID-C Motors" } }))}
+          onClick={() => window.dispatchEvent(new CustomEvent("open-ui", { detail: { file: "/ui/29idc_motors_more.ui", macros: {}, label: "ARPES Motors" } }))}
           style={{
             display: "flex", alignItems: "center", justifyContent: "center",
             width: 28, height: 28,
@@ -151,10 +150,6 @@ function ArpesMotorsContent() {
       </div>
     </div>
   );
-}
-
-function ArpesContent() {
-  return <UiRenderer file="/ui/29id/29idc_ARPES.ui" macros={{}} />;
 }
 
 function KappaContent() {

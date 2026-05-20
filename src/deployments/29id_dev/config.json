@@ -15,7 +15,6 @@
   "panelDefaults": {
     "29idc-chamber":     { "x": 100, "y":  55 },
     "29idc-motors":         { "x": 650, "y":  55 },
-    "29idc-arpes":          { "x": 100, "y": 1000 },
     "29idc-energy":         { "x": 100, "y": 500 },
     "29idc-cam-live":        { "x": 650, "y": 500 },
     "29idc-ses":             { "x": 650, "y": 800 },
