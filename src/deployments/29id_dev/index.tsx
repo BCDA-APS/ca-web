@@ -7,8 +7,6 @@ import { ChamberDiagram } from "./chamber/ChamberDiagram";
 import { BeamlineEnergy } from "./energy/BeamlineEnergy";
 import { BeamlineEnergyA } from "./energy/BeamlineEnergyA";
 import { BeamlineLayout } from "./bl-layout/BeamlineLayout";
-import { BLLayoutD } from "./bl-layout/BLLayoutD";
-import { BLLayoutE } from "./bl-layout/BLLayoutE";
 import { Mirrors } from "./optics/Mirrors";
 import { Slits } from "./optics/Slits";
 import { Diagon } from "./optics/Diagon";
@@ -30,8 +28,8 @@ void _paths;
 const tabPanels: DeploymentConfig["tabPanels"] = {
   1: [
     { id: "29idc-chamber",      title: "ARPES Chamber",      Content: ChamberDiagram },
-    { id: "29idc-pressure-trend",  title: "Pressure Trend",     Content: () => <StripChart id="29idc-pressure-trend" initialPvs={PRESSURE_TREND_PVS} />, defaultSize: { w: 700, h: 320 } },
-    { id: "29idc-temp-trend",      title: "Temperature Trend",  Content: () => <StripChart id="29idc-temp-trend"     initialPvs={TEMP_TREND_PVS} />,     defaultSize: { w: 700, h: 320 } },
+    { id: "29idc-pressure-trend",  title: "Pressure Trend",     Content: () => <StripChart id="29idc-pressure-trend" initialPvs={ARPES_PRESSURE_TREND_PVS} />, defaultSize: { w: 700, h: 320 } },
+    { id: "29idc-temp-trend",      title: "Temperature Trend",  Content: () => <StripChart id="29idc-temp-trend"     initialPvs={ARPES_TEMP_TREND_PVS} />,     defaultSize: { w: 700, h: 320 } },
     { id: "29idc-motors",          title: "29ID-C Motors",      Content: ArpesMotorsContent },
     { id: "29idc-arpes",           title: "29ID-C ARPES",       Content: ArpesContent },
     { id: "29idc-energy",          title: "Beamline Energy",    Content: BeamlineEnergy },
@@ -53,12 +51,10 @@ const tabPanels: DeploymentConfig["tabPanels"] = {
     { id: "29id-beamline-layout",  title: "Beamline Layout",    Content: BeamlineLayout },
     { id: "29id-mirrors",          title: "Mirrors",            Content: Mirrors },
     { id: "29id-energy-a",         title: "Beamline Energy",    Content: BeamlineEnergyA },
-    { id: "29id-bllayout-d",       title: "D Layout",           Content: BLLayoutD },
-    { id: "29id-bllayout-e",       title: "E Layout",           Content: BLLayoutE },
     { id: "29id-slits",            title: "Slits",              Content: Slits },
     { id: "29id-diagon",           title: "DiaGon",             Content: Diagon },
     { id: "29id-scan-records",     title: "Scan Records",       Content: ScanRecords },
-    { id: "29id-strip-tool",       title: "StripTool",          Content: () => <StripChart id="29id-strip-tool" initialPvs={CA_PVS} />, defaultSize: { w: 700, h: 320 } },
+    { id: "29id-strip-tool",       title: "StripTool",          Content: () => <StripChart id="29id-strip-tool" initialPvs={AHUTCH_CA_PVS} />, defaultSize: { w: 700, h: 320 } },
     { id: "29id-bl-diag",          title: "Diagnostics",        Content: BlDiagContent },
     { id: "29id-apertures",        title: "Apertures",          Content: AperturesContent },
     { id: "29id-scan-progress",    title: "Scan Progress",      Content: ScanProgressContent },
@@ -84,7 +80,7 @@ const tabPanels: DeploymentConfig["tabPanels"] = {
 
 export const config: DeploymentConfig = { ...deploymentFields, tabPanels };
 
-const CA_PVS: TraceConfig[] = [
+const AHUTCH_CA_PVS: TraceConfig[] = [
   { pv: "29idb:ca1:read",  label: "CA1"  },
   { pv: "29idb:ca2:read",  label: "CA2"  },
   { pv: "29idb:ca3:read",  label: "CA3"  },
@@ -98,12 +94,12 @@ const CA_PVS: TraceConfig[] = [
   { pv: "29idb:ca15:read", label: "CA15", enabled: true },
 ];
 
-const PRESSURE_TREND_PVS: TraceConfig[] = [
+const ARPES_PRESSURE_TREND_PVS: TraceConfig[] = [
   { pv: "29idc:VS11C.VAL",  label: "Gauge", enabled: true },
   { pv: "29idc:IP11C1.VAL", label: "Pump",  enabled: true },
 ];
 
-const TEMP_TREND_PVS: TraceConfig[] = [
+const ARPES_TEMP_TREND_PVS: TraceConfig[] = [
   { pv: "29idARPES:LS335:TC1:INA", label: "Sample",    enabled: true },
   { pv: "29idARPES:LS335:TC1:INB", label: "Cold fngr", enabled: true },
 ];
