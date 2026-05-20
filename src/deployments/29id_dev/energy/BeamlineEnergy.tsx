@@ -1,6 +1,6 @@
-import { MiniSlitARPES } from "../layout/BeamlineLayout";
-import { BLLayoutC } from "../layout/BLLayoutC";
-import { BLLayoutAB } from "../layout/BLLayoutAB";
+import { MiniSlitARPES } from "../bl-layout/BeamlineLayout";
+import { BLLayoutC } from "../bl-layout/BLLayoutC";
+import { BLLayoutAB } from "../bl-layout/BLLayoutAB";
 import { MonoSection, IdSection } from "./EnergyShared";
 
 export function BeamlineEnergy() {
