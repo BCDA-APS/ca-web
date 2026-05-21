@@ -51,6 +51,15 @@ function heaterColor(s: string | null): string {
 }
 
 export function ChamberDiagram() {
+  // "More" popup menu state — small dropdown anchored on the More button.
+  const [moreOpen, setMoreOpen] = useState(false);
+  useEffect(() => {
+    if (!moreOpen) return;
+    function close() { setMoreOpen(false); }
+    window.addEventListener("mousedown", close);
+    return () => window.removeEventListener("mousedown", close);
+  }, [moreOpen]);
+
   // Pressure
   const [, c1, , v1] = useConnection("cd-vs11c",  "ca://29idc:VS11C.VAL");
   const [, c2, , v2] = useConnection("cd-ip11c1", "ca://29idc:IP11C1.VAL");
@@ -112,7 +121,8 @@ export function ChamberDiagram() {
       {/* ── Top row: drawing + right panels ── */}
       <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
         {/* ── SVG drawing only ── */}
-        <svg width={290} height={265} viewBox="40 0 290 265" style={{ display: "block", flexShrink: 0 }}>
+        <div style={{ position: "relative", flexShrink: 0 }}>
+        <svg width={290} height={265} viewBox="40 0 290 265" style={{ display: "block" }}>
           <defs>
             <marker id="cd-w" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
               <polygon points="0,0 8,3 0,6" fill="#1565c0" />
@@ -177,15 +187,17 @@ export function ChamberDiagram() {
           <text x="288" y="129" textAnchor="middle" fill="#a5d6a7" fontSize="13"
             fontWeight="700" fontFamily="sans-serif">LEED</text>
 
-          {/* ── "more" button — opens the ARPES StripTool panel ── */}
+          {/* ── "More" button + popup menu ── */}
           <g
             cursor="pointer"
-            onClick={() => window.dispatchEvent(new CustomEvent("show-panel", { detail: { id: "29idc-strip-tool" } }))}
+            style={{ filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.35))" }}
+            onMouseDown={e => { e.stopPropagation(); setMoreOpen(o => !o); }}
           >
-            <rect x="44" y="240" width="42" height="20" rx="3"
+            <rect x="40" y="240" width="42" height="20" rx="3"
               fill="rgb(210,220,240)" stroke="rgb(160,180,220)" />
-            <text x="65" y="254" textAnchor="middle"
-              fill="rgb(0,53,132)" fontSize="11" fontFamily="sans-serif">
+            <text x="61" y="254" textAnchor="middle"
+              fill="rgb(0,53,132)" fontSize="11" fontFamily="sans-serif"
+              style={{ pointerEvents: "none" }}>
               More
             </text>
           </g>
@@ -199,6 +211,46 @@ export function ChamberDiagram() {
           <text x={sx} y="248" textAnchor="middle" fill="#ffffff" fontSize="10"
             fontFamily="sans-serif">th = 0</text>
         </svg>
+        {moreOpen && (
+          <div onMouseDown={e => e.stopPropagation()}
+            style={{
+              position: "absolute",
+              top: 262,   // 2px below the More button (SVG y 240-260 = CSS 240-260 with 1:1 mapping)
+              left: 0,    // aligned with More's left edge (SVG x=40 = CSS 0)
+              zIndex: 100,
+              minWidth: 130,
+              background: "#ffffff",
+              border: "1px solid rgb(160,180,220)",
+              borderRadius: 3,
+              boxShadow: "0 2px 6px rgba(0,0,0,0.25)",
+              fontFamily: "sans-serif", fontSize: 11,
+              overflow: "hidden",
+            }}>
+            {[
+              { label: "StripTool", id: "29idc-strip-tool"  },
+              { label: "ScanView",  id: "29idc-scanview-all" },
+              // TEMPORARY: remove once 29idARPES:scan1 is being actively scanned.
+              { label: "ScanView (29idc test)", id: "29idc-scanview-test" },
+            ].map(item => (
+              <button key={item.id}
+                onClick={() => {
+                  setMoreOpen(false);
+                  window.dispatchEvent(new CustomEvent("show-panel", { detail: { id: item.id } }));
+                }}
+                style={{
+                  display: "block", width: "100%", textAlign: "left",
+                  padding: "5px 10px", background: "transparent",
+                  border: "none", color: "rgb(0,53,132)", cursor: "pointer",
+                  fontSize: 11,
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgb(225,235,250)"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}>
+                {item.label}
+              </button>
+            ))}
+          </div>
+        )}
+        </div>
 
         {/* ── Vertical divider ── */}
         <div style={{ width: 1, background: "#b0b0b8", alignSelf: "stretch", flexShrink: 0 }} />
@@ -337,7 +389,7 @@ export function ChamberDiagram() {
         <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
           {/* D15 Diode */}
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <button onClick={() => window.dispatchEvent(new CustomEvent("open-ui", { detail: { file: "/ui/29id_scanDet.ui", macros: { P: "29idARPES:", S: "scan1", N: "15" }, label: "D15 Diode" } }))}
+            <button onClick={() => window.dispatchEvent(new CustomEvent("show-panel", { detail: { id: "29idc-scanview-d15" } }))}
               style={{ padding: "1px 2px", background: "rgb(210,220,240)", color: "rgb(0,53,132)", border: "1px solid rgb(160,180,220)", borderRadius: 3, fontSize: 11, cursor: "pointer" }}>
               [D15]
             </button>
@@ -356,7 +408,7 @@ export function ChamberDiagram() {
           </div>
           {/* D18 EA */}
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <button onClick={() => window.dispatchEvent(new CustomEvent("open-ui", { detail: { file: "/ui/29id_scanDet.ui", macros: { P: "29idARPES:", S: "scan1", N: "18" }, label: "D18 EA" } }))}
+            <button onClick={() => window.dispatchEvent(new CustomEvent("show-panel", { detail: { id: "29idc-scanview-d18" } }))}
               style={{ padding: "1px 2px", background: "rgb(210,220,240)", color: "rgb(0,53,132)", border: "1px solid rgb(160,180,220)", borderRadius: 3, fontSize: 11, cursor: "pointer" }}>
               [D18]
             </button>
@@ -382,7 +434,7 @@ export function ChamberDiagram() {
         <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
           {/* D16 TFY */}
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <button onClick={() => window.dispatchEvent(new CustomEvent("open-ui", { detail: { file: "/ui/29id_scanDet.ui", macros: { P: "29idARPES:", S: "scan1", N: "16" }, label: "D16 TFY" } }))}
+            <button onClick={() => window.dispatchEvent(new CustomEvent("show-panel", { detail: { id: "29idc-scanview-d16" } }))}
               style={{ padding: "1px 2px", background: "rgb(210,220,240)", color: "rgb(0,53,132)", border: "1px solid rgb(160,180,220)", borderRadius: 3, fontSize: 11, cursor: "pointer" }}>
               [D16]
             </button>
@@ -403,7 +455,7 @@ export function ChamberDiagram() {
           </div>
           {/* D14 TEY */}
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <button onClick={() => window.dispatchEvent(new CustomEvent("open-ui", { detail: { file: "/ui/29id_scanDet.ui", macros: { P: "29idARPES:", S: "scan1", N: "14" }, label: "D14 TEY" } }))}
+            <button onClick={() => window.dispatchEvent(new CustomEvent("show-panel", { detail: { id: "29idc-scanview-d14" } }))}
               style={{ padding: "1px 2px", background: "rgb(210,220,240)", color: "rgb(0,53,132)", border: "1px solid rgb(160,180,220)", borderRadius: 3, fontSize: 11, cursor: "pointer" }}>
               [D14]
             </button>
