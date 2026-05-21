@@ -13,7 +13,7 @@ import {
 
 export type { SavedLayout, SavedOverlay } from "../lib/deployment";
 
-export function SettingsPanel({ panelDefaults, hiddenPanels, overlays, sharedLayouts, onClose, onBumpLayout, onResetHidden, onRestoreHidden, onRestoreOverlays, onRestoreCameras }: {
+export function SettingsPanel({ panelDefaults, hiddenPanels, overlays, sharedLayouts, onClose, onBumpLayout, onResetHidden, onRestoreHidden, onRestoreOverlays, onRestoreCameras, onSwitchDeployment }: {
   panelDefaults: Record<string, { x: number; y: number }>;
   hiddenPanels: Set<string>;
   overlays: AppOverlay[];
@@ -24,6 +24,7 @@ export function SettingsPanel({ panelDefaults, hiddenPanels, overlays, sharedLay
   onRestoreHidden: (hidden: string[]) => void;
   onRestoreOverlays: (ovs: SavedOverlay[]) => void;
   onRestoreCameras: (cams: SavedCameraOverlay[]) => void;
+  onSwitchDeployment: () => void;
 }) {
   const panelIds = Object.keys(panelDefaults);
   const [naming, setNaming] = useState(false);
@@ -202,6 +203,13 @@ export function SettingsPanel({ panelDefaults, hiddenPanels, overlays, sharedLay
           </div>
         ))}
       </>}
+
+      <div style={{ margin: "6px 14px", borderTop: "1px solid #1e3a5f" }} />
+      <div style={sectionLabel}>Deployment</div>
+      <button style={menuItemStyle} onMouseEnter={hoverOn} onMouseLeave={hoverOff}
+        onClick={e => { e.stopPropagation(); onSwitchDeployment(); }}>
+        Switch deployment…
+      </button>
     </div>
   );
 }

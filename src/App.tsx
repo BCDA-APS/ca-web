@@ -248,18 +248,6 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
             </button>
           ))}
           <button
-            onClick={() => {
-              clearActive();
-              const url = new URL(window.location.href);
-              url.searchParams.delete("deployment");
-              window.location.assign(url.toString());
-            }}
-            title="Return to deployment picker"
-            style={{ background: "none", border: "1px solid transparent", borderRadius: 4, color: "#ffffff", cursor: "pointer", fontSize: 13, padding: "3px 10px" }}
-          >
-            Switch deployment…
-          </button>
-          <button
             onClick={() => setPickerOpen(true)}
             style={{ background: "none", border: "1px solid transparent", borderRadius: 4, color: "#ffffff", cursor: "pointer", fontSize: 13, padding: "3px 10px" }}
           >
@@ -290,6 +278,12 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
             onRestoreHidden={hidden => setHiddenPanels(new Set(hidden))}
             onRestoreOverlays={restoreOverlays}
             onRestoreCameras={restoreCameras}
+            onSwitchDeployment={() => {
+              clearActive();
+              const url = new URL(window.location.href);
+              url.searchParams.delete("deployment");
+              window.location.assign(url.toString());
+            }}
           />, document.body)}
         </div>
         </div>
