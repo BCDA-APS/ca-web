@@ -7,6 +7,12 @@ interface PanelState { x: number; y: number; w?: number; h?: number; locked: boo
 
 const MIN_W = 200;
 const MIN_H = 120;
+// Don't let the title bar get hidden behind the top banner (≈40px tall +
+// bit of padding). With wsDown there's also a 32px error bar above the
+// banner — this clamp ignores that edge case (rare) but keeps users from
+// stranding a panel where they can't grab the title to move it back.
+const MIN_Y = 44;
+const MIN_X = 0;
 
 export function DraggablePanel({ id, title, defaultPos, defaultSize, scale, aspectLock, transient, onState, onClose, children }: {
   id: string;
@@ -80,8 +86,8 @@ export function DraggablePanel({ id, title, defaultPos, defaultSize, scale, aspe
       if (!dragRef.current) return;
       setPs(p => ({
         ...p,
-        x: dragRef.current!.ox + ev.clientX - dragRef.current!.sx,
-        y: dragRef.current!.oy + ev.clientY - dragRef.current!.sy,
+        x: Math.max(MIN_X, dragRef.current!.ox + ev.clientX - dragRef.current!.sx),
+        y: Math.max(MIN_Y, dragRef.current!.oy + ev.clientY - dragRef.current!.sy),
       }));
     }
     function onUp() {

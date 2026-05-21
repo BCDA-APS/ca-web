@@ -51,8 +51,10 @@ export function OverlayPanel({ ov, onClose }: { ov: AppOverlay; onClose: () => v
     dragRef.current = { startX: e.clientX, startY: e.clientY, origX: pos.x, origY: pos.y };
     function onMove(ev: MouseEvent) {
       if (!dragRef.current) return;
-      setPos({ x: dragRef.current.origX + ev.clientX - dragRef.current.startX,
-               y: dragRef.current.origY + ev.clientY - dragRef.current.startY });
+      // Clamp so the title bar can't slide under the top banner (≈44px) or
+      // off the left edge — otherwise the user can't grab it to drag back.
+      setPos({ x: Math.max(0,  dragRef.current.origX + ev.clientX - dragRef.current.startX),
+               y: Math.max(44, dragRef.current.origY + ev.clientY - dragRef.current.startY) });
     }
     function onUp() { dragRef.current = null; window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); }
     window.addEventListener("mousemove", onMove);
