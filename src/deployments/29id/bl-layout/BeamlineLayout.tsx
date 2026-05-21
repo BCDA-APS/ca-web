@@ -29,7 +29,7 @@ const CAMERAS_29ID: Array<{ label: string; prefix: string }> = [
 
 function openCamera() {
   window.dispatchEvent(new CustomEvent("open-camera", { detail: {
-    label: "Camera",
+    label: "Cameras",
     knownCameras: CAMERAS_29ID,
   }}));
 }
@@ -58,13 +58,13 @@ function MoreMenu() {
     { label: "Mirrors",     action: () => { showPanel("29id-mirrors"); setOpen(false); } },
     { label: "Slits",       action: () => { showPanel("29id-slits");   setOpen(false); } },
     { label: "DiaGon",       action: () => { showPanel("29id-diagon");       setOpen(false); } },
-    { label: "Scan Records", action: () => { showPanel("29id-scan-records"); setOpen(false); } },
     { label: "Diagnostics",  action: () => {
       window.dispatchEvent(new CustomEvent("open-ui", {
         detail: { file: "/ui/29id/29id_Diagnostics.ui", macros: {}, label: "Diagnostics" },
       }));
       setOpen(false);
     }},
+    { label: "Scan Records", action: () => { showPanel("29id-scan-records"); setOpen(false); } },
   ];
 
   return (
@@ -205,7 +205,7 @@ export function BeamlineLayout() {
     <div style={{ display: "flex", flexDirection: "column", gap: 0, position: "relative" }}>
       {/* Shortcut buttons — top right corner */}
       <div style={{ position: "absolute", top: 0, right: 0, display: "flex", alignItems: "center", gap: 4 }}>
-        <button style={shortcutBtn} onClick={openCamera}>Camera</button>
+        <button style={shortcutBtn} onClick={openCamera}>Cameras</button>
         <button style={shortcutBtn} onClick={() => showPanel("29id-strip-tool")}>StripTool</button>
         <MoreMenu />
       </div>

@@ -37,13 +37,13 @@ function MoreMenu() {
     { label: "Mirrors",     action: () => { showPanel("29id-mirrors"); setOpen(false); } },
     { label: "Slits",       action: () => { showPanel("29id-slits");   setOpen(false); } },
     { label: "DiaGon",       action: () => { showPanel("29id-diagon");       setOpen(false); } },
-    { label: "ScanRecords", action: () => { showPanel("29id-scan-records"); setOpen(false); } },
     { label: "Diagnostics",  action: () => {
       window.dispatchEvent(new CustomEvent("open-ui", {
         detail: { file: "/ui/29id/29id_Diagnostics.ui", macros: {}, label: "Diagnostics" },
       }));
       setOpen(false);
     }},
+    { label: "Scan Records", action: () => { showPanel("29id-scan-records"); setOpen(false); } },
   ];
 
   return (

@@ -49,6 +49,13 @@ For 29ID-family deployments (`29id`, `29id_dev`):
   Example: `29idc-motors`. IDs are stable storage keys; once shipped,
   rename only if absolutely necessary (saved layouts reference them
   and must be migrated in lockstep).
+  - **Multiple IOCs in the same hutch**: when more than one IOC in a
+    hutch backs panels of the same kind (hutch C has both
+    `29idARPES:` and `29idc:` scan records), the IOC whose prefix
+    matches the hutch name keeps the bare id (`29idc-scanview` =
+    the `29idc:` IOC's scanview), and the other IOC gets an
+    explicit tag inserted between the hutch and the panel kind
+    (`29idc-arpes-scanview-*` = the `29idARPES:` IOC's scanview).
 - **Panel title** (shown in title bar + the "Open react…" picker):
   use the subsystem name, not the hutch letter — "ARPES Motors",
   "Kappa Motors", "Octupole Motors". Lets users find a panel by what

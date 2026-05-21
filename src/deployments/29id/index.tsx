@@ -30,16 +30,12 @@ const tabPanels: DeploymentConfig["tabPanels"] = {
     { id: "29idc-pressure-trend", title: "ARPES Pressure Trend",    Content: () => <StripChart id="29idc-pressure-trend" initialPvs={ARPES_PRESSURE_TREND_PVS} />, defaultSize: { w: 700, h: 320 } },
     { id: "29idc-temp-trend",     title: "ARPES Temperature Trend", Content: () => <StripChart id="29idc-temp-trend"     initialPvs={ARPES_TEMP_TREND_PVS} />,     defaultSize: { w: 700, h: 320 } },
     { id: "29idc-strip-tool",     title: "ARPES StripTool",         Content: () => <StripChart id="29idc-strip-tool"     initialPvs={ARPES_STRIP_TOOL_PVS} />,     defaultSize: { w: 700, h: 320 } },
-    { id: "29idc-scanview-d14",    title: "Scan1 D14",               Content: () => <ScanViewChart id="29idc-scanview-d14" recordPv="29idARPES:scan1" defaultDetectors={[14]} />, defaultSize: { w: 700, h: 400 } },
-    { id: "29idc-scanview-d15",    title: "Scan1 D15",               Content: () => <ScanViewChart id="29idc-scanview-d15" recordPv="29idARPES:scan1" defaultDetectors={[15]} />, defaultSize: { w: 700, h: 400 } },
-    { id: "29idc-scanview-d16",    title: "Scan1 D16",               Content: () => <ScanViewChart id="29idc-scanview-d16" recordPv="29idARPES:scan1" defaultDetectors={[16]} />, defaultSize: { w: 700, h: 400 } },
-    { id: "29idc-scanview-d18",    title: "Scan1 D18",               Content: () => <ScanViewChart id="29idc-scanview-d18" recordPv="29idARPES:scan1" defaultDetectors={[18]} />, defaultSize: { w: 700, h: 400 } },
-    { id: "29idc-scanview-all",    title: "ARPES ScanView",          Content: () => <ScanViewChart id="29idc-scanview-all" recordPv="29idARPES:scan1" defaultDetectors={[14, 15, 16, 18]} />, defaultSize: { w: 700, h: 400 } },
-    // TEMPORARY: ScanView pointed at the 29idc IOC's scan record for
-    // testing while 29idARPES:scan1 isn't actively scanning. Remove this
-    // (and the More-menu entry in chamber/ChamberDiagram.tsx) once ARPES
-    // scans are running.
-    { id: "29idc-scanview-test",   title: "ScanView (29idc test)",   Content: () => <ScanViewChart id="29idc-scanview-test" recordPv="29idc:scan1" defaultDetectors={[]} />, defaultSize: { w: 700, h: 400 } },
+    { id: "29idc-arpes-scanview-d14", title: "ARPES ScanView D14",      Content: () => <ScanViewChart id="29idc-arpes-scanview-d14" recordPv="29idARPES:scan1" defaultDetectors={[14]} />, defaultSize: { w: 700, h: 400 } },
+    { id: "29idc-arpes-scanview-d15", title: "ARPES ScanView D15",      Content: () => <ScanViewChart id="29idc-arpes-scanview-d15" recordPv="29idARPES:scan1" defaultDetectors={[15]} />, defaultSize: { w: 700, h: 400 } },
+    { id: "29idc-arpes-scanview-d16", title: "ARPES ScanView D16",      Content: () => <ScanViewChart id="29idc-arpes-scanview-d16" recordPv="29idARPES:scan1" defaultDetectors={[16]} />, defaultSize: { w: 700, h: 400 } },
+    { id: "29idc-arpes-scanview-d18", title: "ARPES ScanView D18",      Content: () => <ScanViewChart id="29idc-arpes-scanview-d18" recordPv="29idARPES:scan1" defaultDetectors={[18]} />, defaultSize: { w: 700, h: 400 } },
+    { id: "29idc-arpes-scanview-all", title: "ARPES ScanView",          Content: () => <ScanViewChart id="29idc-arpes-scanview-all" recordPv="29idARPES:scan1" defaultDetectors={[14, 15, 16, 18]} />, defaultSize: { w: 700, h: 400 } },
+    { id: "29idc-scanview",           title: "29ID-C ScanView",         Content: () => <ScanViewChart id="29idc-scanview"           recordPv="29idc:scan1"     defaultDetectors={[]} />,             defaultSize: { w: 700, h: 400 } },
   ],
   2: [{ id: "29idd-kappa", title: "29ID-D Kappa", Content: KappaContent, scale: "transform" }],
   3: [

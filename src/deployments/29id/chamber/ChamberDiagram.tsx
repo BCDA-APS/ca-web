@@ -227,10 +227,9 @@ export function ChamberDiagram() {
               overflow: "hidden",
             }}>
             {[
-              { label: "StripTool", id: "29idc-strip-tool"  },
-              { label: "ScanView",  id: "29idc-scanview-all" },
-              // TEMPORARY: remove once 29idARPES:scan1 is being actively scanned.
-              { label: "ScanView (29idc test)", id: "29idc-scanview-test" },
+              { label: "StripTool",       id: "29idc-strip-tool"  },
+              { label: "ARPES ScanView",  id: "29idc-arpes-scanview-all" },
+              { label: "29ID-C ScanView", id: "29idc-scanview" },
             ].map(item => (
               <button key={item.id}
                 onClick={() => {
@@ -389,7 +388,7 @@ export function ChamberDiagram() {
         <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
           {/* D15 Diode */}
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <button onClick={() => window.dispatchEvent(new CustomEvent("show-panel", { detail: { id: "29idc-scanview-d15" } }))}
+            <button onClick={() => window.dispatchEvent(new CustomEvent("show-panel", { detail: { id: "29idc-arpes-scanview-d15" } }))}
               style={{ padding: "1px 2px", background: "rgb(210,220,240)", color: "rgb(0,53,132)", border: "1px solid rgb(160,180,220)", borderRadius: 3, fontSize: 11, cursor: "pointer" }}>
               [D15]
             </button>
@@ -408,7 +407,7 @@ export function ChamberDiagram() {
           </div>
           {/* D18 EA */}
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <button onClick={() => window.dispatchEvent(new CustomEvent("show-panel", { detail: { id: "29idc-scanview-d18" } }))}
+            <button onClick={() => window.dispatchEvent(new CustomEvent("show-panel", { detail: { id: "29idc-arpes-scanview-d18" } }))}
               style={{ padding: "1px 2px", background: "rgb(210,220,240)", color: "rgb(0,53,132)", border: "1px solid rgb(160,180,220)", borderRadius: 3, fontSize: 11, cursor: "pointer" }}>
               [D18]
             </button>
@@ -434,7 +433,7 @@ export function ChamberDiagram() {
         <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
           {/* D16 TFY */}
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <button onClick={() => window.dispatchEvent(new CustomEvent("show-panel", { detail: { id: "29idc-scanview-d16" } }))}
+            <button onClick={() => window.dispatchEvent(new CustomEvent("show-panel", { detail: { id: "29idc-arpes-scanview-d16" } }))}
               style={{ padding: "1px 2px", background: "rgb(210,220,240)", color: "rgb(0,53,132)", border: "1px solid rgb(160,180,220)", borderRadius: 3, fontSize: 11, cursor: "pointer" }}>
               [D16]
             </button>
@@ -455,7 +454,7 @@ export function ChamberDiagram() {
           </div>
           {/* D14 TEY */}
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <button onClick={() => window.dispatchEvent(new CustomEvent("show-panel", { detail: { id: "29idc-scanview-d14" } }))}
+            <button onClick={() => window.dispatchEvent(new CustomEvent("show-panel", { detail: { id: "29idc-arpes-scanview-d14" } }))}
               style={{ padding: "1px 2px", background: "rgb(210,220,240)", color: "rgb(0,53,132)", border: "1px solid rgb(160,180,220)", borderRadius: 3, fontSize: 11, cursor: "pointer" }}>
               [D14]
             </button>
