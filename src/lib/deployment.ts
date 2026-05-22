@@ -45,6 +45,9 @@ export interface SavedOverlay {
   label: string;
   pos: { x: number; y: number };
   locked?: boolean;
+  /** Home tab at save time. Restored onto the same tab so a UI overlay
+   * placed on a user tab doesn't migrate to the active tab on reload. */
+  tabId?: number;
 }
 
 export interface SavedCameraOverlay {
@@ -89,6 +92,10 @@ export interface SavedLayout {
    * onto via "Open react…". Each entry: the panel's id and the tab ids
    * it should appear on (in addition to its home tab). */
   borrowed?: Array<{ id: string; tabIds: number[] }>;
+  /** User-created tabs (the "+" button additions) at save time. Restored
+   * BEFORE overlays so any overlay whose tabId matches a user tab finds
+   * its home. */
+  userTabs?: Tab[];
   overlays?: SavedOverlay[];
   cameras?: SavedCameraOverlay[];
   scanviews?: SavedScanViewOverlay[];

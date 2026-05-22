@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, useContext } from "react";
+import { useState, useEffect, useRef, useContext, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { DeploymentContext, clearActive } from "./lib/deployment";
+import { DeploymentContext, clearActive, type Tab } from "./lib/deployment";
 import { layoutGet, layoutSet, layoutDelete } from "./lib/layoutStorage";
 import { ErrorBoundary } from "./shell/ErrorBoundary";
 import { DraggablePanel } from "./shell/DraggablePanel";
@@ -26,7 +26,14 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
   const [panelPickerOpen, setPanelPickerOpen] = useState(false);
   const [layoutBump, setLayoutBump] = useState(0);
   const [activeTab, setActiveTab] = useState(config.tabs[0].id);
-  const activeTabColor = config.tabs.find(t => t.id === activeTab)?.color ?? "#0a1520";
+  // User-created ("+") tabs. Persisted via layoutStorage so they survive
+  // reload; also serialized into saved layouts. Order: deployment tabs
+  // first, then user tabs, then the "+" button.
+  const [userTabs, setUserTabs] = useState<Tab[]>(() => layoutGet<Tab[]>("user-tabs") ?? []);
+  useEffect(() => { layoutSet("user-tabs", userTabs); }, [userTabs]);
+  const userTabIds = useMemo(() => new Set(userTabs.map(t => t.id)), [userTabs]);
+  const allTabs = useMemo(() => [...config.tabs, ...userTabs], [config.tabs, userTabs]);
+  const activeTabColor = allTabs.find(t => t.id === activeTab)?.color ?? "#0a1520";
   const [hiddenPanels, setHiddenPanels] = useState<Set<string>>(() => {
     const saved = layoutGet<string[]>("panel-hidden");
     return saved ? new Set(saved) : new Set(config.defaultHiddenPanels ?? []);
@@ -223,13 +230,13 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
 
   function restoreOverlays(saved: SavedOverlay[]) {
     saved.forEach(ov => layoutSet(`overlay:${ov.file}`, { x: ov.pos.x, y: ov.pos.y, locked: ov.locked ?? false }));
-    const tabId = activeTabRef.current;
+    const fallback = activeTabRef.current;
     // Replace UI overlays only; cameras / scanviews / stripcharts are
     // restored by their own callbacks. Keeping all non-UI kinds here means
     // restoreLayout's call order doesn't matter for correctness.
     setOverlays(prev => [
       ...prev.filter(o => o.kind != null),
-      ...saved.map(ov => ({ id: ++counter.current, file: ov.file, macros: ov.macros, label: ov.label, pos: ov.pos, tabId })),
+      ...saved.map(ov => ({ id: ++counter.current, file: ov.file, macros: ov.macros, label: ov.label, pos: ov.pos, tabId: ov.tabId ?? fallback })),
     ]);
   }
 
@@ -249,6 +256,45 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
         tabId: cam.tabId ?? tabId,
       })),
     ]);
+  }
+
+  function addUserTab(label: string) {
+    const trimmed = label.trim();
+    if (!trimmed) return;
+    const newId = Date.now();
+    setUserTabs(prev => [...prev, { id: newId, icon: "📁", label: trimmed }]);
+    setActiveTab(newId);
+  }
+
+  function removeUserTab(id: number) {
+    const overlayCount = overlays.filter(o => o.tabId === id).length;
+    let borrowCount = 0;
+    for (const tabs of borrowedPanels.values()) if (tabs.has(id)) borrowCount++;
+    const total = overlayCount + borrowCount;
+    if (total > 0) {
+      const label = userTabs.find(t => t.id === id)?.label ?? "this tab";
+      const ok = window.confirm(`Remove tab "${label}"? It has ${total} open panel${total === 1 ? "" : "s"}.`);
+      if (!ok) return;
+    }
+    // Close overlays tagged to this tab.
+    if (overlayCount > 0) setOverlays(prev => prev.filter(o => o.tabId !== id));
+    // Drop this tab id from all borrowed-panel records and clean up the
+    // composite-key positions in localStorage.
+    if (borrowCount > 0) {
+      setBorrowedPanels(prev => {
+        const next = new Map<string, Set<number>>();
+        prev.forEach((tabs, panelId) => {
+          if (!tabs.has(id)) { next.set(panelId, tabs); return; }
+          layoutDelete(`panel:${panelId}@${id}`);
+          const reduced = new Set(tabs);
+          reduced.delete(id);
+          if (reduced.size > 0) next.set(panelId, reduced);
+        });
+        return next;
+      });
+    }
+    setUserTabs(prev => prev.filter(t => t.id !== id));
+    if (activeTab === id) setActiveTab(config.tabs[0].id);
   }
 
   function restoreScanViews(saved: SavedScanViewOverlay[]) {
@@ -379,7 +425,8 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
         return <OverlayPanel key={ov.id} ov={ov} onClose={close} />;
       })}
 
-      <Sidebar tabs={config.tabs} active={activeTab} onSelect={setActiveTab} />
+      <Sidebar tabs={allTabs} active={activeTab} onSelect={setActiveTab}
+        userTabIds={userTabIds} onCreate={addUserTab} onRemove={removeUserTab} />
 
       <div style={{ position: "fixed", bottom: 16, right: 16, zIndex: 1000, opacity: 0.85 }}>
         <img src={apsLogoUrl} alt="Argonne National Laboratory | APS" style={{ height: "40px", width: "auto", display: "block" }} />
@@ -430,6 +477,7 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
             panelDefaults={config.panelDefaults}
             hiddenPanels={hiddenPanels}
             borrowedPanels={borrowedPanels}
+            userTabs={userTabs}
             overlays={overlays}
             sharedLayouts={config.layouts ?? []}
             onClose={() => setSettingsOpen(false)}
@@ -445,6 +493,18 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
             onRestoreBorrowed={borrowed => setBorrowedPanels(
               new Map(borrowed.map(b => [b.id, new Set(b.tabIds)]))
             )}
+            onRestoreUserTabs={tabs => {
+              setUserTabs(tabs);
+              // If the active tab is a user tab that won't exist after
+              // this replace, fall back to the first config tab.
+              // Handles both restoreLayout (different user tabs) and
+              // resetToDefault (passes []) without needing a guard in
+              // onResetHidden.
+              const restoredIds = new Set(tabs.map(t => t.id));
+              if (userTabIds.has(activeTab) && !restoredIds.has(activeTab)) {
+                setActiveTab(config.tabs[0].id);
+              }
+            }}
             onRestoreOverlays={restoreOverlays}
             onRestoreCameras={restoreCameras}
             onRestoreScanViews={restoreScanViews}

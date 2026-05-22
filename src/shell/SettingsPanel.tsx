@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import type { AppOverlay } from "./OverlayPanel";
-import type { SavedLayout, SavedOverlay, SavedCameraOverlay, SavedScanViewOverlay, SavedStripChartOverlay } from "../lib/deployment";
+import type { SavedLayout, SavedOverlay, SavedCameraOverlay, SavedScanViewOverlay, SavedStripChartOverlay, Tab } from "../lib/deployment";
 import {
   layoutGet,
   layoutSet,
@@ -14,10 +14,11 @@ import {
 
 export type { SavedLayout, SavedOverlay } from "../lib/deployment";
 
-export function SettingsPanel({ panelDefaults, hiddenPanels, borrowedPanels, overlays, sharedLayouts, onClose, onBumpLayout, onResetHidden, onRestoreHidden, onRestoreBorrowed, onRestoreOverlays, onRestoreCameras, onRestoreScanViews, onRestoreStripCharts, onSwitchDeployment }: {
+export function SettingsPanel({ panelDefaults, hiddenPanels, borrowedPanels, userTabs, overlays, sharedLayouts, onClose, onBumpLayout, onResetHidden, onRestoreHidden, onRestoreBorrowed, onRestoreUserTabs, onRestoreOverlays, onRestoreCameras, onRestoreScanViews, onRestoreStripCharts, onSwitchDeployment }: {
   panelDefaults: Record<string, { x: number; y: number }>;
   hiddenPanels: Set<string>;
   borrowedPanels: Map<string, Set<number>>;
+  userTabs: Tab[];
   overlays: AppOverlay[];
   sharedLayouts: SavedLayout[];
   onClose: () => void;
@@ -25,6 +26,7 @@ export function SettingsPanel({ panelDefaults, hiddenPanels, borrowedPanels, ove
   onResetHidden: () => void;
   onRestoreHidden: (hidden: string[]) => void;
   onRestoreBorrowed: (borrowed: Array<{ id: string; tabIds: number[] }>) => void;
+  onRestoreUserTabs: (tabs: Tab[]) => void;
   onRestoreOverlays: (ovs: SavedOverlay[]) => void;
   onRestoreCameras: (cams: SavedCameraOverlay[]) => void;
   onRestoreScanViews: (svs: SavedScanViewOverlay[]) => void;
@@ -78,7 +80,7 @@ export function SettingsPanel({ panelDefaults, hiddenPanels, borrowedPanels, ove
       const p = layoutGet<{ x: number; y: number; locked?: boolean }>(`overlay:${ov.file}`);
       const pos = p ? { x: p.x, y: p.y } : ov.pos;
       const locked = p?.locked ?? false;
-      return { file: ov.file, macros: ov.macros, label: ov.label, pos, locked };
+      return { file: ov.file, macros: ov.macros, label: ov.label, pos, locked, tabId: ov.tabId };
     });
     const savedCameras: SavedCameraOverlay[] = cameraOverlays.map(ov => ({
       label: ov.label,
@@ -110,6 +112,7 @@ export function SettingsPanel({ panelDefaults, hiddenPanels, borrowedPanels, ove
     }));
     return {
       name, positions, hidden: [...hiddenPanels], borrowed: savedBorrowed,
+      userTabs: [...userTabs],
       overlays: savedOverlays, cameras: savedCameras,
       scanviews: savedScanViews, stripcharts: savedStripCharts,
     };
@@ -135,6 +138,9 @@ export function SettingsPanel({ panelDefaults, hiddenPanels, borrowedPanels, ove
     Object.keys(layout.positions).forEach(key => {
       layoutSet(`panel:${key}`, layout.positions[key]);
     });
+    // User tabs MUST restore before overlays so any overlay whose tabId
+    // matches a user-created tab finds its home.
+    onRestoreUserTabs(layout.userTabs ?? []);
     onRestoreHidden(layout.hidden ?? []);
     onRestoreBorrowed(layout.borrowed ?? []);
     onRestoreOverlays(layout.overlays ?? []);
@@ -156,6 +162,9 @@ export function SettingsPanel({ panelDefaults, hiddenPanels, borrowedPanels, ove
     borrowedPanels.forEach((tabIds, id) => {
       tabIds.forEach(tabId => layoutDelete(`panel:${id}@${tabId}`));
     });
+    // Reset wipes all user-created tabs too (overlays/borrows on them
+    // will be cleared by the calls below).
+    onRestoreUserTabs([]);
     onResetHidden();
     onRestoreOverlays([]);
     onRestoreCameras([]);
