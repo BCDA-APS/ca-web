@@ -1,7 +1,9 @@
 // 29ID-hutch cameras. Shared by the BL Layout shortcut (29ID-A) and the
-// ARPES Chamber More menu (29ID-C). Each entry's `prefix` is the
-// AreaDetector record prefix (PFX:cam1: + PFX:image1: pair).
-export const CAMERAS_29ID: Array<{ label: string; prefix: string }> = [
+// ARPES Chamber More menu (29ID-C). Shape documented at the CameraEntry
+// type definition.
+import type { CameraEntry } from "../../lib/camera";
+
+export const CAMERAS_29ID: CameraEntry[] = [
   { label: "Cam 1", prefix: "29id_arv1:" },
   { label: "Cam 2", prefix: "29id_vmb2:" },
   { label: "Cam 3", prefix: "29id_vmb3:" },
@@ -11,6 +13,9 @@ export const CAMERAS_29ID: Array<{ label: string; prefix: string }> = [
   { label: "Cam 7", prefix: "29id_vmb7:" },
   { label: "Cam 8", prefix: "29id_arv8:" },
   { label: "Cam 9", prefix: "29id_arv9:" },
+  { label: "Scienta", prefix: "29idcScienta:manta:", image: "image4",
+    settingsFile: "/ui/29id/ScientaMain.ui",
+    settingsMacros: { P: "29idcScienta:", PHV: "29idcScienta:HV:" } },
 ];
 
 export function spawnCameras() {
