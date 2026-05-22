@@ -95,6 +95,22 @@ export interface SavedLayout {
   stripcharts?: SavedStripChartOverlay[];
 }
 
+/** A spawnable panel template surfaced in the "Open react…" picker.
+ * No prompts: clicking Open immediately runs `spawn({})`. With prompts:
+ * the picker shows an inline form for the listed keys, then calls
+ * `spawn(values)`. Use prompts for caqtdm-style macros (P=29idTest, etc.). */
+export interface PanelTemplate {
+  id: string;
+  title: string;
+  prompts?: Array<{
+    key: string;
+    label: string;
+    default?: string;
+    placeholder?: string;
+  }>;
+  spawn: (values: Record<string, string>) => void;
+}
+
 export interface DeploymentConfig {
   id: string;
   title: string;
@@ -109,6 +125,10 @@ export interface DeploymentConfig {
   // "Copy as JSON" to paste an entry here.
   layouts?: SavedLayout[];
   tabPanels: Record<number, PanelConfig[]>;
+  /** Spawnable templates listed in the "Open react…" picker alongside
+   * static panels. Each can take macro-style prompts (e.g. ScanView
+   * asking for an IOC prefix). */
+  templates?: PanelTemplate[];
 }
 
 // Shape of a deployment's config.json on disk. tabPanels lives in TSX (it

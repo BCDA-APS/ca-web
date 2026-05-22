@@ -12,7 +12,8 @@ import { Slits } from "./optics/Slits";
 import { Diagon } from "./optics/Diagon";
 import { ScanRecords } from "./scan/ScanRecords";
 import { pvwsWriter } from "../../lib/pvwsWriter";
-import type { DeploymentConfig, DeploymentConfigData } from "../../lib/deployment";
+import { spawnCameras } from "./cameras";
+import type { DeploymentConfig, DeploymentConfigData, PanelTemplate } from "../../lib/deployment";
 import rawConfig from "./config.json";
 
 // Drop the build-time-only `paths` block; vite.config.ts reads it directly
@@ -37,7 +38,37 @@ const tabPanels: DeploymentConfig["tabPanels"] = {
   ],
 };
 
-export const config: DeploymentConfig = { ...deploymentFields, tabPanels };
+// Templates surfaced in the "Open react…" picker. Cameras + StripTool
+// spawn with no parameters; ScanView prompts for an IOC prefix (P) so a
+// single template covers Test/ARPES/Kappa/29ID-{B,C,D,E}.
+const templates: PanelTemplate[] = [
+  {
+    id: "tmpl-cameras",
+    title: "Cameras",
+    spawn: () => spawnCameras(),
+  },
+  {
+    id: "tmpl-striptool",
+    title: "StripTool",
+    spawn: () => window.dispatchEvent(new CustomEvent("open-stripchart", { detail: {
+      label: "StripTool", initialPvs: [],
+    }})),
+  },
+  {
+    id: "tmpl-scanview",
+    title: "ScanView",
+    prompts: [
+      { key: "P", label: "IOC Prefix (P)", default: "29idb:", placeholder: "e.g. 29idb:" },
+    ],
+    spawn: v => window.dispatchEvent(new CustomEvent("open-scanview", { detail: {
+      label: `${v.P}scan1 ScanView`,
+      recordPv: `${v.P}scan1`,
+      defaultDetectors: [],
+    }})),
+  },
+];
+
+export const config: DeploymentConfig = { ...deploymentFields, tabPanels, templates };
 
 const ARPES_MOTORS = ["m1", "m2", "m3", "m4", "m5", "m6"];
 
