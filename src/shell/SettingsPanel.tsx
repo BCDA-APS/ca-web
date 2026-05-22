@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import type { AppOverlay } from "./OverlayPanel";
-import type { SavedLayout, SavedOverlay, SavedCameraOverlay } from "../lib/deployment";
+import type { SavedLayout, SavedOverlay, SavedCameraOverlay, SavedScanViewOverlay, SavedStripChartOverlay } from "../lib/deployment";
 import {
   layoutGet,
   layoutSet,
@@ -13,7 +13,7 @@ import {
 
 export type { SavedLayout, SavedOverlay } from "../lib/deployment";
 
-export function SettingsPanel({ panelDefaults, hiddenPanels, overlays, sharedLayouts, onClose, onBumpLayout, onResetHidden, onRestoreHidden, onRestoreOverlays, onRestoreCameras, onSwitchDeployment }: {
+export function SettingsPanel({ panelDefaults, hiddenPanels, overlays, sharedLayouts, onClose, onBumpLayout, onResetHidden, onRestoreHidden, onRestoreOverlays, onRestoreCameras, onRestoreScanViews, onRestoreStripCharts, onSwitchDeployment }: {
   panelDefaults: Record<string, { x: number; y: number }>;
   hiddenPanels: Set<string>;
   overlays: AppOverlay[];
@@ -24,6 +24,8 @@ export function SettingsPanel({ panelDefaults, hiddenPanels, overlays, sharedLay
   onRestoreHidden: (hidden: string[]) => void;
   onRestoreOverlays: (ovs: SavedOverlay[]) => void;
   onRestoreCameras: (cams: SavedCameraOverlay[]) => void;
+  onRestoreScanViews: (svs: SavedScanViewOverlay[]) => void;
+  onRestoreStripCharts: (scs: SavedStripChartOverlay[]) => void;
   onSwitchDeployment: () => void;
 }) {
   const panelIds = Object.keys(panelDefaults);
@@ -51,11 +53,14 @@ export function SettingsPanel({ panelDefaults, hiddenPanels, overlays, sharedLay
       const p = layoutGet<{ x: number; y: number; w?: number; h?: number; locked: boolean }>(`panel:${id}`);
       if (p) positions[id] = p;
     });
-    // UI overlays (kind:"ui") and camera overlays go into separate lists so
-    // restore knows which factory to invoke. Cameras carry their own size and
-    // prefix because they are not file-backed.
-    const uiOverlays = overlays.filter(o => o.kind !== "camera");
+    // Split overlays by kind so restore knows which factory to invoke. Each
+    // dynamic-instance kind has its own SavedX type carrying spawn params +
+    // (for chart kinds) a snapshot of the widget's localStorage state so
+    // user customization survives.
+    const uiOverlays = overlays.filter(o => o.kind == null || o.kind === "ui");
     const cameraOverlays = overlays.filter(o => o.kind === "camera");
+    const scanviewOverlays = overlays.filter(o => o.kind === "scanview");
+    const stripchartOverlays = overlays.filter(o => o.kind === "stripchart");
     const savedOverlays: SavedOverlay[] = uiOverlays.map(ov => {
       const p = layoutGet<{ x: number; y: number; locked?: boolean }>(`overlay:${ov.file}`);
       const pos = p ? { x: p.x, y: p.y } : ov.pos;
@@ -70,7 +75,28 @@ export function SettingsPanel({ panelDefaults, hiddenPanels, overlays, sharedLay
       size: ov.size,
       tabId: ov.tabId,
     }));
-    return { name, positions, hidden: [...hiddenPanels], overlays: savedOverlays, cameras: savedCameras };
+    const savedScanViews: SavedScanViewOverlay[] = scanviewOverlays.map(ov => ({
+      label: ov.label,
+      recordPv: ov.recordPv ?? "",
+      defaultDetectors: ov.defaultDetectors,
+      pos: ov.pos,
+      size: ov.size,
+      tabId: ov.tabId,
+      state: layoutGet<Record<string, unknown>>(`scanviewchart:scanview-${ov.id}`) ?? undefined,
+    }));
+    const savedStripCharts: SavedStripChartOverlay[] = stripchartOverlays.map(ov => ({
+      label: ov.label,
+      initialPvs: ov.initialPvs,
+      pos: ov.pos,
+      size: ov.size,
+      tabId: ov.tabId,
+      state: layoutGet<Record<string, unknown>>(`stripchart:stripchart-${ov.id}`) ?? undefined,
+    }));
+    return {
+      name, positions, hidden: [...hiddenPanels],
+      overlays: savedOverlays, cameras: savedCameras,
+      scanviews: savedScanViews, stripcharts: savedStripCharts,
+    };
   }
 
   async function saveDraft() {
@@ -93,6 +119,8 @@ export function SettingsPanel({ panelDefaults, hiddenPanels, overlays, sharedLay
     onRestoreHidden(layout.hidden ?? []);
     onRestoreOverlays(layout.overlays ?? []);
     onRestoreCameras(layout.cameras ?? []);
+    onRestoreScanViews(layout.scanviews ?? []);
+    onRestoreStripCharts(layout.stripcharts ?? []);
     onBumpLayout();
     onClose();
   }
@@ -105,6 +133,8 @@ export function SettingsPanel({ panelDefaults, hiddenPanels, overlays, sharedLay
     onResetHidden();
     onRestoreOverlays([]);
     onRestoreCameras([]);
+    onRestoreScanViews([]);
+    onRestoreStripCharts([]);
     onBumpLayout();
     onClose();
   }

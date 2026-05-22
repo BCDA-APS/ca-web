@@ -3,16 +3,17 @@ import { createPortal } from "react-dom";
 import { UiRenderer, HostOverlayContext } from "../lib/UiRenderer";
 import { layoutGet, layoutSet } from "../lib/layoutStorage";
 import { nextZ } from "./zStack";
+import type { TraceConfig } from "../widgets/StripChart";
 
 interface OverlayState { x: number; y: number; locked: boolean }
 
 export interface AppOverlay {
   id: number;
   /** "ui" (default) renders a caQtDM-style file via UiRenderer.
-   *  "camera" is rendered directly in App.tsx via DraggablePanel + CameraViewer
-   *  so it gets the full resize/aspect-lock/PanelSizeContext behaviour. */
-  kind?: "ui" | "camera";
-  file: string;                   // for kind:"ui"; empty for camera
+   *  "camera" / "scanview" / "stripchart" are rendered directly in App.tsx
+   *  via DraggablePanel + the matching widget. */
+  kind?: "ui" | "camera" | "scanview" | "stripchart";
+  file: string;                   // for kind:"ui"; empty otherwise
   macros: Record<string, string>; // for kind:"ui"
   label: string;
   pos: { x: number; y: number };
@@ -21,6 +22,11 @@ export interface AppOverlay {
   // For kind:"camera":
   initialPrefix?: string;
   knownCameras?: Array<{ label: string; prefix: string }>;
+  // For kind:"scanview":
+  recordPv?: string;
+  defaultDetectors?: number[];
+  // For kind:"stripchart":
+  initialPvs?: TraceConfig[];
   /** Live size — updated when the DraggablePanel emits an onState change.
    * Stored so saved layouts can reproduce the panel exactly. */
   size?: { w: number; h: number };

@@ -6,11 +6,16 @@ import { PanelSizeContext } from "../lib/deployment";
 
 // One per enabled PV. React mounts/unmounts these as the enabled set changes,
 // so cs-web-lib's useConnection cleanup unsubscribes from pvws on remove.
-function TraceSubscriber({ pv, onValue }: {
+// The widgetId scoping is critical: two StripChart instances watching the
+// same PV must register under different ids, otherwise unmounting one
+// (close window) tears down the shared subscription and the surviving
+// instance stops getting updates.
+function TraceSubscriber({ widgetId, pv, onValue }: {
+  widgetId: string;
   pv: string;
   onValue: (pv: string, v: number | null) => void;
 }) {
-  const [, , , raw] = useConnection(`strip-${pv}`, `ca://${pv}`);
+  const [, , , raw] = useConnection(`strip-${widgetId}-${pv}`, `ca://${pv}`);
   useEffect(() => {
     onValue(pv, toDouble(raw));
   }, [pv, raw, onValue]);
@@ -353,7 +358,7 @@ export function StripChart({
       borderRadius: 4, boxSizing: "border-box",
     }}>
       {enabledPvs.map(pv => (
-        <TraceSubscriber key={pv} pv={pv} onValue={recordValue} />
+        <TraceSubscriber key={pv} widgetId={id} pv={pv} onValue={recordValue} />
       ))}
       {/* Controls bar */}
       <div style={{

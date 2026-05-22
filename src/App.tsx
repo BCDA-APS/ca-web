@@ -6,9 +6,11 @@ import { ErrorBoundary } from "./shell/ErrorBoundary";
 import { DraggablePanel } from "./shell/DraggablePanel";
 import { OverlayPanel, type AppOverlay } from "./shell/OverlayPanel";
 import { CameraViewer } from "./widgets/CameraViewer";
+import { StripChart } from "./widgets/StripChart";
+import { ScanViewChart } from "./widgets/ScanViewChart";
 import { Sidebar } from "./shell/Sidebar";
 import { SettingsPanel, type SavedOverlay } from "./shell/SettingsPanel";
-import type { SavedCameraOverlay } from "./lib/deployment";
+import type { SavedCameraOverlay, SavedScanViewOverlay, SavedStripChartOverlay } from "./lib/deployment";
 import { FilePickerDialog, useUiFiles } from "./shell/FilePickerDialog";
 import { PanelPickerDialog } from "./shell/PanelPickerDialog";
 import { PvContextMenu, type PvContextEvent } from "./shell/PvContextMenu";
@@ -38,6 +40,11 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
   const [borrowedPanels, setBorrowedPanels] = useState<Map<string, Set<number>>>(new Map());
   const activeTabRef = useRef(activeTab);
   activeTabRef.current = activeTab;
+  // Mirror `overlays` into a ref so event handlers (registered once in a
+  // useEffect with empty deps) can read the latest list for dedupe checks
+  // without re-binding listeners on every overlay change.
+  const overlaysRef = useRef(overlays);
+  overlaysRef.current = overlays;
   const uiFiles = useUiFiles();
 
   useEffect(() => {
@@ -135,9 +142,68 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
     }
     window.addEventListener("open-camera", cameraHandler);
 
+    function scanviewHandler(e: Event) {
+      const { label, recordPv, defaultDetectors, dedupe } = (e as CustomEvent).detail ?? {};
+      if (!recordPv) return;
+      const tabId = activeTabRef.current;
+      const effectiveLabel = label ?? "ScanView";
+      if (dedupe) {
+        const existing = overlaysRef.current.find(o => o.kind === "scanview" && o.label === effectiveLabel);
+        if (existing) {
+          // Re-tag tabId to the user's current tab so a dedupe-focus on a
+          // panel that lives on another tab actually surfaces it here.
+          if (existing.tabId !== tabId) {
+            setOverlays(prev => prev.map(o => o.id === existing.id ? { ...o, tabId } : o));
+          }
+          window.dispatchEvent(new CustomEvent("show-panel", { detail: { id: `scanview-${existing.id}` } }));
+          return;
+        }
+      }
+      const id = ++counter.current;
+      const offset = ((id - 1) % 6) * 24;
+      setOverlays(prev => [...prev, {
+        id, kind: "scanview",
+        file: "", macros: {},
+        label: effectiveLabel,
+        pos: { x: 120 + offset, y: 80 + offset },
+        recordPv, defaultDetectors,
+        tabId,
+      }]);
+    }
+    window.addEventListener("open-scanview", scanviewHandler);
+
+    function stripchartHandler(e: Event) {
+      const { label, initialPvs, dedupe } = (e as CustomEvent).detail ?? {};
+      const tabId = activeTabRef.current;
+      const effectiveLabel = label ?? "StripChart";
+      if (dedupe) {
+        const existing = overlaysRef.current.find(o => o.kind === "stripchart" && o.label === effectiveLabel);
+        if (existing) {
+          if (existing.tabId !== tabId) {
+            setOverlays(prev => prev.map(o => o.id === existing.id ? { ...o, tabId } : o));
+          }
+          window.dispatchEvent(new CustomEvent("show-panel", { detail: { id: `stripchart-${existing.id}` } }));
+          return;
+        }
+      }
+      const id = ++counter.current;
+      const offset = ((id - 1) % 6) * 24;
+      setOverlays(prev => [...prev, {
+        id, kind: "stripchart",
+        file: "", macros: {},
+        label: effectiveLabel,
+        pos: { x: 120 + offset, y: 80 + offset },
+        initialPvs,
+        tabId,
+      }]);
+    }
+    window.addEventListener("open-stripchart", stripchartHandler);
+
     return () => {
       window.removeEventListener("open-ui", handler);
       window.removeEventListener("open-camera", cameraHandler);
+      window.removeEventListener("open-scanview", scanviewHandler);
+      window.removeEventListener("open-stripchart", stripchartHandler);
     };
   }, []);
 
@@ -150,9 +216,11 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
   function restoreOverlays(saved: SavedOverlay[]) {
     saved.forEach(ov => layoutSet(`overlay:${ov.file}`, { x: ov.pos.x, y: ov.pos.y, locked: ov.locked ?? false }));
     const tabId = activeTabRef.current;
-    // Replace UI overlays only; cameras are restored by restoreCameras().
+    // Replace UI overlays only; cameras / scanviews / stripcharts are
+    // restored by their own callbacks. Keeping all non-UI kinds here means
+    // restoreLayout's call order doesn't matter for correctness.
     setOverlays(prev => [
-      ...prev.filter(o => o.kind === "camera"),
+      ...prev.filter(o => o.kind != null),
       ...saved.map(ov => ({ id: ++counter.current, file: ov.file, macros: ov.macros, label: ov.label, pos: ov.pos, tabId })),
     ]);
   }
@@ -175,6 +243,52 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
     ]);
   }
 
+  function restoreScanViews(saved: SavedScanViewOverlay[]) {
+    const tabId = activeTabRef.current;
+    // Allocate fresh ids first so we can prime each instance's
+    // localStorage before mount; the widget reads `scanviewchart:<id>` on
+    // its first render via loadState.
+    const fresh = saved.map(sv => ({ sv, id: ++counter.current }));
+    fresh.forEach(({ sv, id }) => {
+      if (sv.state) layoutSet(`scanviewchart:scanview-${id}`, sv.state);
+    });
+    setOverlays(prev => [
+      ...prev.filter(o => o.kind !== "scanview"),
+      ...fresh.map(({ sv, id }) => ({
+        id,
+        kind: "scanview" as const,
+        file: "", macros: {},
+        label: sv.label,
+        pos: sv.pos,
+        size: sv.size,
+        recordPv: sv.recordPv,
+        defaultDetectors: sv.defaultDetectors,
+        tabId: sv.tabId ?? tabId,
+      })),
+    ]);
+  }
+
+  function restoreStripCharts(saved: SavedStripChartOverlay[]) {
+    const tabId = activeTabRef.current;
+    const fresh = saved.map(sc => ({ sc, id: ++counter.current }));
+    fresh.forEach(({ sc, id }) => {
+      if (sc.state) layoutSet(`stripchart:stripchart-${id}`, sc.state);
+    });
+    setOverlays(prev => [
+      ...prev.filter(o => o.kind !== "stripchart"),
+      ...fresh.map(({ sc, id }) => ({
+        id,
+        kind: "stripchart" as const,
+        file: "", macros: {},
+        label: sc.label,
+        pos: sc.pos,
+        size: sc.size,
+        initialPvs: sc.initialPvs,
+        tabId: sc.tabId ?? tabId,
+      })),
+    ]);
+  }
+
   return (
     <ErrorBoundary>
     <div
@@ -185,18 +299,21 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
       {overlays.map(ov => {
         const close = () => setOverlays(prev => prev.filter(o => o.id !== ov.id));
         const visible = ov.tabId == null || ov.tabId === activeTab;
+        // Shared onState for transient instance panels (camera / scanview /
+        // stripchart): lift pos+size into the overlay record so layout
+        // save/restore reproduces the panel exactly.
+        const onPanelState = (s: { x: number; y: number; w?: number; h?: number }) =>
+          setOverlays(prev => prev.map(o => o.id === ov.id ? {
+            ...o,
+            pos: { x: s.x, y: s.y },
+            size: (s.w != null && s.h != null) ? { w: s.w, h: s.h } : o.size,
+          } : o));
         if (ov.kind === "camera") {
           // Always render so React state survives tab switches; lift the
           // prefix / pos / size up via callbacks so the overlay record is
           // the source of truth (needed for save/restore).
           const onPrefix = (prefix: string) => setOverlays(prev =>
             prev.map(o => o.id === ov.id ? { ...o, initialPrefix: prefix } : o));
-          const onPanelState = (s: { x: number; y: number; w?: number; h?: number }) =>
-            setOverlays(prev => prev.map(o => o.id === ov.id ? {
-              ...o,
-              pos: { x: s.x, y: s.y },
-              size: (s.w != null && s.h != null) ? { w: s.w, h: s.h } : o.size,
-            } : o));
           return (
             <div key={ov.id} style={{ display: visible ? "contents" : "none" }}>
               <DraggablePanel
@@ -212,6 +329,40 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
               >
                 <CameraViewer initialPrefix={ov.initialPrefix} knownCameras={ov.knownCameras}
                   onPrefixChange={onPrefix} />
+              </DraggablePanel>
+            </div>
+          );
+        }
+        if (ov.kind === "scanview") {
+          return (
+            <div key={ov.id} style={{ display: visible ? "contents" : "none" }}>
+              <DraggablePanel
+                id={`scanview-${ov.id}`}
+                title={ov.label}
+                defaultPos={ov.pos}
+                defaultSize={ov.size ?? { w: 700, h: 400 }}
+                transient
+                onState={onPanelState}
+                onClose={close}
+              >
+                <ScanViewChart id={`scanview-${ov.id}`} recordPv={ov.recordPv ?? ""} defaultDetectors={ov.defaultDetectors} />
+              </DraggablePanel>
+            </div>
+          );
+        }
+        if (ov.kind === "stripchart") {
+          return (
+            <div key={ov.id} style={{ display: visible ? "contents" : "none" }}>
+              <DraggablePanel
+                id={`stripchart-${ov.id}`}
+                title={ov.label}
+                defaultPos={ov.pos}
+                defaultSize={ov.size ?? { w: 700, h: 320 }}
+                transient
+                onState={onPanelState}
+                onClose={close}
+              >
+                <StripChart id={`stripchart-${ov.id}`} initialPvs={ov.initialPvs} />
               </DraggablePanel>
             </div>
           );
@@ -278,6 +429,8 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
             onRestoreHidden={hidden => setHiddenPanels(new Set(hidden))}
             onRestoreOverlays={restoreOverlays}
             onRestoreCameras={restoreCameras}
+            onRestoreScanViews={restoreScanViews}
+            onRestoreStripCharts={restoreStripCharts}
             onSwitchDeployment={() => {
               clearActive();
               const url = new URL(window.location.href);

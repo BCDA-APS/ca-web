@@ -56,6 +56,29 @@ export interface SavedCameraOverlay {
   tabId?: number;
 }
 
+export interface SavedScanViewOverlay {
+  label: string;
+  recordPv: string;
+  defaultDetectors?: number[];
+  pos: { x: number; y: number };
+  size?: { w: number; h: number };
+  tabId?: number;
+  /** Snapshot of the widget's localStorage state (scanviewchart:<id>) so
+   * user customizations (enabled detectors, colors, Y mode) survive
+   * save/restore. */
+  state?: Record<string, unknown>;
+}
+
+export interface SavedStripChartOverlay {
+  label: string;
+  initialPvs?: import("../widgets/StripChart").TraceConfig[];
+  pos: { x: number; y: number };
+  size?: { w: number; h: number };
+  tabId?: number;
+  /** Snapshot of the widget's localStorage state (stripchart:<id>). */
+  state?: Record<string, unknown>;
+}
+
 export interface SavedLayout {
   name: string;
   // w/h are optional for backwards-compat: layouts written before sizes were
@@ -64,6 +87,8 @@ export interface SavedLayout {
   hidden?: string[];
   overlays?: SavedOverlay[];
   cameras?: SavedCameraOverlay[];
+  scanviews?: SavedScanViewOverlay[];
+  stripcharts?: SavedStripChartOverlay[];
 }
 
 export interface DeploymentConfig {

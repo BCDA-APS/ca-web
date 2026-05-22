@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useConnection } from "@diamondlightsource/cs-web-lib";
 import { pvwsWriter } from "../../../lib/pvwsWriter";
 import { toDouble, toStr, pvCtx } from "../../../lib/epics";
@@ -96,62 +97,82 @@ const lbl: React.CSSProperties = { fontSize: fontSize.label, color: colors.label
 const fld: React.CSSProperties = { height: H, fontSize: fontSize.label };
 const hdr: React.CSSProperties = { fontSize: fontSize.small, color: colors.label, textAlign: "center" };
 
-function MdaScanMenu({ Q }: { Q: string }) {
+function MdaScanMenu({ Q, tabLabel }: { Q: string; tabLabel: string }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [anchor, setAnchor] = useState<{ top: number; left: number } | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (!open) return;
     function onDown(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const t = e.target as Node;
+      if (btnRef.current?.contains(t)) return;
+      if (menuRef.current?.contains(t)) return;
+      setOpen(false);
     }
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
   }, [open]);
 
+  function toggle() {
+    if (open) { setOpen(false); return; }
+    const r = btnRef.current?.getBoundingClientRect();
+    if (r) setAnchor({ top: r.bottom + 2, left: r.right });
+    setOpen(true);
+  }
+
   const base = "/APSshare/epics/synApps_6_3/support/sscan-R2-11-6/sscanApp/op/ui/autoconvert";
-  const items = [
-    { label: "Scan1",    file: `${base}/scan.ui`,         macros: { P: Q, N: "1", S: "scan1", DW: "Dwait1", PW: "Pwait1" } },
-    { label: "Scan2",    file: `${base}/scan.ui`,         macros: { P: Q, N: "2", S: "scan2", DW: "Dwait2", PW: "Pwait2" } },
-    { label: "Scan3",    file: `${base}/scan.ui`,         macros: { P: Q, N: "3", S: "scan3", DW: "Dwait3", PW: "Pwait3" } },
-    { label: "Scan4",    file: `${base}/scan.ui`,         macros: { P: Q, N: "4", S: "scan4", DW: "Dwait4", PW: "Pwait4" } },
-    { label: "ScanH",    file: `${base}/scan.ui`,         macros: { P: Q, N: "H", S: "scanH" } },
-    { label: "SaveData", file: `${base}/scan_saveData.ui`, macros: { P: Q } },
+  const openUi = (file: string, macros: Record<string, string>, label: string) =>
+    window.dispatchEvent(new CustomEvent("open-ui", { detail: { file: `/ui/29id/${file}`, macros, label } }));
+  const items: { label: string; action: () => void }[] = [
+    { label: "Scan1",    action: () => openUi(`${base}/scan.ui`,          { P: Q, N: "1", S: "scan1", DW: "Dwait1", PW: "Pwait1" }, "Scan1") },
+    { label: "Scan2",    action: () => openUi(`${base}/scan.ui`,          { P: Q, N: "2", S: "scan2", DW: "Dwait2", PW: "Pwait2" }, "Scan2") },
+    { label: "Scan3",    action: () => openUi(`${base}/scan.ui`,          { P: Q, N: "3", S: "scan3", DW: "Dwait3", PW: "Pwait3" }, "Scan3") },
+    { label: "Scan4",    action: () => openUi(`${base}/scan.ui`,          { P: Q, N: "4", S: "scan4", DW: "Dwait4", PW: "Pwait4" }, "Scan4") },
+    { label: "ScanH",    action: () => openUi(`${base}/scan.ui`,          { P: Q, N: "H", S: "scanH" }, "ScanH") },
+    { label: "ScanView", action: () => window.dispatchEvent(new CustomEvent("open-scanview", { detail: {
+      label: `${tabLabel} ScanView`, recordPv: `${Q}scan1`, defaultDetectors: [],
+    }})) },
+    { label: "SaveData", action: () => openUi(`${base}/scan_saveData.ui`, { P: Q }, "SaveData") },
   ];
 
   return (
-    <div ref={ref} style={{ position: "relative" }}>
-      <button onClick={() => setOpen(v => !v)}
-        style={{ height: H, padding: "0 6px", background: "rgb(205,97,0)", color: "#fff",
-          border: "1px solid #a06000", borderRadius: 2, fontSize: fontSize.label,
-          cursor: "pointer", fontFamily: "sans-serif", whiteSpace: "nowrap" }}>
+    <>
+      <button ref={btnRef} onClick={toggle}
+        style={{ height: H, padding: "0 6px",
+          background: colors.relatedBg, color: colors.relatedFg,
+          border: `1px solid ${colors.relatedBorder}`, borderRadius: 4,
+          fontSize: fontSize.label, cursor: "pointer",
+          fontFamily: "sans-serif", whiteSpace: "nowrap" }}>
         MDA Scan {open ? "▴" : "▾"}
       </button>
-      {open && (
-        <div style={{ position: "absolute", right: 0, top: "100%", marginTop: 2,
+      {open && anchor && createPortal(
+        <div ref={menuRef} style={{
+          position: "fixed", top: anchor.top, left: anchor.left,
+          transform: "translateX(-100%)",
           background: "#fff", border: `1px solid ${colors.relatedBorder}`,
-          borderRadius: 3, boxShadow: "0 2px 6px rgba(0,0,0,0.15)", zIndex: 100 }}>
+          borderRadius: 4, boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+          zIndex: 10000, minWidth: 110,
+        }}>
           {items.map(item => (
             <div key={item.label}
-              onClick={() => {
-                window.dispatchEvent(new CustomEvent("open-ui", {
-                  detail: { file: `/ui/29id/${item.file}`, macros: item.macros, label: item.label },
-                }));
-                setOpen(false);
-              }}
-              style={{ padding: "3px 10px", fontSize: fontSize.label, fontFamily: "sans-serif",
-                cursor: "pointer", color: colors.label, whiteSpace: "nowrap" }}
+              onClick={() => { item.action(); setOpen(false); }}
+              style={{ padding: "4px 10px", fontSize: fontSize.label, fontFamily: "sans-serif",
+                cursor: "pointer", color: colors.relatedFg, whiteSpace: "nowrap" }}
               onMouseEnter={e => (e.currentTarget.style.background = colors.relatedBg)}
               onMouseLeave={e => (e.currentTarget.style.background = "")}>
               {item.label}
             </div>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
-    </div>
+    </>
   );
 }
 
-function ScanProgressBar({ Q }: { Q: string }) {
+function ScanProgressBar({ Q, tabLabel }: { Q: string; tabLabel: string }) {
   const k = Q.replace(/[^a-z0-9]/gi, "_");
   const [,,,paused]  = useConnection(`sp-paus-${k}`, `ca://${Q}${B}paused`);
   const [,,,running] = useConnection(`sp-run-${k}`,  `ca://${Q}${B}running`);
@@ -177,7 +198,7 @@ function ScanProgressBar({ Q }: { Q: string }) {
           <StrRbvBox raw={fname} width={180} style={{ height: H, fontSize: fontSize.label }}
             onContextMenu={e => pvCtx(`${Q}saveData_fileName`, fname, e)} />
         </div>
-        <MdaScanMenu Q={Q} />
+        <MdaScanMenu Q={Q} tabLabel={tabLabel} />
       </div>
       <StrRbvBox raw={fpath} style={{ height: H, fontSize: 9, width: "100%", boxSizing: "border-box" }}
         onContextMenu={e => pvCtx(`${Q}saveData_fullPathName`, fpath, e)} />
@@ -202,7 +223,7 @@ function ScanProgressBar({ Q }: { Q: string }) {
   );
 }
 
-function ScanContent({ Q, accent }: { Q: string; accent: string }) {
+function ScanContent({ Q, accent, tabLabel }: { Q: string; accent: string; tabLabel: string }) {
   const k = Q.replace(/[^a-z0-9]/gi, "_");
   const [,   ,, smsg] = useConnection(`sc-smsg-${k}`, `ca://${Q}${S}.SMSG`);
   const [, c2,, npts] = useConnection(`sc-npts-${k}`, `ca://${Q}${S}.NPTS`);
@@ -298,7 +319,7 @@ function ScanContent({ Q, accent }: { Q: string; accent: string }) {
         </button>
       </div>
       <hr style={{ margin: "2px 0", border: "none", borderTop: "1px solid #ccc" }} />
-      <ScanProgressBar Q={Q} />
+      <ScanProgressBar Q={Q} tabLabel={tabLabel} />
     </div>
   );
 }
@@ -322,7 +343,7 @@ export function ScanRecords() {
           </button>
         ))}
       </div>
-      <ScanContent key={tab.Q} Q={tab.Q} accent={tab.accent} />
+      <ScanContent key={tab.Q} Q={tab.Q} accent={tab.accent} tabLabel={tab.label} />
     </div>
   );
 }

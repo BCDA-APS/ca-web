@@ -65,6 +65,35 @@ For 29ID-family deployments (`29id`, `29id_dev`):
   `ARPES_PRESSURE_TREND_PVS`, ...): scope-prefix the constant name so
   future per-section variants don't collide.
 
+## Static panel vs spawn-on-demand instance
+
+Two ways to add a panel:
+
+1. **Static (registered in `tabPanels`)**: singleton per id, shows up
+   in "Open react…" picker, position persisted under `panel:<id>`.
+   Use for unique panels (chamber diagram, scan-records dashboard,
+   beamline-layout SVG, motor grid). One per app instance — clicking
+   its launcher just unhides / focuses.
+2. **Spawn-on-demand instance**: zero registrations in `tabPanels`;
+   instead a button dispatches a custom event (`open-camera`,
+   `open-scanview`, `open-stripchart`) and App.tsx pushes a new entry
+   into `overlays: AppOverlay[]`. Each click spawns a fresh instance
+   with its own state (DraggablePanel `transient: true` + state
+   lifted into the overlay record). Use for charts / cameras / any
+   panel where multiple independent instances are useful. Add the
+   optional `dedupe: true` flag in the event detail to focus an
+   existing instance with the same `label` instead of spawning a
+   duplicate — pattern used for the chamber gauge buttons (one
+   pressure-trend panel per kind is enough).
+
+The spawn pattern lives in `src/App.tsx` (event handlers + render
+branches by `kind`) and `src/shell/SettingsPanel.tsx`
+(`buildLayout()` serializes each kind separately, capturing a
+snapshot of the widget's localStorage state so user customization
+survives save/restore). See `kind: "scanview"` / `kind: "stripchart"`
+for the chart precedents; `kind: "camera"` for the original
+camera-overlay model.
+
 ## Steps
 
 1. **Read the deployment.** Open `src/deployments/<id>/config.json`

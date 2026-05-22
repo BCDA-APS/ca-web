@@ -8,9 +8,30 @@ import { pvwsWriter } from "../../../lib/pvwsWriter";
 import { toDouble, pvCtx } from "../../../lib/epics";
 import { colors, fontSize } from "../../../lib/theme";
 import { ChanRbvBox, ChanSpBox, TweakValue, TweakButton } from "../../../widgets/EpicsWidgets";
+import type { TraceConfig } from "../../../widgets/StripChart";
 
 function showPanel(id: string) {
   window.dispatchEvent(new CustomEvent("show-panel", { detail: { id } }));
+}
+
+const AHUTCH_STRIP_TOOL_PVS: TraceConfig[] = [
+  { pv: "29idb:ca1:read",  label: "CA1"  },
+  { pv: "29idb:ca2:read",  label: "CA2"  },
+  { pv: "29idb:ca3:read",  label: "CA3"  },
+  { pv: "29idb:ca4:read",  label: "CA4"  },
+  { pv: "29idb:ca5:read",  label: "CA5"  },
+  { pv: "29idb:ca9:read",  label: "CA9"  },
+  { pv: "29idb:ca10:read", label: "CA10" },
+  { pv: "29idb:ca12:read", label: "CA12" },
+  { pv: "29idb:ca13:read", label: "CA13" },
+  { pv: "29idb:ca14:read", label: "CA14" },
+  { pv: "29idb:ca15:read", label: "CA15", enabled: true },
+];
+
+function spawnAhutchStripTool() {
+  window.dispatchEvent(new CustomEvent("open-stripchart", { detail: {
+    label: "A-hutch StripTool", initialPvs: AHUTCH_STRIP_TOOL_PVS,
+  }}));
 }
 
 // 29ID cameras. Each entry's `prefix` is the AreaDetector record prefix
@@ -206,7 +227,7 @@ export function BeamlineLayout() {
       {/* Shortcut buttons — top right corner */}
       <div style={{ position: "absolute", top: 0, right: 0, display: "flex", alignItems: "center", gap: 4 }}>
         <button style={shortcutBtn} onClick={openCamera}>Cameras</button>
-        <button style={shortcutBtn} onClick={() => showPanel("29id-strip-tool")}>StripTool</button>
+        <button style={shortcutBtn} onClick={spawnAhutchStripTool}>StripTool</button>
         <MoreMenu />
       </div>
       {/* Top row: E + D (beam goes right-to-left: D right-angle at x=405 from row left) */}

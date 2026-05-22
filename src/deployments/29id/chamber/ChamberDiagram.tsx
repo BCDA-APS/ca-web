@@ -2,15 +2,44 @@ import { useState, useRef, useEffect } from "react";
 import { useConnection } from "@diamondlightsource/cs-web-lib";
 import { pvwsWriter } from "../../../lib/pvwsWriter";
 import { toDouble, toStr, pvCtx } from "../../../lib/epics";
+import type { TraceConfig } from "../../../widgets/StripChart";
 
-// Singleton React StripChart panels pre-loaded with the relevant PVs.
-// show-panel un-hides if hidden; DraggablePanel also listens to show-panel
-// and bumps z so a visible panel comes to front.
-function showPressureTrend() {
-  window.dispatchEvent(new CustomEvent("show-panel", { detail: { id: "29idc-pressure-trend" } }));
+// Spawn-on-demand preset PVs for chamber buttons. Each click dispatches a
+// custom event that App.tsx turns into a fresh StripChart / ScanViewChart
+// instance. dedupe:true on the gauge / detector buttons keeps the
+// historical "one panel per reading" feel.
+const ARPES_PRESSURE_TREND_PVS: TraceConfig[] = [
+  { pv: "29idc:VS11C.VAL",  label: "Gauge", enabled: true },
+  { pv: "29idc:IP11C1.VAL", label: "Pump",  enabled: true },
+];
+const ARPES_TEMP_TREND_PVS: TraceConfig[] = [
+  { pv: "29idARPES:LS335:TC1:INA", label: "Sample",    enabled: true },
+  { pv: "29idARPES:LS335:TC1:INB", label: "Cold fngr", enabled: true },
+];
+const ARPES_STRIP_TOOL_PVS: TraceConfig[] = [
+  { pv: "29idc:ca1:read",                label: "CA1 (TEY)",    enabled: true },
+  { pv: "29idc:ca2:read",                label: "CA2 (TFY)",    enabled: true },
+  { pv: "29idb:ca15:read",               label: "CA15 (Diode)", enabled: true },
+  { pv: "29idcScienta:Stats4:Total_RBV", label: "EA",           enabled: true },
+];
+
+function spawnPressureTrend() {
+  window.dispatchEvent(new CustomEvent("open-stripchart", { detail: {
+    label: "ARPES Pressure Trend", initialPvs: ARPES_PRESSURE_TREND_PVS, dedupe: true,
+  }}));
 }
-function showTempTrend() {
-  window.dispatchEvent(new CustomEvent("show-panel", { detail: { id: "29idc-temp-trend" } }));
+function spawnTempTrend() {
+  window.dispatchEvent(new CustomEvent("open-stripchart", { detail: {
+    label: "ARPES Temperature Trend", initialPvs: ARPES_TEMP_TREND_PVS, dedupe: true,
+  }}));
+}
+function spawnDetectorScanView(det: number) {
+  window.dispatchEvent(new CustomEvent("open-scanview", { detail: {
+    label: `ARPES ScanView D${det}`,
+    recordPv: "29idARPES:scan1",
+    defaultDetectors: [det],
+    dedupe: true,
+  }}));
 }
 
 function fmtPressure(n: number | null): string {
@@ -227,15 +256,15 @@ export function ChamberDiagram() {
               overflow: "hidden",
             }}>
             {[
-              { label: "StripTool",       id: "29idc-strip-tool"  },
-              { label: "ARPES ScanView",  id: "29idc-arpes-scanview-all" },
-              { label: "29ID-C ScanView", id: "29idc-scanview" },
+              { label: "StripTool",      action: () => window.dispatchEvent(new CustomEvent("open-stripchart", { detail: {
+                label: "ARPES StripTool", initialPvs: ARPES_STRIP_TOOL_PVS,
+              }})) },
+              { label: "ARPES ScanView", action: () => window.dispatchEvent(new CustomEvent("open-scanview", { detail: {
+                label: "ARPES ScanView", recordPv: "29idARPES:scan1", defaultDetectors: [14, 15, 16, 18],
+              }})) },
             ].map(item => (
-              <button key={item.id}
-                onClick={() => {
-                  setMoreOpen(false);
-                  window.dispatchEvent(new CustomEvent("show-panel", { detail: { id: item.id } }));
-                }}
+              <button key={item.label}
+                onClick={() => { setMoreOpen(false); item.action(); }}
                 style={{
                   display: "block", width: "100%", textAlign: "left",
                   padding: "5px 10px", background: "transparent",
@@ -267,7 +296,7 @@ export function ChamberDiagram() {
             <div style={{ fontSize: 12, fontWeight: 700, color: "#7c6fa0", letterSpacing: "0.5px", marginBottom: 4 }}>Pressure</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <button onClick={showPressureTrend}
+                <button onClick={spawnPressureTrend}
                   style={{ width: 58, padding: "2px 4px", background: "rgb(210,220,240)", color: "rgb(0,53,132)", border: "1px solid rgb(160,180,220)", borderRadius: 3, fontSize: 11, cursor: "pointer" }}>
                   Gauge
                 </button>
@@ -276,7 +305,7 @@ export function ChamberDiagram() {
                 <span style={{ color: "#444444", fontSize: 10 }}>T</span>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <button onClick={showPressureTrend}
+                <button onClick={spawnPressureTrend}
                   style={{ width: 58, padding: "2px 4px", background: "rgb(210,220,240)", color: "rgb(0,53,132)", border: "1px solid rgb(160,180,220)", borderRadius: 3, fontSize: 11, cursor: "pointer" }}>
                   Pump
                 </button>
@@ -301,7 +330,7 @@ export function ChamberDiagram() {
               {/* Sample */}
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <button
-                  onClick={showTempTrend}
+                  onClick={spawnTempTrend}
                   style={{ width: 58, padding: "2px 4px", background: "rgb(210,220,240)", color: "rgb(0,53,132)", border: "1px solid rgb(160,180,220)", borderRadius: 3, fontSize: 11, cursor: "pointer", whiteSpace: "nowrap" }}>
                   Sample
                 </button>
@@ -312,7 +341,7 @@ export function ChamberDiagram() {
               {/* Cold finger */}
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <button
-                  onClick={showTempTrend}
+                  onClick={spawnTempTrend}
                   style={{ width: 58, padding: "2px 4px", background: "rgb(210,220,240)", color: "rgb(0,53,132)", border: "1px solid rgb(160,180,220)", borderRadius: 3, fontSize: 11, cursor: "pointer", whiteSpace: "nowrap" }}>
                   Cold fngr
                 </button>
@@ -388,7 +417,7 @@ export function ChamberDiagram() {
         <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
           {/* D15 Diode */}
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <button onClick={() => window.dispatchEvent(new CustomEvent("show-panel", { detail: { id: "29idc-arpes-scanview-d15" } }))}
+            <button onClick={() => spawnDetectorScanView(15)}
               style={{ padding: "1px 2px", background: "rgb(210,220,240)", color: "rgb(0,53,132)", border: "1px solid rgb(160,180,220)", borderRadius: 3, fontSize: 11, cursor: "pointer" }}>
               [D15]
             </button>
@@ -407,7 +436,7 @@ export function ChamberDiagram() {
           </div>
           {/* D18 EA */}
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <button onClick={() => window.dispatchEvent(new CustomEvent("show-panel", { detail: { id: "29idc-arpes-scanview-d18" } }))}
+            <button onClick={() => spawnDetectorScanView(18)}
               style={{ padding: "1px 2px", background: "rgb(210,220,240)", color: "rgb(0,53,132)", border: "1px solid rgb(160,180,220)", borderRadius: 3, fontSize: 11, cursor: "pointer" }}>
               [D18]
             </button>
@@ -433,7 +462,7 @@ export function ChamberDiagram() {
         <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
           {/* D16 TFY */}
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <button onClick={() => window.dispatchEvent(new CustomEvent("show-panel", { detail: { id: "29idc-arpes-scanview-d16" } }))}
+            <button onClick={() => spawnDetectorScanView(16)}
               style={{ padding: "1px 2px", background: "rgb(210,220,240)", color: "rgb(0,53,132)", border: "1px solid rgb(160,180,220)", borderRadius: 3, fontSize: 11, cursor: "pointer" }}>
               [D16]
             </button>
@@ -454,7 +483,7 @@ export function ChamberDiagram() {
           </div>
           {/* D14 TEY */}
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <button onClick={() => window.dispatchEvent(new CustomEvent("show-panel", { detail: { id: "29idc-arpes-scanview-d14" } }))}
+            <button onClick={() => spawnDetectorScanView(14)}
               style={{ padding: "1px 2px", background: "rgb(210,220,240)", color: "rgb(0,53,132)", border: "1px solid rgb(160,180,220)", borderRadius: 3, fontSize: 11, cursor: "pointer" }}>
               [D14]
             </button>

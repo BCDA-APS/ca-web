@@ -14,14 +14,20 @@ function dd(det: number): string {
 // at the most recent scan point. We accumulate points locally each time
 // the CPT counter advances. .D{NN}PV is a string with the underlying
 // detector PV name (label only).
-function DetectorScalarSubscriber({ recordPv, det, onValue, onLabel }: {
+//
+// widgetId scoping: two ScanViewChart instances watching the same
+// record+detector must register under different useConnection ids,
+// otherwise unmounting one tears down the shared subscription and the
+// surviving instance stops receiving updates.
+function DetectorScalarSubscriber({ widgetId, recordPv, det, onValue, onLabel }: {
+  widgetId: string;
   recordPv: string;
   det: number;
   onValue: (det: number, v: number) => void;
   onLabel: (det: number, label: string | null) => void;
 }) {
-  const [, , , rawCV] = useConnection(`scanview-${recordPv}-d${dd(det)}cv`, `ca://${recordPv}.D${dd(det)}CV`);
-  const [, , , rawPV] = useConnection(`scanview-${recordPv}-d${dd(det)}pv`, `ca://${recordPv}.D${dd(det)}PV`);
+  const [, , , rawCV] = useConnection(`scanview-${widgetId}-${recordPv}-d${dd(det)}cv`, `ca://${recordPv}.D${dd(det)}CV`);
+  const [, , , rawPV] = useConnection(`scanview-${widgetId}-${recordPv}-d${dd(det)}pv`, `ca://${recordPv}.D${dd(det)}PV`);
   useEffect(() => {
     const v = toDouble(rawCV);
     if (v !== null && Number.isFinite(v)) onValue(det, v);
@@ -151,12 +157,14 @@ export function ScanViewChart({
     return [...all.values()].sort((a, b) => a.det - b.det);
   }, [defaultDetectors, extras]);
 
-  // Always-on record-level subscriptions.
-  const [, , , rawCPT]  = useConnection(`scanview-${recordPv}-cpt`,  `ca://${recordPv}.CPT`);
-  const [, , , rawNPTS] = useConnection(`scanview-${recordPv}-npts`, `ca://${recordPv}.NPTS`);
-  const [, , , rawDATA] = useConnection(`scanview-${recordPv}-data`, `ca://${recordPv}.DATA`);
-  const [, , , rawP1PV] = useConnection(`scanview-${recordPv}-p1pv`, `ca://${recordPv}.P1PV`);
-  const [, , , rawR1CV] = useConnection(`scanview-${recordPv}-r1cv`, `ca://${recordPv}.R1CV`);
+  // Always-on record-level subscriptions. Scoped by widget id so multiple
+  // ScanView instances on the same record don't share subscription keys
+  // (see DetectorScalarSubscriber comment).
+  const [, , , rawCPT]  = useConnection(`scanview-${id}-${recordPv}-cpt`,  `ca://${recordPv}.CPT`);
+  const [, , , rawNPTS] = useConnection(`scanview-${id}-${recordPv}-npts`, `ca://${recordPv}.NPTS`);
+  const [, , , rawDATA] = useConnection(`scanview-${id}-${recordPv}-data`, `ca://${recordPv}.DATA`);
+  const [, , , rawP1PV] = useConnection(`scanview-${id}-${recordPv}-p1pv`, `ca://${recordPv}.P1PV`);
+  const [, , , rawR1CV] = useConnection(`scanview-${id}-${recordPv}-r1cv`, `ca://${recordPv}.R1CV`);
 
   const cpt   = toDouble(rawCPT) ?? 0;
   const npts  = toDouble(rawNPTS) ?? 0;
@@ -403,7 +411,7 @@ export function ScanViewChart({
     }}>
       {enabledList.map(det => (
         <DetectorScalarSubscriber key={det}
-          recordPv={recordPv} det={det}
+          widgetId={id} recordPv={recordPv} det={det}
           onValue={recordValue} onLabel={recordLabel} />
       ))}
 
