@@ -421,12 +421,22 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
           {settingsOpen && createPortal(<SettingsPanel
             panelDefaults={config.panelDefaults}
             hiddenPanels={hiddenPanels}
+            borrowedPanels={borrowedPanels}
             overlays={overlays}
             sharedLayouts={config.layouts ?? []}
             onClose={() => setSettingsOpen(false)}
             onBumpLayout={() => setLayoutBump(k => k + 1)}
-            onResetHidden={() => setHiddenPanels(new Set(config.defaultHiddenPanels ?? []))}
+            onResetHidden={() => {
+              setHiddenPanels(new Set(config.defaultHiddenPanels ?? []));
+              // Borrowed panels are session-only and not part of the
+              // default layout — a reset should clear them too, otherwise
+              // a panel borrowed onto another tab stays visible there.
+              setBorrowedPanels(new Map());
+            }}
             onRestoreHidden={hidden => setHiddenPanels(new Set(hidden))}
+            onRestoreBorrowed={borrowed => setBorrowedPanels(
+              new Map(borrowed.map(b => [b.id, new Set(b.tabIds)]))
+            )}
             onRestoreOverlays={restoreOverlays}
             onRestoreCameras={restoreCameras}
             onRestoreScanViews={restoreScanViews}

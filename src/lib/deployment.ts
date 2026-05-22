@@ -85,6 +85,10 @@ export interface SavedLayout {
   // tracked still load fine; DraggablePanel falls back to defaultSize.
   positions: Record<string, { x: number; y: number; w?: number; h?: number; locked: boolean }>;
   hidden?: string[];
+  /** Panels whose home tab differs from a tab they've been "borrowed"
+   * onto via "Open react…". Each entry: the panel's id and the tab ids
+   * it should appear on (in addition to its home tab). */
+  borrowed?: Array<{ id: string; tabIds: number[] }>;
   overlays?: SavedOverlay[];
   cameras?: SavedCameraOverlay[];
   scanviews?: SavedScanViewOverlay[];

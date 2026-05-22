@@ -4,6 +4,7 @@ import type { SavedLayout, SavedOverlay, SavedCameraOverlay, SavedScanViewOverla
 import {
   layoutGet,
   layoutSet,
+  layoutDelete,
   listLayouts,
   readLayout,
   writeLayout,
@@ -13,15 +14,17 @@ import {
 
 export type { SavedLayout, SavedOverlay } from "../lib/deployment";
 
-export function SettingsPanel({ panelDefaults, hiddenPanels, overlays, sharedLayouts, onClose, onBumpLayout, onResetHidden, onRestoreHidden, onRestoreOverlays, onRestoreCameras, onRestoreScanViews, onRestoreStripCharts, onSwitchDeployment }: {
+export function SettingsPanel({ panelDefaults, hiddenPanels, borrowedPanels, overlays, sharedLayouts, onClose, onBumpLayout, onResetHidden, onRestoreHidden, onRestoreBorrowed, onRestoreOverlays, onRestoreCameras, onRestoreScanViews, onRestoreStripCharts, onSwitchDeployment }: {
   panelDefaults: Record<string, { x: number; y: number }>;
   hiddenPanels: Set<string>;
+  borrowedPanels: Map<string, Set<number>>;
   overlays: AppOverlay[];
   sharedLayouts: SavedLayout[];
   onClose: () => void;
   onBumpLayout: () => void;
   onResetHidden: () => void;
   onRestoreHidden: (hidden: string[]) => void;
+  onRestoreBorrowed: (borrowed: Array<{ id: string; tabIds: number[] }>) => void;
   onRestoreOverlays: (ovs: SavedOverlay[]) => void;
   onRestoreCameras: (cams: SavedCameraOverlay[]) => void;
   onRestoreScanViews: (svs: SavedScanViewOverlay[]) => void;
@@ -52,6 +55,16 @@ export function SettingsPanel({ panelDefaults, hiddenPanels, overlays, sharedLay
     panelIds.forEach(id => {
       const p = layoutGet<{ x: number; y: number; w?: number; h?: number; locked: boolean }>(`panel:${id}`);
       if (p) positions[id] = p;
+    });
+    // Borrowed panel positions live under composite keys (panel:<id>@<tabId>);
+    // capture them alongside native positions so restore reproduces the full
+    // layout — not just the borrows' existence but their placement too.
+    borrowedPanels.forEach((tabIds, id) => {
+      tabIds.forEach(tabId => {
+        const key = `${id}@${tabId}`;
+        const p = layoutGet<{ x: number; y: number; w?: number; h?: number; locked: boolean }>(`panel:${key}`);
+        if (p) positions[key] = p;
+      });
     });
     // Split overlays by kind so restore knows which factory to invoke. Each
     // dynamic-instance kind has its own SavedX type carrying spawn params +
@@ -92,8 +105,11 @@ export function SettingsPanel({ panelDefaults, hiddenPanels, overlays, sharedLay
       tabId: ov.tabId,
       state: layoutGet<Record<string, unknown>>(`stripchart:stripchart-${ov.id}`) ?? undefined,
     }));
+    const savedBorrowed = [...borrowedPanels.entries()].map(([id, tabIds]) => ({
+      id, tabIds: [...tabIds],
+    }));
     return {
-      name, positions, hidden: [...hiddenPanels],
+      name, positions, hidden: [...hiddenPanels], borrowed: savedBorrowed,
       overlays: savedOverlays, cameras: savedCameras,
       scanviews: savedScanViews, stripcharts: savedStripCharts,
     };
@@ -113,10 +129,14 @@ export function SettingsPanel({ panelDefaults, hiddenPanels, overlays, sharedLay
   }
 
   function restoreLayout(layout: SavedLayout) {
-    panelIds.forEach(id => {
-      if (layout.positions[id]) layoutSet(`panel:${id}`, layout.positions[id]);
+    // Iterate ALL position keys (both native panel ids and composite
+    // borrowed keys like "29idc-chamber@3") so borrowed panels restore
+    // to their saved positions, not stale localStorage values.
+    Object.keys(layout.positions).forEach(key => {
+      layoutSet(`panel:${key}`, layout.positions[key]);
     });
     onRestoreHidden(layout.hidden ?? []);
+    onRestoreBorrowed(layout.borrowed ?? []);
     onRestoreOverlays(layout.overlays ?? []);
     onRestoreCameras(layout.cameras ?? []);
     onRestoreScanViews(layout.scanviews ?? []);
@@ -129,6 +149,12 @@ export function SettingsPanel({ panelDefaults, hiddenPanels, overlays, sharedLay
     panelIds.forEach(id => {
       const def = panelDefaults[id] ?? { x: 60, y: 60 };
       layoutSet(`panel:${id}`, { ...def, locked: false });
+    });
+    // Clear composite-key entries for currently-borrowed panels so reset
+    // truly returns to a clean slate (no stale positions hanging around
+    // for the next time the user borrows the same panel).
+    borrowedPanels.forEach((tabIds, id) => {
+      tabIds.forEach(tabId => layoutDelete(`panel:${id}@${tabId}`));
     });
     onResetHidden();
     onRestoreOverlays([]);
