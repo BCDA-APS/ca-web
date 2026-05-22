@@ -348,7 +348,7 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
                 id={`scanview-${ov.id}`}
                 title={ov.label}
                 defaultPos={ov.pos}
-                defaultSize={ov.size ?? { w: 700, h: 400 }}
+                defaultSize={ov.size ?? { w: 820, h: 460 }}
                 transient
                 onState={onPanelState}
                 onClose={close}

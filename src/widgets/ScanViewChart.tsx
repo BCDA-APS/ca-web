@@ -59,7 +59,12 @@ interface Persisted {
   yMax?: number | null;
 }
 
-const CHART_PAD = { l: 70, r: 12, t: 18, b: 28 };
+// Base padding. The component shadows CHART_PAD locally with a larger
+// `.t` when the legend wraps to multiple rows, so all the chart math
+// (innerH, toY, ticks, grid, axes) automatically accounts for the
+// reserved legend height.
+const CHART_PAD_BASE = { l: 70, r: 12, t: 18, b: 28 };
+const LEGEND_ROW_H = 14;
 const N_YTICKS = 4;
 const N_XTICKS = 6;
 
@@ -113,6 +118,9 @@ export function ScanViewChart({
   const [yMinText, setYMinText] = useState<string>(() => persisted?.yMin == null ? "" : String(persisted.yMin));
   const [yMaxText, setYMaxText] = useState<string>(() => persisted?.yMax == null ? "" : String(persisted.yMax));
   const [addInput, setAddInput] = useState("");
+  // Hover crosshair: SVG-local pixel coords, null when mouse outside chart area.
+  const [hover, setHover] = useState<{ px: number; py: number } | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
 
   function commitNum(text: string, set: (n: number | null) => void) {
     if (text === "") { set(null); return; }
@@ -252,6 +260,33 @@ export function ScanViewChart({
     color: colorsMap[det] ?? UI.text,
     pvName: yLabels.current.get(det) ?? "",
   }));
+
+  // Lay out the legend entries with wrapping. Each entry is
+  //   [color line 14px][4 gap][label text]
+  // followed by 14px trailing gap. We pack left-to-right and wrap to a
+  // new row when the next entry would overrun the chart's right edge.
+  // The result drives `topPad` below so the chart geometry reserves
+  // room for the legend rows above the plot area.
+  const legendAreaW = chartW - CHART_PAD_BASE.l - CHART_PAD_BASE.r;
+  const legendRows: Array<Array<{ x: number; color: string; text: string }>> = [];
+  {
+    let row: typeof legendRows[number] = [];
+    let cursor = 0;
+    for (const tr of traces) {
+      const text = tr.pvName ? `${tr.label} (${tr.pvName})` : tr.label;
+      const w = 14 + 4 + Math.ceil(text.length * 6.6) + 14;
+      if (cursor + w > legendAreaW && row.length > 0) {
+        legendRows.push(row);
+        row = [];
+        cursor = 0;
+      }
+      row.push({ x: cursor, color: tr.color, text });
+      cursor += w;
+    }
+    if (row.length > 0) legendRows.push(row);
+  }
+  const topPad = Math.max(CHART_PAD_BASE.t, legendRows.length * LEGEND_ROW_H + 6);
+  const CHART_PAD = { ...CHART_PAD_BASE, t: topPad };
 
   // If the scan has no positioner (time scans), P1PV is empty and R1CV
   // is meaningless. Fall back to point index (1..N) for the X axis.
@@ -524,7 +559,26 @@ export function ScanViewChart({
 
         {/* Chart + Footer column */}
         <div style={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0 }}>
-          <svg width={chartW} height={chartH} style={{ background: UI.bg, display: "block" }}>
+          <svg
+            ref={svgRef}
+            width={chartW}
+            height={chartH}
+            style={{ background: UI.bg, display: "block",
+              cursor: hover ? "crosshair" : "default" }}
+            onMouseMove={e => {
+              const rect = svgRef.current?.getBoundingClientRect();
+              if (!rect) return;
+              const px = e.clientX - rect.left;
+              const py = e.clientY - rect.top;
+              if (px < CHART_PAD.l || px > chartW - CHART_PAD.r ||
+                  py < CHART_PAD.t || py > chartH - CHART_PAD.b) {
+                setHover(h => h === null ? h : null);
+                return;
+              }
+              setHover({ px, py });
+            }}
+            onMouseLeave={() => setHover(null)}
+          >
             {/* Grid */}
             {yTicks.map((t, i) => (
               <line key={`gy-${i}`} x1={CHART_PAD.l} y1={t.y} x2={chartW - CHART_PAD.r} y2={t.y}
@@ -583,27 +637,69 @@ export function ScanViewChart({
                 textAnchor="middle">Add a detector number in the sidebar to start plotting</text>
             )}
 
-            {/* Legend */}
-            {traces.length > 0 && (
-              <g>
-                {(() => {
-                  let cursor = CHART_PAD.l + 8;
-                  return traces.map(tr => {
-                    const x = cursor;
-                    const label = tr.label;
-                    cursor += 14 + 4 + Math.ceil(label.length * 6.6) + 14;
-                    return (
-                      <g key={`lg-${tr.det}`}>
-                        <line x1={x} y1={CHART_PAD.t - 6} x2={x + 14} y2={CHART_PAD.t - 6}
-                          stroke={tr.color} strokeWidth={2}/>
-                        <text x={x + 18} y={CHART_PAD.t - 2} fill={tr.color} fontSize={11}
-                          textAnchor="start">{label}</text>
-                      </g>
-                    );
-                  });
-                })()}
-              </g>
-            )}
+            {/* Legend rows — laid out and wrapped above in `legendRows`.
+                Row 0 sits at the top of the reserved legend area; each
+                subsequent row drops by LEGEND_ROW_H. */}
+            {legendRows.map((row, ri) => {
+              const rowBaselineY = (ri + 1) * LEGEND_ROW_H - 4;
+              return (
+                <g key={`lg-row-${ri}`}>
+                  {row.map(entry => (
+                    <g key={`lg-${ri}-${entry.text}`}>
+                      <line
+                        x1={CHART_PAD.l + 8 + entry.x}
+                        y1={rowBaselineY - 4}
+                        x2={CHART_PAD.l + 8 + entry.x + 14}
+                        y2={rowBaselineY - 4}
+                        stroke={entry.color} strokeWidth={2}/>
+                      <text
+                        x={CHART_PAD.l + 8 + entry.x + 18}
+                        y={rowBaselineY}
+                        fill={entry.color} fontSize={11}
+                        textAnchor="start">{entry.text}</text>
+                    </g>
+                  ))}
+                </g>
+              );
+            })}
+
+            {/* Hover crosshair + (x,y) readout in axis units. Y readout is
+                ambiguous in "norm" mode (each detector has its own range) —
+                we show the normalized 0-1 position there. */}
+            {hover && (() => {
+              const cX = xLo + ((hover.px - CHART_PAD.l) / innerW) * (xHi - xLo);
+              const fY = 1 - (hover.py - CHART_PAD.t) / innerH;
+              let yLabel: string;
+              if (yMode === "norm") {
+                yLabel = fY.toFixed(3);
+              } else if (logY) {
+                const lLo = Math.log10(Math.max(axisLo, 1e-30));
+                const lHi = Math.log10(Math.max(axisHi, 1e-30));
+                yLabel = fmtValue(Math.pow(10, lLo + fY * (lHi - lLo)));
+              } else {
+                yLabel = fmtValue(axisLo + fY * (axisHi - axisLo));
+              }
+              const xLabel = usePointIndex ? Math.round(cX).toString() : fmtValue(cX);
+              const labelText = `${xLabel}  |  ${yLabel}`;
+              const labelW = labelText.length * 6.6 + 10;
+              const flipLeft = hover.px + labelW + 8 > chartW - CHART_PAD.r;
+              const lx = flipLeft ? hover.px - labelW - 8 : hover.px + 8;
+              const ly = Math.max(CHART_PAD.t + 12, hover.py - 8);
+              return (
+                <g pointerEvents="none">
+                  <line x1={hover.px} y1={CHART_PAD.t} x2={hover.px} y2={chartH - CHART_PAD.b}
+                    stroke={UI.text} strokeWidth={1} strokeDasharray="3,2" opacity={0.6}/>
+                  <line x1={CHART_PAD.l} y1={hover.py} x2={chartW - CHART_PAD.r} y2={hover.py}
+                    stroke={UI.text} strokeWidth={1} strokeDasharray="3,2" opacity={0.6}/>
+                  <circle cx={hover.px} cy={hover.py} r={3} fill={UI.text} opacity={0.8}/>
+                  <rect x={lx} y={ly - 12} width={labelW} height={16} rx={2}
+                    fill={UI.bg} stroke={UI.border} strokeWidth={1} opacity={0.95}/>
+                  <text x={lx + 5} y={ly} fill={UI.inputText} fontSize={11} fontFamily="monospace">
+                    {labelText}
+                  </text>
+                </g>
+              );
+            })()}
           </svg>
 
           {/* Footer: positioner PV name (or note about index mode) */}

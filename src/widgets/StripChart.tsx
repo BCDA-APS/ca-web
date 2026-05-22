@@ -65,7 +65,11 @@ const WINDOWS: { label: string; ms: number }[] = [
   { label: "60m", ms: 60 * 60_000 },
 ];
 
-const CHART_PAD = { l: 70, r: 12, t: 18, b: 24 };
+// Base padding. The component shadows CHART_PAD locally with a larger
+// `.t` when the legend wraps to multiple rows, so all the chart math
+// automatically reserves room above the plot area.
+const CHART_PAD_BASE = { l: 70, r: 12, t: 18, b: 24 };
+const LEGEND_ROW_H = 14;
 const N_YTICKS = 4;
 const N_XTICKS = 6;
 
@@ -124,6 +128,9 @@ export function StripChart({
   // visible while the user types; yMin/yMax only commit on a finite parse.
   const [yMinText, setYMinText] = useState<string>(() => persisted?.yMin == null ? "" : String(persisted.yMin));
   const [yMaxText, setYMaxText] = useState<string>(() => persisted?.yMax == null ? "" : String(persisted.yMax));
+  // Hover crosshair: SVG-local pixel coords, null when mouse outside chart area.
+  const [cursor, setCursor] = useState<{ px: number; py: number } | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
   const [addInput, setAddInput] = useState("");
 
   function commitNum(text: string, set: (n: number | null) => void) {
@@ -258,6 +265,31 @@ export function StripChart({
     color: colorsMap[pv] ?? UI.text,
     points: dataBuf.current.get(pv) ?? [],
   }));
+
+  // Lay out the legend with wrapping. Each entry is
+  //   [color line 14px][4 gap][label text]
+  // followed by 14px trailing gap. Result drives `topPad` so the chart
+  // reserves room for the legend rows above the plot area.
+  const legendAreaW = chartW - CHART_PAD_BASE.l - CHART_PAD_BASE.r;
+  const legendRows: Array<Array<{ x: number; color: string; text: string }>> = [];
+  {
+    let row: typeof legendRows[number] = [];
+    let cursor = 0;
+    for (const tr of traces) {
+      const text = tr.label ?? "";
+      const w = 14 + 4 + Math.ceil(text.length * 6.6) + 14;
+      if (cursor + w > legendAreaW && row.length > 0) {
+        legendRows.push(row);
+        row = [];
+        cursor = 0;
+      }
+      row.push({ x: cursor, color: tr.color, text });
+      cursor += w;
+    }
+    if (row.length > 0) legendRows.push(row);
+  }
+  const topPad = Math.max(CHART_PAD_BASE.t, legendRows.length * LEGEND_ROW_H + 6);
+  const CHART_PAD = { ...CHART_PAD_BASE, t: topPad };
 
   // Per-trace [min, max] for Norm mode and combined range for Auto.
   const perTraceRange = traces.map(tr => {
@@ -477,7 +509,26 @@ export function StripChart({
         </div>
 
         {/* Chart */}
-        <svg width={chartW} height={chartH} style={{ background: UI.bg, display: "block" }}>
+        <svg
+          ref={svgRef}
+          width={chartW}
+          height={chartH}
+          style={{ background: UI.bg, display: "block",
+            cursor: cursor ? "crosshair" : "default" }}
+          onMouseMove={e => {
+            const rect = svgRef.current?.getBoundingClientRect();
+            if (!rect) return;
+            const px = e.clientX - rect.left;
+            const py = e.clientY - rect.top;
+            if (px < CHART_PAD.l || px > chartW - CHART_PAD.r ||
+                py < CHART_PAD.t || py > chartH - CHART_PAD.b) {
+              setCursor(c => c === null ? c : null);
+              return;
+            }
+            setCursor({ px, py });
+          }}
+          onMouseLeave={() => setCursor(null)}
+        >
           {/* Grid */}
           {yTicks.map((t, i) => (
             <line key={`gy-${i}`} x1={CHART_PAD.l} y1={t.y} x2={chartW - CHART_PAD.r} y2={t.y}
@@ -540,30 +591,70 @@ export function StripChart({
               textAnchor="middle">Check a PV in the sidebar to start monitoring</text>
           )}
 
-          {/* Legend — laid out left-to-right with per-label widths so
-              long labels like "CA15 (Diode)" don't overlap the next
-              entry. Width estimate: ~6.6px per char at fontSize 11
-              plus 14px for the color line + 4px gap + 14px trailing. */}
-          {traces.length > 0 && (
-            <g>
-              {(() => {
-                let cursor = CHART_PAD.l + 8;
-                return traces.map(tr => {
-                  const x = cursor;
-                  const label = tr.label ?? "";
-                  cursor += 14 + 4 + Math.ceil(label.length * 6.6) + 14;
-                  return (
-                    <g key={`lg-${tr.pv}`}>
-                      <line x1={x} y1={CHART_PAD.t - 6} x2={x + 14} y2={CHART_PAD.t - 6}
-                        stroke={tr.color} strokeWidth={2}/>
-                      <text x={x + 18} y={CHART_PAD.t - 2} fill={tr.color} fontSize={11}
-                        textAnchor="start">{label}</text>
-                    </g>
-                  );
-                });
-              })()}
-            </g>
-          )}
+          {/* Legend rows — wrapped above in `legendRows`. Row 0 sits
+              at the top of the reserved legend area; each subsequent
+              row drops by LEGEND_ROW_H. */}
+          {legendRows.map((row, ri) => {
+            const rowBaselineY = (ri + 1) * LEGEND_ROW_H - 4;
+            return (
+              <g key={`lg-row-${ri}`}>
+                {row.map(entry => (
+                  <g key={`lg-${ri}-${entry.text}`}>
+                    <line
+                      x1={CHART_PAD.l + 8 + entry.x}
+                      y1={rowBaselineY - 4}
+                      x2={CHART_PAD.l + 8 + entry.x + 14}
+                      y2={rowBaselineY - 4}
+                      stroke={entry.color} strokeWidth={2}/>
+                    <text
+                      x={CHART_PAD.l + 8 + entry.x + 18}
+                      y={rowBaselineY}
+                      fill={entry.color} fontSize={11}
+                      textAnchor="start">{entry.text}</text>
+                  </g>
+                ))}
+              </g>
+            );
+          })}
+
+          {/* Hover crosshair + (x,y) readout in axis units. Y readout is
+              ambiguous in "norm" mode (each trace has its own range) — we
+              show the normalized 0-1 position there. */}
+          {cursor && (() => {
+            const cT = tMin + ((cursor.px - CHART_PAD.l) / innerW) * windowMs;
+            const fY = 1 - (cursor.py - CHART_PAD.t) / innerH;
+            let yLabel: string;
+            if (yMode === "norm") {
+              yLabel = fY.toFixed(3);
+            } else if (logY) {
+              const lLo = Math.log10(Math.max(axisLo, 1e-30));
+              const lHi = Math.log10(Math.max(axisHi, 1e-30));
+              yLabel = fmtValue(Math.pow(10, lLo + fY * (lHi - lLo)));
+            } else {
+              yLabel = fmtValue(axisLo + fY * (axisHi - axisLo));
+            }
+            const xLabel = fmtTime(cT);
+            // Place label to the right of the cursor; flip left if near right edge.
+            const labelText = `${xLabel}  |  ${yLabel}`;
+            const labelW = labelText.length * 6.6 + 10;
+            const flipLeft = cursor.px + labelW + 8 > chartW - CHART_PAD.r;
+            const lx = flipLeft ? cursor.px - labelW - 8 : cursor.px + 8;
+            const ly = Math.max(CHART_PAD.t + 12, cursor.py - 8);
+            return (
+              <g pointerEvents="none">
+                <line x1={cursor.px} y1={CHART_PAD.t} x2={cursor.px} y2={chartH - CHART_PAD.b}
+                  stroke={UI.text} strokeWidth={1} strokeDasharray="3,2" opacity={0.6}/>
+                <line x1={CHART_PAD.l} y1={cursor.py} x2={chartW - CHART_PAD.r} y2={cursor.py}
+                  stroke={UI.text} strokeWidth={1} strokeDasharray="3,2" opacity={0.6}/>
+                <circle cx={cursor.px} cy={cursor.py} r={3} fill={UI.text} opacity={0.8}/>
+                <rect x={lx} y={ly - 12} width={labelW} height={16} rx={2}
+                  fill={UI.panel} stroke={UI.border} strokeWidth={1} opacity={0.95}/>
+                <text x={lx + 5} y={ly} fill={UI.inputText} fontSize={11} fontFamily="monospace">
+                  {labelText}
+                </text>
+              </g>
+            );
+          })()}
         </svg>
       </div>
     </div>
