@@ -3,6 +3,9 @@ import { useConnection } from "@diamondlightsource/cs-web-lib";
 import { toDouble } from "../lib/epics";
 import { layoutGet, layoutSet } from "../lib/layoutStorage";
 import { PanelSizeContext } from "../lib/deployment";
+// Trace palette is shared with ScanViewChart — edit src/lib/theme.ts
+// (CHART_PALETTE) to recolor both at once.
+import { CHART_PALETTE as PALETTE } from "../lib/theme";
 
 // One per enabled PV. React mounts/unmounts these as the enabled set changes,
 // so cs-web-lib's useConnection cleanup unsubscribes from pvws on remove.
@@ -53,17 +56,13 @@ interface Persisted {
   yMax?: number | null;
 }
 
-const PALETTE = [
-  "#4fc3f7", "#aed581", "#ffd54f", "#f06292",
-  "#ff8a65", "#4dd0e1", "#ffca28", "#ba68c8",
-  "#4db6ac", "#ff8a80", "#81d4fa", "#f48fb1",
-];
-
 const WINDOWS: { label: string; ms: number }[] = [
   { label: "2m",  ms:  2 * 60_000 },
   { label: "5m",  ms:  5 * 60_000 },
   { label: "10m", ms: 10 * 60_000 },
   { label: "20m", ms: 20 * 60_000 },
+  { label: "40m", ms: 40 * 60_000 },
+  { label: "60m", ms: 60 * 60_000 },
 ];
 
 const CHART_PAD = { l: 70, r: 12, t: 18, b: 24 };
@@ -144,11 +143,22 @@ export function StripChart({
     layoutSet(`stripchart:${id}`, payload);
   }, [id, enabled, colorsMap, extraPvs, windowMs, yMode, logY, yMin, yMax]);
 
-  // Assign a palette color to any enabled PV that doesn't already have one.
-  // Covers pre-checked initialPvs at mount as well as runtime checks.
+  // Color assignment runs in two passes:
+  //  1. Pre-assign positional colors for every configured PV (initialPvs),
+  //     using TraceConfig.color when specified else PALETTE[i % length].
+  //     This makes the visual order match the configured order regardless
+  //     of toggle sequence — without this, the first PV you check gets
+  //     PALETTE[0] (which is wrong when only e.g. CA15 is enabled by
+  //     default but you want CA1 to be the green one).
+  //  2. Fill in colors for user-added extras using "find first unused".
   useEffect(() => {
     setColorsMap(prev => {
       let next = prev;
+      initialPvs.forEach((tc, i) => {
+        if (!next[tc.pv]) {
+          next = { ...next, [tc.pv]: tc.color ?? PALETTE[i % PALETTE.length] };
+        }
+      });
       for (const pv of enabled) {
         if (!next[pv]) {
           const used = new Set(Object.values(next));
@@ -158,7 +168,7 @@ export function StripChart({
       }
       return next === prev ? prev : next;
     });
-  }, [enabled]);
+  }, [enabled, initialPvs]);
 
   // ── Sidebar entries: pre-loaded (from props) + ad-hoc (from state) ─────────
   const sidebar = useMemo(() => [

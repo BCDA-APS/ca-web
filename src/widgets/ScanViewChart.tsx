@@ -3,6 +3,9 @@ import { useConnection } from "@diamondlightsource/cs-web-lib";
 import { toDouble } from "../lib/epics";
 import { layoutGet, layoutSet } from "../lib/layoutStorage";
 import { PanelSizeContext } from "../lib/deployment";
+// Trace palette is shared with StripChart — edit src/lib/theme.ts
+// (CHART_PALETTE) to recolor both at once.
+import { CHART_PALETTE as PALETTE } from "../lib/theme";
 
 // sscan record fields are zero-padded to two digits (.D01 through .D70).
 function dd(det: number): string {
@@ -55,12 +58,6 @@ interface Persisted {
   yMin?: number | null;
   yMax?: number | null;
 }
-
-const PALETTE = [
-  "#4fc3f7", "#aed581", "#ffd54f", "#f06292",
-  "#ff8a65", "#4dd0e1", "#ffca28", "#ba68c8",
-  "#4db6ac", "#ff8a80", "#81d4fa", "#f48fb1",
-];
 
 const CHART_PAD = { l: 70, r: 12, t: 18, b: 28 };
 const N_YTICKS = 4;
@@ -133,10 +130,19 @@ export function ScanViewChart({
     } satisfies Persisted);
   }, [id, enabled, extras, colorsMap, yMode, logY, yMin, yMax]);
 
-  // Assign palette colors to enabled detectors that don't have one yet.
+  // Two passes (same model as StripChart's color assignment):
+  //  1. Pre-assign positional colors for every configured detector
+  //     (defaultDetectors), so visual order matches configured order
+  //     regardless of which detector is checked first.
+  //  2. Fill in colors for user-added extras via "find first unused".
   useEffect(() => {
     setColorsMap(prev => {
       let next = prev;
+      (defaultDetectors ?? []).forEach((det, i) => {
+        if (!next[det]) {
+          next = { ...next, [det]: PALETTE[i % PALETTE.length] };
+        }
+      });
       for (const det of enabled) {
         if (!next[det]) {
           const used = new Set(Object.values(next));
@@ -146,7 +152,7 @@ export function ScanViewChart({
       }
       return next === prev ? prev : next;
     });
-  }, [enabled]);
+  }, [enabled, defaultDetectors]);
 
   // Sidebar = preloaded (defaultDetectors, not removable) + user-added extras.
   // Sorted by detector number for stable ordering.

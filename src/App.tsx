@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useContext } from "react";
 import { createPortal } from "react-dom";
 import { DeploymentContext, clearActive } from "./lib/deployment";
-import { layoutGet, layoutSet } from "./lib/layoutStorage";
+import { layoutGet, layoutSet, layoutDelete } from "./lib/layoutStorage";
 import { ErrorBoundary } from "./shell/ErrorBoundary";
 import { DraggablePanel } from "./shell/DraggablePanel";
 import { OverlayPanel, type AppOverlay } from "./shell/OverlayPanel";
@@ -160,6 +160,12 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
         }
       }
       const id = ++counter.current;
+      // Synthetic ids restart at 1 each page-load, so clear any stale
+      // localStorage entry left over from a previous session that used the
+      // same id — otherwise the new instance loads someone else's state.
+      // Restore paths bypass this handler and write saved state directly.
+      layoutDelete(`scanviewchart:scanview-${id}`);
+      layoutDelete(`panel:scanview-${id}`);
       const offset = ((id - 1) % 6) * 24;
       setOverlays(prev => [...prev, {
         id, kind: "scanview",
@@ -187,6 +193,8 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
         }
       }
       const id = ++counter.current;
+      layoutDelete(`stripchart:stripchart-${id}`);
+      layoutDelete(`panel:stripchart-${id}`);
       const offset = ((id - 1) % 6) * 24;
       setOverlays(prev => [...prev, {
         id, kind: "stripchart",
@@ -357,7 +365,7 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
                 id={`stripchart-${ov.id}`}
                 title={ov.label}
                 defaultPos={ov.pos}
-                defaultSize={ov.size ?? { w: 700, h: 320 }}
+                defaultSize={ov.size ?? { w: 820, h: 420 }}
                 transient
                 onState={onPanelState}
                 onClose={close}

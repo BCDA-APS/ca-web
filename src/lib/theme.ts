@@ -52,3 +52,16 @@ export const fontSize = {
   small: 10,  // small status badges
   badge: 12,  // GRT / mirror labels
 } as const;
+
+/** Trace palette shared by StripChart and ScanViewChart. Position-based:
+ *  the first configured PV / detector gets CHART_PALETTE[0], the second
+ *  CHART_PALETTE[1], and so on, cycling modulo length once exhausted.
+ *  Edit this array to recolor all charts at once. */
+export const CHART_PALETTE = [
+  "#aed581", // green
+  "#ffd54f", // yellow
+  "#f06292", // pink/red
+  "#4fc3f7", // blue
+  "#ba68c8", // purple
+  "#ff8a65", // orange
+];
