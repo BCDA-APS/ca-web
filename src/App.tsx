@@ -258,11 +258,11 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
     ]);
   }
 
-  function addUserTab(label: string) {
+  function addUserTab(label: string, icon: string) {
     const trimmed = label.trim();
     if (!trimmed) return;
     const newId = Date.now();
-    setUserTabs(prev => [...prev, { id: newId, icon: "📁", label: trimmed }]);
+    setUserTabs(prev => [...prev, { id: newId, icon, label: trimmed }]);
     setActiveTab(newId);
   }
 

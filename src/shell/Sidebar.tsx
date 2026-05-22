@@ -1,6 +1,14 @@
 import { useState, useRef, useEffect } from "react";
 import type { Tab } from "../lib/deployment";
 
+// Icon options for the "+" picker. First entry is the default selection.
+// Rendered as a 3x3 grid in the sidebar (3 columns via CSS).
+const ICON_CHOICES = [
+  "🔬", "🧪", "🧬",
+  "⚗️", "🌡️", "💎",
+  "💡", "📊", "📈",
+];
+
 export function Sidebar({ tabs, active, onSelect, userTabIds, onCreate, onRemove }: {
   tabs: Tab[];
   active: number;
@@ -8,11 +16,12 @@ export function Sidebar({ tabs, active, onSelect, userTabIds, onCreate, onRemove
   /** Subset of `tabs` that are user-created — these get an X-on-hover
    * remove button. Deployment-defined tabs don't. */
   userTabIds: Set<number>;
-  onCreate: (label: string) => void;
+  onCreate: (label: string, icon: string) => void;
   onRemove: (id: number) => void;
 }) {
   const [creating, setCreating] = useState(false);
   const [draft, setDraft] = useState("");
+  const [draftIcon, setDraftIcon] = useState(ICON_CHOICES[0]);
   const [hoverId, setHoverId] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -20,13 +29,15 @@ export function Sidebar({ tabs, active, onSelect, userTabIds, onCreate, onRemove
 
   function commit() {
     const t = draft.trim();
-    if (t) onCreate(t);
+    if (t) onCreate(t, draftIcon);
     setDraft("");
+    setDraftIcon(ICON_CHOICES[0]);
     setCreating(false);
   }
 
   function cancel() {
     setDraft("");
+    setDraftIcon(ICON_CHOICES[0]);
     setCreating(false);
   }
 
@@ -74,9 +85,28 @@ export function Sidebar({ tabs, active, onSelect, userTabIds, onCreate, onRemove
         );
       })}
 
-      {/* "+" / inline name input */}
+      {/* "+" / inline name + icon picker */}
       {creating ? (
         <div style={{ padding: "6px 4px", display: "flex", flexDirection: "column", gap: 4 }}>
+          {/* Icon picker: 2x3 grid of choices, selected one highlighted. */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 2 }}>
+            {ICON_CHOICES.map(icon => {
+              const isSel = icon === draftIcon;
+              return (
+                <button key={icon}
+                  onClick={() => setDraftIcon(icon)}
+                  title={`Use ${icon}`}
+                  aria-label={`Choose icon ${icon}`}
+                  style={{
+                    background: isSel ? "#1a3a5c" : "transparent",
+                    border: `1px solid ${isSel ? "#4a90d9" : "transparent"}`,
+                    color: "#cce0ff", borderRadius: 3,
+                    padding: "2px 0", cursor: "pointer",
+                    fontSize: 14, lineHeight: 1,
+                  }}>{icon}</button>
+              );
+            })}
+          </div>
           <input
             ref={inputRef}
             value={draft}
