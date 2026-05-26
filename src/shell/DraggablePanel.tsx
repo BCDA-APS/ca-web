@@ -57,10 +57,19 @@ export function DraggablePanel({ id, title, defaultPos, defaultSize, scale, aspe
     if (w > 0 && h > 0) setNaturalSize({ w, h });
   }, [scale, naturalSize, children]);
 
+  // Stash onState in a ref so its identity (which changes on every render
+  // when the parent defines it inline, e.g. App.tsx's overlays.map) does
+  // NOT trigger the effect below. Otherwise: parent renders -> new
+  // onState ref -> effect fires -> onState(ps) -> setOverlays -> parent
+  // re-renders -> new onState ref -> infinite loop (React eventually
+  // detects it and emits "Maximum update depth exceeded"). The effect
+  // should only run when the persistable state ps actually changes.
+  const onStateRef = useRef(onState);
+  onStateRef.current = onState;
   useEffect(() => {
     if (!transient) layoutSet(`panel:${id}`, ps);
-    if (onState) onState(ps);
-  }, [id, ps, transient, onState]);
+    onStateRef.current?.(ps);
+  }, [id, ps, transient]);
 
   // Bring this panel to the front whenever someone fires show-panel for our
   // id. Lets external buttons (e.g. ChamberDiagram Gauge/Pump) raise an
