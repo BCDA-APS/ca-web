@@ -87,6 +87,13 @@ function WaveformCanvas({ imagePv, acquirePv, imageW, imageH, displayW, displayH
 }) {
   const [, , , raw] = useConnection(`cam-${imagePv}`, `ca://${imagePv}`);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  // Cache one ImageData buffer per (w,h) and overwrite its bytes each
+  // frame instead of allocating a fresh ~4 MB Uint8ClampedArray every
+  // render. The dimension guard reallocates when the image size changes
+  // (e.g. ROI applied, camera swap), which is rare compared to per-frame
+  // churn. Eliminates the GC pressure that profiling traced to this
+  // canvas path.
+  const imgCacheRef = useRef<{ img: ImageData; w: number; h: number } | null>(null);
   // acquirePv was used by an earlier IOC-liveness heuristic that turned out
   // to be unreliable. The prop is still accepted (callers pass it; future
   // logic may want it) but we no longer subscribe to it here.
@@ -145,7 +152,18 @@ function WaveformCanvas({ imagePv, acquirePv, imageW, imageH, displayW, displayH
     // Only bail if the buffer is too small (size PVs lost, stale buffer,
     // etc.) so we don't render torn / partial output.
     if (totalLen < expectedLen * 0.95) { drawBlank(ctx); return; }
-    const img = ctx.createImageData(imageW, imageH);
+    // Reuse the cached ImageData when dimensions match (typical case —
+    // the IOC's image size only changes when ROI / binning / camera
+    // change). Allocate only on size change. Every pixel index 0..n-1
+    // is overwritten below, so a reused buffer carries no stale data.
+    const cached = imgCacheRef.current;
+    let img: ImageData;
+    if (cached && cached.w === imageW && cached.h === imageH) {
+      img = cached.img;
+    } else {
+      img = ctx.createImageData(imageW, imageH);
+      imgCacheRef.current = { img, w: imageW, h: imageH };
+    }
     const sliceLen = Math.min(expectedLen, totalLen);
 
     // Detect signed/unsigned mismatch: pvws often delivers unsigned detector
