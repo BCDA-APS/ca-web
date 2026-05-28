@@ -1,106 +1,152 @@
 # Deployments
 
-A "deployment" is a build-time configuration that selects which tabs,
-panels, panel positions, hidden-by-default panels, and quick-link
-`.ui` files the app shows. The pvws endpoint is configured separately
-through `VITE_PVWS_SOCKET` in the matching `.env.<mode>` file; the
-`DeploymentConfig` object itself has no pvws field. Each beamline (and
-the simulated-IOC dev rig) is its own deployment.
+A "deployment" is one beamline's configured app: which tabs appear in
+the sidebar, which static panels live on each tab, where pvws is, what
+`.ui` files staff can quick-open, and which spawn-on-demand templates
+the picker offers. Each deployment lives in its own folder under
+`src/deployments/<id>/`.
+
+Existing deployments (`src/deployments/`):
+
+- `example/` — minimal template; copy this when adding a new one.
+- `nefarian/` — simulated IOC for local development.
+- `29id/` — 29ID production: 3 tabs, ARPES chamber, beamline layout,
+  scan records, cameras.
+- `29id_dev/` — 29ID staging sandbox for caqtdm-porting work.
 
 ## Picking a deployment
 
-```bash
-npm run dev -- --mode nefarian   # simulated IOC (default)
-npm run dev -- --mode 29id       # 29ID beamline on mite
-```
+At runtime, not build time:
 
-Vite reads `.env.<mode>` from the repo root. Each deployment env file
-sets:
+- **First load**: the in-app picker shows the available deployments;
+  the choice is saved to `localStorage` (`ca-web.deployment`).
+- **URL override**: `?deployment=<id>` forces a particular deployment
+  and updates the saved preference.
+- **Switch later**: gear menu → Deployment → Switch deployment…
 
-- `VITE_DEPLOYMENT=<name>` — used by `src/deployments/index.ts` to pick
-  the `DeploymentConfig`.
-- `VITE_PVWS_SOCKET=<host:port>` — pvws WebSocket address.
-- `VITE_PVWS_SSL=true|false` — optional, defaults to `false`.
-
-Running `npm run dev` without `--mode` falls back to the gitignored
-`.env` (typically `localhost:8080` and `VITE_DEPLOYMENT=nefarian`).
-
-Architectural rationale: see
-[adr/003-deployment-selector-via-vite-mode.md](adr/003-deployment-selector-via-vite-mode.md).
+The picker auto-discovers any folder under `src/deployments/` that
+exposes an `index.tsx` with `export const config` (see
+`src/lib/deployment.ts:94-106` for the glob loader).
 
 ## Anatomy of a deployment
 
-A `DeploymentConfig` (`src/deployments/types.ts`):
+Two files at minimum:
 
-```ts
-interface Tab {
-  id: number;
-  icon: string;
-  label: string;
-  color?: string;                 // optional top-bar accent when active
-}
+### `src/deployments/<id>/config.json`
 
-interface DeploymentConfig {
-  title: string;                  // window title
-  tabs: Tab[];                    // sidebar tabs
-  panelDefaults: Record<string, { x: number; y: number }>;
-  defaultHiddenPanels?: string[]; // panel ids hidden on first load
-  quickLinks?: QuickLink[];       // header "open .ui" shortcuts
-  tabPanels: Record<number, PanelConfig[]>; // tab id → panels
+Static, serializable settings — read by both the runtime and
+`vite.config.ts` (for the `paths` block):
+
+```json
+{
+  "id": "29id",
+  "title": "29ID Beamline",
+  "pvws":  { "socket": "localhost:8080", "ssl": false },
+  "tabs": [
+    { "id": 3, "icon": "✴️", "label": "29ID-A", "color": "rgb(174,203,255)" },
+    { "id": 1, "icon": "⚛️", "label": "29ID-C", "color": "rgb(170,170,255)" },
+    { "id": 2, "icon": "💠", "label": "29ID-D" }
+  ],
+  "panelDefaults": { "29idc-chamber": { "x": 100, "y": 55 }, "...": "..." },
+  "defaultHiddenPanels": ["29id-mirrors", "29id-slits", "..."],
+  "quickLinks": [{ "label": "29ID", "file": "/ui/29id/29id.ui", "macros": {} }],
+  "paths": {
+    "uiDirs": { "29id": "/net/s29dserv/xorApps/ui/29id" },
+    "startupScript": "/net/s29dserv/xorApps/ui/start_epics_29id"
+  }
 }
 ```
 
-Each `PanelConfig` provides `id`, `title`, and a `Content` React
-component. Panel ids are the keys used in `localStorage` (`panel:<id>`)
-for position persistence — keep them stable across releases.
+### `src/deployments/<id>/index.tsx`
 
-Existing examples:
-- `src/deployments/nefarian.tsx` — single-file, minimal.
-- `src/deployments/29id/index.tsx` — multi-tab, references panel
-  components from sibling subfolders (`layout/`, `energy/`, `chamber/`,
-  `optics/`, `scan/`).
+Hoists React components (which can't live in JSON), then merges with
+the config.json data and exports the final `DeploymentConfig`:
+
+```tsx
+import { MyPanel } from "./MyPanel";
+import type { DeploymentConfig, DeploymentConfigData, PanelTemplate } from "../../lib/deployment";
+import { spawnCameras } from "./cameras";  // optional
+import rawConfig from "./config.json";
+
+// `paths` is build-time only (vite reads it directly from config.json);
+// strip it from the runtime bundle.
+const { paths: _paths, ...deploymentFields } = rawConfig as DeploymentConfigData;
+void _paths;
+
+const tabPanels: DeploymentConfig["tabPanels"] = {
+  1: [
+    { id: "my-panel", title: "My Panel", Content: MyPanel,
+      defaultSize: { w: 700, h: 400 }, scale: "transform" },
+  ],
+};
+
+const templates: PanelTemplate[] = [
+  { id: "tmpl-cameras", title: "Cameras", spawn: () => spawnCameras() },
+];
+
+export const config: DeploymentConfig = { ...deploymentFields, tabPanels, templates };
+```
+
+## DeploymentConfig shape
+
+Defined in `src/lib/deployment.ts`:
+
+| Field | Required | Notes |
+|---|---|---|
+| `id: string` | yes | must match folder name |
+| `title: string` | yes | shown in the top bar |
+| `pvws: { socket, ssl }` | yes | WebSocket address for the pvws backend |
+| `tabs: Tab[]` | yes | sidebar tabs (id, icon, label, optional color) |
+| `panelDefaults: Record<string, {x,y}>` | yes | initial panel positions |
+| `defaultHiddenPanels?: string[]` | no | panel ids hidden on first load |
+| `quickLinks?: QuickLink[]` | no | top-bar `.ui` shortcuts (label, file, macros) |
+| `layouts?: SavedLayout[]` | no | shared/curated layouts that ship in-bundle |
+| `tabPanels: Record<number, PanelConfig[]>` | yes | static panels per tab |
+| `templates?: PanelTemplate[]` | no | spawn-on-demand entries in the picker |
+
+`PanelConfig`: `{ id, title, Content, defaultSize?, scale?, aspectLock? }`.
+
+`PanelTemplate`: `{ id, title, prompts?, spawn(values) }` — `prompts`
+declares caqtdm-style macro inputs collected by the picker before
+`spawn()` runs.
+
+Static panels are singletons (one instance per id, persisted under
+`panel:<id>` in localStorage). Spawn-on-demand widgets — cameras,
+StripChart, ScanViewChart — are NOT registered in `tabPanels`; they're
+created at runtime via `open-camera` / `open-stripchart` /
+`open-scanview` events and tracked in App-level overlay state. Saved
+layouts capture them by content.
 
 ## Adding a new deployment
 
-1. **Pick a name** — short, lower-case, matches the env-file suffix.
-   For multi-panel deployments, create a folder; for single-file
-   deployments, a single `.tsx` is enough.
+1. **Copy `example/`** to `src/deployments/<your-id>/`. The example is
+   the minimum needed to make the picker happy.
 
-2. **Write the config**. For a single-file deployment, put it in
-   `src/deployments/<name>.tsx` and import types from `./types`; for a
-   multi-file deployment, put it in `src/deployments/<name>/index.tsx`
-   and import types from `../types`. Example (multi-file form):
+2. **Edit `config.json`**: set `id` to match the folder name, set
+   `title`, `pvws.socket`, `tabs`, `panelDefaults`, `paths`.
 
-   ```tsx
-   import type { DeploymentConfig } from "../types";
-   import { MyPanel } from "./MyPanel";
+3. **Edit `index.tsx`**: import your panel components, populate
+   `tabPanels`, optionally define `templates`.
 
-   export const config: DeploymentConfig = {
-     title: "My Beamline",
-     tabs: [{ id: 1, icon: "M", label: "Main" }],
-     panelDefaults: { mine: { x: 40, y: 40 } },
-     tabPanels: {
-       1: [{ id: "mine", title: "My Panel", Content: MyPanel }],
-     },
-   };
-   ```
+4. **`npm run dev`** — the picker now lists your deployment. Pick it
+   (or visit `?deployment=<your-id>`).
 
-3. **Add `.env.<name>`** at the repo root:
+5. **Right-click any PV widget** to confirm `pvCtx` is wired through.
 
-   ```
-   VITE_DEPLOYMENT=<name>
-   VITE_PVWS_SOCKET=<host:port>
-   ```
+For panel-naming conventions (hutch-letter prefixes, subsystem titles,
+scope-prefixed PV constants, the IOC sub-scope rule when two IOCs
+live in the same hutch), see
+`.claude/skills/adding-a-panel/SKILL.md`.
 
-4. **Register in `src/deployments/index.ts`** by importing the new
-   config and adding it to the selector ternary (or extending it to a
-   map if more than two deployments are needed).
+## Per-deployment camera list
 
-5. **Run `npm run dev -- --mode <name>`** and verify the tabs and
-   panels load. Right-click a PV widget to confirm `pvCtx` wiring.
+Cameras spawn from a list defined per deployment. For 29id this lives
+in `src/deployments/29id/cameras.ts` and exports a `CAMERAS_29ID`
+array of `CameraEntry` (`src/lib/camera.ts`). Each entry is the AD
+record prefix and a display label; the standard AreaDetector
+convention (`PFX:cam1:` + `PFX:image1:`) is assumed.
 
 ## Ops-side details
 
-For host setup, pvws container configuration, NFS display path, and
-troubleshooting on beamline machines, see
-[deployment.md](deployment.md).
+For host setup, pvws container, SSH-tunnel access, and beamline-host
+pitfalls see [deployment.md](deployment.md).

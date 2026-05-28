@@ -1,32 +1,28 @@
-# caqtdm-web
+# ca-web
 
-A React app that renders caQtDM `.ui` files in the browser, using `cs-web-lib` for EPICS PV connections via pvws.
+A React app that renders caQtDM `.ui` files in the browser and adds
+native React panels for beamline control. EPICS PV connections go
+through pvws via `cs-web-lib`.
 
 ## Docs
 
-- [docs/deployment.md](docs/deployment.md) — ops guide for beamline hosts (pvws container, mode setup, troubleshooting).
-- [docs/how-to-start-pvws.md](docs/how-to-start-pvws.md) — how to start the pvws backend that ca-web connects to.
-- [docs/roadmap.md](docs/roadmap.md) — feature roadmap.
-- [docs/widgets.md](docs/widgets.md) — widget catalog and EPICS-binding rules.
-- [docs/ui-rendering.md](docs/ui-rendering.md) — caQtDM `.ui` parsing and rendering pipeline.
+- [docs/deployment.md](docs/deployment.md) — ops guide for beamline hosts (SSH-tunnel access, pvws container, troubleshooting).
 - [docs/deployments.md](docs/deployments.md) — how to add a new beamline deployment.
-- [docs/design-system.md](docs/design-system.md) — visual conventions.
-- [docs/display-path-resolution.md](docs/display-path-resolution.md) — caQtDM display path lookup.
+- [docs/how-to-start-pvws.md](docs/how-to-start-pvws.md) — how to start the pvws backend.
 - [docs/architecture.md](docs/architecture.md) — architecture overview.
+- [docs/widgets.md](docs/widgets.md) — React widget catalog and EPICS-binding rules.
+- [docs/ui-rendering.md](docs/ui-rendering.md) — caQtDM `.ui` parsing and rendering pipeline.
+- [docs/display-path-resolution.md](docs/display-path-resolution.md) — caQtDM display path lookup.
+- [docs/design-system.md](docs/design-system.md) — visual conventions.
+- [docs/roadmap.md](docs/roadmap.md) — feature roadmap.
 - [docs/adr/](docs/adr/) — architecture decision records.
 
 ## Development
 
-Requires Node.js (18+; tested with 24.x). Use whichever toolchain the host
-provides:
+Requires Node.js (18+; tested with 24.x):
 
-- **System / nvm:** `node` and `npm` already on `PATH` — nothing extra to do.
-- **conda** (typical on APS beamline hosts): create and activate the env first.
-
-  ```bash
-  conda create -n nodejs nodejs
-  conda activate nodejs
-  ```
+- **System / nvm:** `node` and `npm` already on `PATH`.
+- **conda** (typical on APS beamline hosts): `conda activate nodejs`.
 
 Then install deps:
 
@@ -41,117 +37,110 @@ cd ~/workspace/ca-web
 npm run dev
 ```
 
-Then open `http://localhost:4200` in a browser. The first visit shows a
-**deployment picker** listing every folder in `src/deployments/`. Click one to
-enter it — the choice is remembered in `localStorage`, and you can deep-link
-straight in with `?deployment=<id>` (for example
-`http://localhost:4200/?deployment=29id`).
+Use `VITE_POLL=1 npm run dev` when editing source over NFS (the
+inotify watcher doesn't fire on NFS clients).
+
+Open `http://localhost:4200` in a browser. The first visit shows a
+**deployment picker**; the choice is remembered in `localStorage`.
+Deep-link straight in with `?deployment=<id>`, e.g.
+`http://localhost:4200/?deployment=29id`.
 
 ### Deployments
 
-Each subfolder under `src/deployments/` is a self-contained deployment. The
-folder name **must** match the `id` exported by its `index.tsx`. Committed
-deployments:
+Each subfolder under `src/deployments/` is a self-contained
+deployment. Folder name **must** match the `id` in its `config.json`.
 
-| id | Title | pvws | Tabs |
-|------|------|------|------|
-| `example` | Example Deployment | `localhost:8080` | Home, Test (template) |
-| `nefarian` | Nefarian | `localhost:8080` | Home, Test (simulated IOC) |
-| `29id` | 29ID Beamline | `mite:8080` | 29ID-A, 29ID-C, 29ID-D |
+| id | Title | pvws | Notes |
+|---|---|---|---|
+| `example` | Example Deployment | `localhost:8080` | Template; copy this when adding a new deployment. |
+| `nefarian` | Nefarian | `localhost:8080` | Simulated IOC for local dev. |
+| `29id` | 29ID Beamline | `localhost:8080` | Production. Run on mite; reach from a workstation via SSH tunnel (see below). |
+| `29id_dev` | 29ID dev | `localhost:8080` | Sandbox copy of 29id for caqtdm-porting work. |
 
-To add a new deployment:
+To add a new deployment, copy `src/deployments/example/`, rename the
+folder, edit `config.json` and `index.tsx`. The picker
+auto-discovers — no registration step. Full walkthrough:
+[docs/deployments.md](docs/deployments.md).
 
-1. Copy `src/deployments/example/` to `src/deployments/<your-id>/`.
-2. In the new `index.tsx`, set `id` to match the folder name, set `title`,
-   and adjust `pvws.socket` for your PVWS server.
-3. Replace `tabs`, `panelDefaults`, and `tabPanels` with your own panels.
-4. (Optional) If the deployment needs to serve `.ui` files from external
-   directories (e.g. NFS-mounted caQtDM display paths), add a `paths`
-   block to the same `config.json`:
+### Production access (SSH)
 
-   ```json
-   {
-     "id": "mybeamline",
-     "title": "My Beamline",
-     "pvws": { "socket": "localhost:8080", "ssl": false },
-     "paths": {
-       "uiDirs": { "mybeamline": "/net/host/path/to/ui" },
-       "startupScript": "/net/host/path/to/start_epics_X",
-       "adl2ui": "/APSshare/bin/adl2ui"
-     }
-   }
-   ```
-
-   All `paths` fields are optional and consumed at build time only.
-   `uiDirs[key]` makes `/ui/<key>/foo.ui` resolve against
-   `<target>/foo.ui`. `startupScript` is a caQtDM startup script parsed
-   to derive the display search path. `adl2ui` is the converter for
-   on-the-fly `.adl` → `.ui`. Targets that don't exist on the current
-   host are tolerated — the picker shows a "paths unreachable" hint for
-   affected deployments.
-
-That's it — the picker auto-discovers it. No registration step.
-
-### Running on a laptop without beamline NFS
-
-The repo has no machine-specific paths in trunk. `npm install && npm run build`
-works on any host. In dev, deployments that declare unreachable external paths
-(e.g. `29id` away from the beamline subnet) are still selectable; their
-`/ui/*` requests cleanly 404 in the browser network panel. The picker shows
-a small "N external paths unreachable" hint for those entries.
-
-### Distributed mode (beamline access)
-
-Run the app on `mite` (beamline subnet machine); any subnet browser can reach
-it. Because the workspace is NFS-mounted, no code duplication is needed:
+ca-web on `mite` (and pvws on the same host) binds only to
+`127.0.0.1`. Staff reach it through an SSH rather than a
+direct subnet connection. A launcher script handles that:
 
 ```bash
-npm run dev
+ca-web-29id start     # opens SSH + Firefox at http://localhost:4200
+ca-web-29id status
+ca-web-29id stop
 ```
 
-Then open `http://mite:4200/?deployment=29id` from any machine on the subnet.
-pvws must also be running on `mite` (see [pvws Setup](#pvws-setup) below).
+Install it once per beamline host (NFS-shared, so one install covers
+all four):
+
+```bash
+cp scripts/ca-web-29id ~29iduser/bin/ca-web
+chmod +x ~29iduser/bin/ca-web
+```
+
+Staff then run `ca-web start|stop|status` (the installed name drops
+the `-29id` suffix since each beamline only sees its own launcher).
+See [docs/deployment.md](docs/deployment.md) for the full bring-up.
 
 ## pvws Setup
 
-pvws runs as a podman container. From the repo root:
+pvws runs as a podman container on the same host as the dev server:
 
 ```bash
-./scripts/start-pvws.sh                                              # workstation / nefarian
-./scripts/start-pvws.sh --name pvws-29id --no-hosts                  # mite / 29ID beamline
+./scripts/start-pvws.sh                                # workstation / nefarian
+./scripts/start-pvws.sh --name pvws-29id --no-hosts    # mite / 29ID beamline
 ```
 
-See [docs/how-to-start-pvws.md](docs/how-to-start-pvws.md) for env vars,
-build/load steps, host-specific notes, and the pvws write protocol.
+See [docs/how-to-start-pvws.md](docs/how-to-start-pvws.md) for env
+vars, build/load steps, and host-specific notes.
 
-## UI File Resolution
+## What's in the app
 
-`.ui` files used directly by the React shell (e.g. the test panel) are
-imported as Vite assets from `src/ui/` and shipped in the bundle.
+### caQtDM `.ui` rendering
 
-For deployment-supplied displays, the dev server resolves any `/ui/*`
-request against the directories declared in each deployment's
-`paths.uiDirs` and the same directory list that the desktop caQtDM uses.
-It does this by parsing the caQtDM startup script (e.g.
-`/net/s29dserv/xorApps/ui/start_epics_29id`) and the sourced release
-file at startup — no paths are hardcoded. This covers all synApps
-modules (motor, calc, sscan, optics, etc.), APSshare storage ring
-screens, and site-specific paths.
+The `Open ui…` button in the top bar opens a searchable file picker
+listing every `.ui` under the deployment's configured display paths.
+Selecting a file opens it as a floating overlay; macros can be
+supplied with auto-detected hints. The parser+renderer supports a
+broad subset of caQtDM widgets — see the table below.
 
-If a display is only available in `.adl` (MEDM) format, it is converted
-on the fly using the deployment's `paths.adl2ui` (e.g.
-`/APSshare/bin/adl2ui`) and cached in `.ui-cache/` (git-ignored).
+### React panels and widgets
 
-See `docs/display-path-resolution.md` for full details.
+Each deployment registers static React panels in `tabPanels`
+(per-tab singletons) and optional spawn-on-demand `templates` in the
+"Open react…" picker. Built-in spawnable widgets:
 
-## Opening Displays
+- **CameraViewer** — full-featured AreaDetector image with crosshair,
+  contrast controls, settings gear, multiple instances. Cameras list
+  per deployment (e.g. `src/deployments/29id/cameras.ts`); supports
+  per-camera plugin overrides (e.g. Scienta's `image4`).
+- **StripChart** — multi-PV rolling time-series with sidebar, Y-mode
+  toggle, log scale, manual range, hover crosshair, wrapping legend.
+- **ScanViewChart** — sscan-record analog of StripChart: plots
+  selected detectors (`.D{NN}CV`) against the positioner readback
+  (`.R1CV`) or point index. Same crosshair / legend / Y-mode model
+  as StripChart.
 
-An "Open…" button in the header opens a searchable file picker listing all
-`.ui` files from the NFS display search path. Selecting a file opens it as a
-floating overlay. A macro input with auto-detected hints (scanned from the
-`.ui` file) lets the user supply the correct macro set before opening.
+### Sidebar tabs
 
-## Implemented Widgets
+Each deployment declares its static tabs in `config.json`. Staff can
+also create their own **"+" tabs** at runtime via the sidebar — type a
+name, pick an icon, and the tab persists across reloads. Saved
+layouts capture user tabs and their panels.
+
+### Saved layouts
+
+The gear menu lets staff save the current arrangement (panel
+positions, hidden state, borrowed-onto-other-tab panels, spawned
+chart/camera state, user-created tabs) as a named layout. Restore or
+delete from the same menu. Layouts persist to the deployment folder
+under `layouts/`.
+
+## Implemented caQtDM widgets
 
 | Widget | Notes |
 |---|---|
@@ -184,17 +173,25 @@ floating overlay. A macro input with auto-detected hints (scanned from the
 ### caCartesianPlot
 
 Connects to up to 4 curve pairs via `channels_1`…`channels_4` (format: `"xPv;yPv"` — X channel may be empty, in which case sample index is used as X). Features:
+
 - Auto-scaling axes
 - Dashed grid (matches caQtDM style)
 - Title and X/Y axis labels (`Title`, `TitleX`, `TitleY` props)
 - Per-curve color (`color_1`…) and style (`Style_N`: Lines or Dots)
 - Multiple overlays can be open simultaneously
 
-Update rate is controlled by `PV_ARRAY_THROTTLE_MS` in pvws (see above).
+Update rate is controlled by `PV_ARRAY_THROTTLE_MS` in pvws (see
+[docs/how-to-start-pvws.md](docs/how-to-start-pvws.md)).
 
 ### caCamera
 
-Connects to `channelData`, `channelWidth`, `channelHeight` PVs. Features:
+Connects to `channelData`, `channelWidth`, `channelHeight` PVs. The
+parser-driven `.ui` widget is separate from the React `CameraViewer`
+described above; both render AD image data but `CameraViewer` is the
+full-featured multi-instance one used by deployments.
+
+Features:
+
 - Grayscale rendering to HTML Canvas
 - Auto-levels (min/max from frame data) with manual override
 - FPS counter

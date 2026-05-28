@@ -1,138 +1,169 @@
 # Deployment Guide
 
+How to bring up ca-web on a new beamline machine and access it from a
+workstation. For per-deployment file structure (adding tabs, panels,
+PV-list constants) see [deployments.md](deployments.md). For pvws
+container specifics see [how-to-start-pvws.md](how-to-start-pvws.md).
+
 ## Architecture overview
 
-The source tree lives on an NFS-mounted home directory (`/home/beams3/RODOLAKIS/workspace/caqtdm-web`) that is visible from every machine on the beamline subnet. There is no need to copy files or maintain a separate clone on each machine — the same directory is used everywhere.
-
 ```
-  workstation (beams3)          beamline machine (e.g. s29idd)
-  ─────────────────────         ──────────────────────────────
-  npm run dev  ←──── NFS ────→  npm run dev
-  (local PVs)                   (29ID PVs via pvws)
+  workstation (e.g. nefarian)        beamline server (e.g. mite)
+  ───────────────────────────        ────────────────────────────
+                            ssh -L
+       ca-web-29id  ───────────────►  npm run dev    (vite, :4200)
+       (firefox)                      podman pvws    (:8080)
+                                          │
+                                          ▼
+                                      EPICS CA  ──► 29ID IOCs
 ```
 
-Both invocations of `npm run dev` run against the same source files. However, Vite's file watcher does not detect changes over NFS — after editing code on the workstation, the dev server on the beamline machine must be restarted to pick up the changes.
+Both the vite dev server and the pvws container run **on the beamline
+server**, bound to `127.0.0.1` only — they do not listen on the
+beamline subnet. Staff reach them by forwarding ports 4200 and 8080
+over SSH from their workstation, then pointing Firefox at
+`http://localhost:4200/`.
 
-## APS security rule
+The repo lives on NFS at `~rodolakis/workspace/ca-web` and is visible
+from every beamline host, so one clone covers all machines.
 
-EPICS PV traffic must never leave the beamline subnet. This means:
+## APS security note
 
-- pvws must run on a machine that is physically on the subnet.
-- The web app must also be served from that machine.
+EPICS PV traffic stays on the beamline subnet because pvws runs on a
+subnet host. The vite dev server binds to `127.0.0.1` only
+(`vite.config.ts:521`), so it's not reachable off-host without the
+SSH tunnel.
 
 ## Configuration
 
-### `.env` (not committed to git)
+Each deployment carries its own pvws URL in
+`src/deployments/<id>/config.json`:
 
-```
-VITE_PVWS_SOCKET=localhost:8080
-VITE_PVWS_SSL=false
-```
-
-When pvws and the Vite dev server run on the **same machine**, `localhost` resolves correctly in the browser — no change to `.env` is needed regardless of which machine you are on.
-
-If for some reason pvws runs on a different machine than the Vite server, set:
-
-```
-VITE_PVWS_SOCKET=<pvws-hostname>:8080
-```
-
-Deployment-specific pvws addresses and tab layouts are now configured via Vite
-modes — see README for usage. The `.env` file (gitignored) remains a local
-fallback for development without a mode flag.
-
-### `vite.config.ts`
-
-The dev server must bind to all interfaces so it is reachable from other machines on the subnet:
-
-```ts
-server: {
-  port: 4200,
-  host: "0.0.0.0"   // ← required for subnet access
+```json
+{
+  "id": "29id",
+  "title": "29ID Beamline",
+  "pvws": { "socket": "localhost:8080", "ssl": false },
+  ...
 }
 ```
 
-This is committed to the repo and is safe for local development too (it simply makes the server reachable on the local network, which is harmless).
+`localhost:8080` is correct for the typical setup (vite + pvws on the
+same host, accessed via SSH tunnel that forwards 8080 to the same
+local port). Change it only if you intentionally split vite and pvws
+across different machines or use different ports.
 
-## Deploying to 29ID
+## Bringing up 29ID
 
-### Prerequisites
+### Prerequisites on the beamline server
 
-On the beamline machine:
 - Podman (to run the pvws container)
-- Node.js for the Vite dev server (any source — conda env `nodejs`, nvm, or system package)
+- Node.js (`conda activate nodejs` on hosts where Node is provided by
+  conda, e.g. mite)
 
-### Step 1 — Start pvws
-
-See [how-to-start-pvws.md](how-to-start-pvws.md) for build/load, env vars,
-and host-specific notes. On `mite` the invocation is:
+### One-time pvws start
 
 ```bash
+cd ~/workspace/ca-web
 ./scripts/start-pvws.sh --name pvws-29id --no-hosts
 ```
 
-### Step 2 — Start the dev server
+See [how-to-start-pvws.md](how-to-start-pvws.md) for env vars, the
+`pvws-setenv.sh` bind-mount override, and per-host flags.
+
+Verify:
 
 ```bash
-cd /home/beams3/RODOLAKIS/workspace/caqtdm-web
-# If Node is provided by conda on this host: conda activate nodejs
-npm run dev -- --mode 29id
+podman ps | grep pvws-29id
+curl -sS http://localhost:8080/pvws/ | grep -c img/connected.png
 ```
 
-The server starts on port 4200 and binds to all interfaces.
-
-### Step 3 — Open the app
-
-From any browser on the beamline subnet:
-
-```
-http://<beamline-machine-hostname>:4200
-```
-
-PV names that use 29ID prefixes (e.g. `29idd:`, `29id:`) will connect through pvws, which has direct EPICS access to the IOCs.
-
-## Development workflow
-
-| Scenario | Where to run `npm run dev` | pvws |
-|---|---|---|
-| Local development (simulated PVs) | workstation (beams3) | local podman |
-| Testing 29ID screens | beamline machine | beamline machine |
-
-Because the source directory is NFS-shared, you can edit code on the workstation
-and the beamline machine sees the same files. However, Vite's file watcher does
-not detect NFS changes — **restart the dev server on the beamline machine after
-every code edit**.
-
-## Known pitfalls (lessons learned from first deployment to `mite`)
-
-For pvws-specific pitfalls (subuid/subgid, `XDG_RUNTIME_DIR`, NFS overlay
-storage, `--no-hosts`, container naming), see
-[how-to-start-pvws.md](how-to-start-pvws.md#common-pitfalls).
-
-### Vite HMR does not work over NFS
-
-When `npm run dev` is running on a beamline machine and source files are edited
-on the workstation (NFS-shared), Vite's file watcher does not detect changes.
-A hard browser refresh is not enough — the dev server must be restarted:
+### Start the dev server
 
 ```bash
-# Ctrl-C the running server, then:
-# (activate your conda env first if Node is provided that way)
+cd ~/workspace/ca-web
 npm run dev
 ```
 
----
+Use `VITE_POLL=1 npm run dev` when editing source over NFS — vite's
+file watcher relies on inotify, which does not propagate to NFS
+clients, so HMR needs polling instead.
 
-## Git remote (future)
+The server binds to `127.0.0.1:4200` only.
 
-The repo currently has no remote. Options when a remote becomes needed:
+### Access from a workstation
 
-- **APS GitLab** — preferred for beamline software; keeps code on-site.
-- **GitHub** — convenient for open-source sharing; check with beamline management before pushing PV names or screen layouts publicly.
-
-To add a remote once created:
+On the staff workstation, run the launcher script:
 
 ```bash
-git remote add origin <url>
-git push -u origin main
+ca-web-29id start    # opens SSH tunnel + Firefox at http://localhost:4200
+ca-web-29id status   # is the tunnel up?
+ca-web-29id stop     # tears down the tunnel
 ```
+
+The launcher (installed from `scripts/ca-web-29id`) opens:
+
+```
+ssh -fN -L 4200:localhost:4200 -L 8080:localhost:8080 29iduser@mite
+```
+
+…which is what makes `localhost:4200` on the workstation actually
+reach mite's vite server, and `localhost:8080` reach mite's pvws.
+
+### Day-to-day
+
+Once pvws and vite are running on the beamline server (they persist
+across staff sessions), the only thing staff do per session is
+`ca-web-29id start`.
+
+## Adding a second beamline
+
+Two cases — see `scripts/ca-web-29id` as the template.
+
+**Different beamline server, accessed individually**: copy the script
+to `scripts/ca-web-28id`, change `mite` → the 28ID server hostname,
+and add a 28ID deployment under `src/deployments/28id/`. Staff run
+either `ca-web-29id start` or `ca-web-28id start` (only one at a
+time; same local ports 4200 + 8080).
+
+**Both at once**: use different local ports per beamline (e.g.
+`-L 4201:28id-srv:4200 -L 8081:28id-srv:8080`) and update the 28ID
+deployment's `config.json` `pvws.socket` to match. Then both run
+side-by-side in different browser tabs.
+
+## Development workflow
+
+| Scenario | npm run dev on | pvws on | Access |
+|---|---|---|---|
+| Local dev (simulated IOC) | workstation | workstation | `localhost:4200` direct |
+| 29ID screens | mite | mite | SSH tunnel via `ca-web-29id start` |
+
+When editing on the workstation while vite runs on mite (NFS-shared
+source), remember `VITE_POLL=1 npm run dev` so HMR fires.
+
+## Known pitfalls
+
+For pvws container quirks (subuid/subgid, `XDG_RUNTIME_DIR`, NFS
+overlay storage, `--no-hosts`, naming) see
+[how-to-start-pvws.md](how-to-start-pvws.md#common-pitfalls).
+
+### Vite HMR over NFS
+
+Solved by `VITE_POLL=1 npm run dev` (vite uses polling instead of
+inotify). Without it, file edits on the workstation are invisible to
+vite running on mite and you have to restart the dev server.
+
+### Two pvws instances on the same host
+
+`pvws-29id` and a workstation `pvws` both default to port 8080.
+Running them simultaneously on the same machine collides. Use
+`--name` + `--port` flags on `start-pvws.sh` to give them different
+identities, or stop the unused one.
+
+### Camera image PV size
+
+Camera arrays can be tens of MB. `start-pvws.sh` sets
+`EPICS_CA_MAX_ARRAY_BYTES=64000000` (64 MB) so pvws can pass them
+through. If you see truncated or missing camera frames after adding a
+new high-resolution camera, raise that limit.
+
