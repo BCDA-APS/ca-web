@@ -116,7 +116,7 @@ function homColor(val: number | null): string {
 
 // ── MirrorFooter ──────────────────────────────────────────────────────────────
 
-function MirrorFooter({ widgetId, prefix }: { widgetId: string; prefix: string }) {
+function MirrorFooter({ widgetId, prefix, label }: { widgetId: string; prefix: string; label: string }) {
   const [,,,  stsRaw] = useConnection(`${widgetId}-${prefix}sys-sts`,    `ca://${prefix}SYSTEM_STS`);
   const [,,, homRaw]  = useConnection(`${widgetId}-${prefix}homing-sts`, `ca://${prefix}HOMING_STS`);
 
@@ -149,6 +149,10 @@ function MirrorFooter({ widgetId, prefix }: { widgetId: string; prefix: string }
     border: "none",
   };
 
+  // HOME & STAY width spans STOP + gap + KILL so its right edge lines up
+  // with KILL's right edge (the tweak column edge).
+  const HOME_W = BTN_W * 2 + 6;
+
   return (
     <div style={{
       position: "relative",
@@ -159,33 +163,43 @@ function MirrorFooter({ widgetId, prefix }: { widgetId: string; prefix: string }
       flexDirection: "column",
       gap: 4,
     }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+      {/* Status row: Status RBV on the left, STOP+KILL pinned to the right
+          edge so they vertically align with this row's center. */}
+      <div style={{ display: "flex", alignItems: "center", gap: 4, width: CONTENT_W }}>
         <span style={labelStyle}>Status</span>
         <span style={{ ...valueStyle, color: stsColor(stsNum) }}>{stsStr}</span>
+        <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
+          <button
+            onClick={() => pvwsWriter.write(`${prefix}STOP_CMD.PROC`, 1)}
+            style={{ ...actionBtn, background: colors.statusError, color: "#fff" }}
+          >STOP</button>
+          <button
+            onClick={() => pvwsWriter.write(`${prefix}KILL_CMD.PROC`, 1)}
+            style={{ ...actionBtn, background: "rgb(140,0,140)", color: "#fff" }}
+          >KILL</button>
+        </div>
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+      {/* Homing row: Homing RBV on the left, HOME & STAY pinned right so it
+          aligns with this row's center. Width matches STOP+gap+KILL. */}
+      <div style={{ display: "flex", alignItems: "center", gap: 4, width: CONTENT_W }}>
         <span style={labelStyle}>Homing</span>
         <span style={{ ...valueStyle, color: homColor(homNum) }}>{homStr}</span>
+        <button
+          onClick={() => {
+            if (window.confirm(`Are you sure you want to home ${label}?`)) {
+              pvwsWriter.write(`${prefix}HOME_MODE_SP`, 0);
+            }
+          }}
+          style={{ ...actionBtn, marginLeft: "auto", width: HOME_W, background: "rgb(120,180,130)", color: "#fff" }}
+        >HOME &amp; STAY</button>
       </div>
 
-      {/* MOVE aligned with ‹ column */}
+      {/* MOVE aligned with ‹ column, centered vertically between the two rows */}
       <div style={{ position: "absolute", left: ARROW_LEFT, top: "50%", transform: "translateY(-50%)" }}>
         <button
           onClick={() => pvwsWriter.write(`${prefix}MOVE_CMD.PROC`, 1)}
           style={{ ...actionBtn, background: colors.spBg, color: colors.spText, border: `1px solid ${colors.spBorder}`, fontWeight: 400 }}
         >MOVE</button>
-      </div>
-
-      {/* STOP + KILL right edge aligned with tweak value column */}
-      <div style={{ position: "absolute", left: STOP_LEFT, top: "50%", transform: "translateY(-50%)", display: "flex", gap: 6 }}>
-        <button
-          onClick={() => pvwsWriter.write(`${prefix}STOP_CMD.PROC`, 1)}
-          style={{ ...actionBtn, background: colors.statusError, color: "#fff" }}
-        >STOP</button>
-        <button
-          onClick={() => pvwsWriter.write(`${prefix}KILL_CMD.PROC`, 1)}
-          style={{ ...actionBtn, background: "rgb(140,0,140)", color: "#fff" }}
-        >KILL</button>
       </div>
     </div>
   );
@@ -193,7 +207,7 @@ function MirrorFooter({ widgetId, prefix }: { widgetId: string; prefix: string }
 
 // ── MirrorPanel ───────────────────────────────────────────────────────────────
 
-function MirrorPanel({ widgetId, prefix }: { widgetId: string; prefix: string }) {
+function MirrorPanel({ widgetId, prefix, label }: { widgetId: string; prefix: string; label: string }) {
   return (
     <div style={{ paddingTop: 10, paddingBottom: 10, display: "flex", flexDirection: "column" }}>
       <div style={{ display: "flex", gap: 4, marginBottom: 6, paddingLeft: LW + 4 }}>
@@ -205,7 +219,7 @@ function MirrorPanel({ widgetId, prefix }: { widgetId: string; prefix: string })
       {AXES.map(ax => (
         <AxisRow key={ax.key} widgetId={widgetId} prefix={prefix} axisKey={ax.key} label={ax.label} unit={ax.unit} />
       ))}
-      <MirrorFooter widgetId={widgetId} prefix={prefix} />
+      <MirrorFooter widgetId={widgetId} prefix={prefix} label={label} />
     </div>
   );
 }
@@ -243,7 +257,7 @@ export function Mirrors() {
         ))}
       </div>
       {tab.kind === "mirror"
-        ? <MirrorPanel key={tab.prefix} widgetId={widgetId} prefix={tab.prefix} />
+        ? <MirrorPanel key={tab.prefix} widgetId={widgetId} prefix={tab.prefix} label={tab.label} />
         : (
           <div style={{ padding: "32px 16px 16px", display: "flex", justifyContent: "center" }}>
             <img src={tab.image} alt="Mirror coordinate-system reference"
