@@ -100,7 +100,10 @@ function IdMagneticsSection() {
 
   const qpCommFail   = (bx !== null && bx > 1 && bxB !== null && bx * 0.5 > bxB)
                     || (by !== null && by > 1 && byD !== null && by * 0.5 > byD);
-  const earthFail    = (toDouble(earthFailRaw) ?? -1) > -1;
+  // Earth coils fail when the readback drifts outside [0.4, 0.8]
+  // (ideal value is 0.6). Disconnected/null stays silent.
+  const earthFailVal = toDouble(earthFailRaw);
+  const earthFail    = earthFailVal !== null && (earthFailVal < 0.4 || earthFailVal > 0.8);
 
   return (
     <div style={{ flex: 1, minWidth: 0 }}>
