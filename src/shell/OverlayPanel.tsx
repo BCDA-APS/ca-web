@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import type { ComponentType } from "react";
 import { UiRenderer, HostOverlayContext } from "../lib/UiRenderer";
 import { layoutGet, layoutSet } from "../lib/layoutStorage";
 import { nextZ } from "./zStack";
@@ -10,9 +11,9 @@ interface OverlayState { x: number; y: number; locked: boolean }
 export interface AppOverlay {
   id: number;
   /** "ui" (default) renders a caQtDM-style file via UiRenderer.
-   *  "camera" / "scanview" / "stripchart" are rendered directly in App.tsx
-   *  via DraggablePanel + the matching widget. */
-  kind?: "ui" | "camera" | "scanview" | "stripchart";
+   *  "camera" / "scanview" / "stripchart" / "panel" are rendered directly
+   *  in App.tsx via DraggablePanel + the matching widget. */
+  kind?: "ui" | "camera" | "scanview" | "stripchart" | "panel";
   file: string;                   // for kind:"ui"; empty otherwise
   macros: Record<string, string>; // for kind:"ui"
   label: string;
@@ -27,6 +28,15 @@ export interface AppOverlay {
   defaultDetectors?: number[];
   // For kind:"stripchart":
   initialPvs?: TraceConfig[];
+  // For kind:"panel": spawn a registered React panel as an independent
+  // floating copy. `panelKey` is the stable string id (see
+  // DeploymentConfig.spawnablePanels) used by saved layouts to round-
+  // trip through JSON; Content/scale/defaultSize are resolved from
+  // that key at spawn/restore time.
+  panelKey?: string;
+  Content?: ComponentType;
+  scale?: "transform" | "fit" | "none";
+  defaultSize?: { w: number; h: number };
   /** Live size — updated when the DraggablePanel emits an onState change.
    * Stored so saved layouts can reproduce the panel exactly. */
   size?: { w: number; h: number };

@@ -261,6 +261,24 @@ function buildFileList(uiDirs: Record<string, UiDirEntry>, searchPaths: string[]
 //   2. /ui/<key>/<rest>     — uiDirs[key].target/<rest> (prefix mapping)
 //   3. embedded absolute (//path) — serve directly
 //   4. NFS search paths     — caQtDM-style fallback (full path then basename)
+// Content-Type picker for the /ui/* middleware. .ui files are XML; .adl
+// is rewritten to .ui before serving so it falls under the same case.
+// Common image extensions are also served so panels can <img src="/ui/...">
+// pictures that ship next to caQtDM screens (e.g. coordinate-system
+// schematics).
+function contentTypeFor(filename: string): string {
+  const ext = filename.toLowerCase().slice(filename.lastIndexOf("."));
+  switch (ext) {
+    case ".png":  return "image/png";
+    case ".jpg":
+    case ".jpeg": return "image/jpeg";
+    case ".gif":  return "image/gif";
+    case ".svg":  return "image/svg+xml";
+    case ".webp": return "image/webp";
+    default:      return "application/xml";
+  }
+}
+
 function uiSearchPathPlugin(paths: LoadedPaths) {
   const searchPaths = buildSearchPaths(paths.startupScripts);
   const uiFileList  = buildFileList(paths.uiDirs, searchPaths);
@@ -297,7 +315,7 @@ function uiSearchPathPlugin(paths: LoadedPaths) {
             const direct = path.join(entry.target, rest);
             if (fs.existsSync(direct)) {
               console.log(`[ui-search-path] found (uiDirs.${key}): ${direct}`);
-              res.setHeader("Content-Type", "application/xml");
+              res.setHeader("Content-Type", contentTypeFor(direct));
               fs.createReadStream(direct).pipe(res);
               return;
             }
@@ -305,7 +323,7 @@ function uiSearchPathPlugin(paths: LoadedPaths) {
             if (fs.existsSync(adl)) {
               const converted = convertAdl(adl, paths.adl2ui);
               if (converted) {
-                res.setHeader("Content-Type", "application/xml");
+                res.setHeader("Content-Type", contentTypeFor(converted));
                 fs.createReadStream(converted).pipe(res);
                 return;
               }
@@ -319,7 +337,7 @@ function uiSearchPathPlugin(paths: LoadedPaths) {
           const absPath = "/" + filename.slice(doubleSlash + 2);
           if (fs.existsSync(absPath)) {
             console.log(`[ui-search-path] found (absolute): ${absPath}`);
-            res.setHeader("Content-Type", "application/xml");
+            res.setHeader("Content-Type", contentTypeFor(absPath));
             fs.createReadStream(absPath).pipe(res);
             return;
           }
@@ -327,7 +345,7 @@ function uiSearchPathPlugin(paths: LoadedPaths) {
           if (fs.existsSync(absAdlPath)) {
             const converted = convertAdl(absAdlPath, paths.adl2ui);
             if (converted) {
-              res.setHeader("Content-Type", "application/xml");
+              res.setHeader("Content-Type", contentTypeFor(converted));
               fs.createReadStream(converted).pipe(res);
               return;
             }
@@ -345,7 +363,7 @@ function uiSearchPathPlugin(paths: LoadedPaths) {
             const fullPath = path.join(dir, name);
             if (fs.existsSync(fullPath)) {
               console.log(`[ui-search-path] found: ${fullPath}`);
-              res.setHeader("Content-Type", "application/xml");
+              res.setHeader("Content-Type", contentTypeFor(fullPath));
               fs.createReadStream(fullPath).pipe(res);
               return;
             }
@@ -354,7 +372,7 @@ function uiSearchPathPlugin(paths: LoadedPaths) {
             if (fs.existsSync(adlPath)) {
               const converted = convertAdl(adlPath, paths.adl2ui);
               if (converted) {
-                res.setHeader("Content-Type", "application/xml");
+                res.setHeader("Content-Type", contentTypeFor(converted));
                 fs.createReadStream(converted).pipe(res);
                 return;
               }

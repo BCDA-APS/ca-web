@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import type { AppOverlay } from "./OverlayPanel";
-import type { SavedLayout, SavedOverlay, SavedCameraOverlay, SavedScanViewOverlay, SavedStripChartOverlay, Tab } from "../lib/deployment";
+import type { SavedLayout, SavedOverlay, SavedCameraOverlay, SavedScanViewOverlay, SavedStripChartOverlay, SavedPanelOverlay, Tab } from "../lib/deployment";
 import {
   layoutGet,
   layoutSet,
@@ -14,7 +14,7 @@ import {
 
 export type { SavedLayout, SavedOverlay } from "../lib/deployment";
 
-export function SettingsPanel({ panelDefaults, hiddenPanels, borrowedPanels, userTabs, overlays, sharedLayouts, onClose, onBumpLayout, onResetHidden, onRestoreHidden, onRestoreBorrowed, onRestoreUserTabs, onRestoreOverlays, onRestoreCameras, onRestoreScanViews, onRestoreStripCharts, onSwitchDeployment }: {
+export function SettingsPanel({ panelDefaults, hiddenPanels, borrowedPanels, userTabs, overlays, sharedLayouts, onClose, onBumpLayout, onResetHidden, onRestoreHidden, onRestoreBorrowed, onRestoreUserTabs, onRestoreOverlays, onRestoreCameras, onRestoreScanViews, onRestoreStripCharts, onRestorePanels, onSwitchDeployment }: {
   panelDefaults: Record<string, { x: number; y: number }>;
   hiddenPanels: Set<string>;
   borrowedPanels: Map<string, Set<number>>;
@@ -31,6 +31,7 @@ export function SettingsPanel({ panelDefaults, hiddenPanels, borrowedPanels, use
   onRestoreCameras: (cams: SavedCameraOverlay[]) => void;
   onRestoreScanViews: (svs: SavedScanViewOverlay[]) => void;
   onRestoreStripCharts: (scs: SavedStripChartOverlay[]) => void;
+  onRestorePanels: (ps: SavedPanelOverlay[]) => void;
   onSwitchDeployment: () => void;
 }) {
   const panelIds = Object.keys(panelDefaults);
@@ -76,6 +77,7 @@ export function SettingsPanel({ panelDefaults, hiddenPanels, borrowedPanels, use
     const cameraOverlays = overlays.filter(o => o.kind === "camera");
     const scanviewOverlays = overlays.filter(o => o.kind === "scanview");
     const stripchartOverlays = overlays.filter(o => o.kind === "stripchart");
+    const panelOverlays = overlays.filter(o => o.kind === "panel" && o.panelKey);
     const savedOverlays: SavedOverlay[] = uiOverlays.map(ov => {
       const p = layoutGet<{ x: number; y: number; locked?: boolean }>(`overlay:${ov.file}`);
       const pos = p ? { x: p.x, y: p.y } : ov.pos;
@@ -110,11 +112,19 @@ export function SettingsPanel({ panelDefaults, hiddenPanels, borrowedPanels, use
     const savedBorrowed = [...borrowedPanels.entries()].map(([id, tabIds]) => ({
       id, tabIds: [...tabIds],
     }));
+    const savedPanels: SavedPanelOverlay[] = panelOverlays.map(ov => ({
+      panelKey: ov.panelKey!,
+      label: ov.label,
+      pos: ov.pos,
+      size: ov.size,
+      tabId: ov.tabId,
+    }));
     return {
       name, positions, hidden: [...hiddenPanels], borrowed: savedBorrowed,
       userTabs: [...userTabs],
       overlays: savedOverlays, cameras: savedCameras,
       scanviews: savedScanViews, stripcharts: savedStripCharts,
+      panels: savedPanels,
     };
   }
 
@@ -147,6 +157,7 @@ export function SettingsPanel({ panelDefaults, hiddenPanels, borrowedPanels, use
     onRestoreCameras(layout.cameras ?? []);
     onRestoreScanViews(layout.scanviews ?? []);
     onRestoreStripCharts(layout.stripcharts ?? []);
+    onRestorePanels(layout.panels ?? []);
     onBumpLayout();
     onClose();
   }
@@ -170,6 +181,7 @@ export function SettingsPanel({ panelDefaults, hiddenPanels, borrowedPanels, use
     onRestoreCameras([]);
     onRestoreScanViews([]);
     onRestoreStripCharts([]);
+    onRestorePanels([]);
     onBumpLayout();
     onClose();
   }

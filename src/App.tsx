@@ -10,7 +10,7 @@ import { StripChart } from "./widgets/StripChart";
 import { ScanViewChart } from "./widgets/ScanViewChart";
 import { Sidebar } from "./shell/Sidebar";
 import { SettingsPanel, type SavedOverlay } from "./shell/SettingsPanel";
-import type { SavedCameraOverlay, SavedScanViewOverlay, SavedStripChartOverlay } from "./lib/deployment";
+import type { SavedCameraOverlay, SavedScanViewOverlay, SavedStripChartOverlay, SavedPanelOverlay } from "./lib/deployment";
 import { FilePickerDialog, useUiFiles } from "./shell/FilePickerDialog";
 import { PanelPickerDialog } from "./shell/PanelPickerDialog";
 import { PvContextMenu, type PvContextEvent } from "./shell/PvContextMenu";
@@ -185,6 +185,41 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
     }
     window.addEventListener("open-scanview", scanviewHandler);
 
+    function panelHandler(e: Event) {
+      const detail = (e as CustomEvent).detail ?? {};
+      const { label, panelKey } = detail;
+      // Resolve Content/scale/defaultSize either from panelKey (the
+      // serializable path — saved layouts use this) or from inline
+      // detail.Content (legacy/ad-hoc dispatch). panelKey wins when both
+      // are present so the spawned overlay carries the key for save.
+      let Content = detail.Content;
+      let scale = detail.scale;
+      let defaultSize = detail.defaultSize;
+      if (panelKey) {
+        const spec = config.spawnablePanels?.[panelKey];
+        if (!spec) {
+          console.warn(`[open-panel] unknown panelKey "${panelKey}"`);
+          return;
+        }
+        Content = spec.Content;
+        scale = spec.scale;
+        defaultSize = spec.defaultSize;
+      }
+      if (!Content) return;
+      const tabId = activeTabRef.current;
+      const id = ++counter.current;
+      const offset = ((id - 1) % 6) * 24;
+      setOverlays(prev => [...prev, {
+        id, kind: "panel",
+        file: "", macros: {},
+        label: label ?? "Panel",
+        pos: { x: 120 + offset, y: 80 + offset },
+        panelKey, Content, scale, defaultSize,
+        tabId,
+      }]);
+    }
+    window.addEventListener("open-panel", panelHandler);
+
     function stripchartHandler(e: Event) {
       const { label, initialPvs, dedupe } = (e as CustomEvent).detail ?? {};
       const tabId = activeTabRef.current;
@@ -219,6 +254,7 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
       window.removeEventListener("open-camera", cameraHandler);
       window.removeEventListener("open-scanview", scanviewHandler);
       window.removeEventListener("open-stripchart", stripchartHandler);
+      window.removeEventListener("open-panel", panelHandler);
     };
   }, []);
 
@@ -322,6 +358,34 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
     ]);
   }
 
+  function restorePanels(saved: SavedPanelOverlay[]) {
+    const tabId = activeTabRef.current;
+    const specs = config.spawnablePanels ?? {};
+    setOverlays(prev => [
+      ...prev.filter(o => o.kind !== "panel"),
+      ...saved.flatMap(sp => {
+        const spec = specs[sp.panelKey];
+        if (!spec) {
+          console.warn(`[restorePanels] unknown panelKey "${sp.panelKey}"`);
+          return [];
+        }
+        return [{
+          id: ++counter.current,
+          kind: "panel" as const,
+          file: "", macros: {},
+          label: sp.label,
+          pos: sp.pos,
+          size: sp.size,
+          panelKey: sp.panelKey,
+          Content: spec.Content,
+          scale: spec.scale,
+          defaultSize: spec.defaultSize,
+          tabId: sp.tabId ?? tabId,
+        }];
+      }),
+    ]);
+  }
+
   function restoreStripCharts(saved: SavedStripChartOverlay[]) {
     const tabId = activeTabRef.current;
     const fresh = saved.map(sc => ({ sc, id: ++counter.current }));
@@ -421,6 +485,25 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
             </div>
           );
         }
+        if (ov.kind === "panel" && ov.Content) {
+          const PanelContent = ov.Content;
+          return (
+            <div key={ov.id} style={{ display: visible ? "contents" : "none" }}>
+              <DraggablePanel
+                id={`panel-${ov.id}`}
+                title={ov.label}
+                defaultPos={ov.pos}
+                defaultSize={ov.size ?? ov.defaultSize}
+                scale={ov.scale}
+                transient
+                onState={onPanelState}
+                onClose={close}
+              >
+                <PanelContent />
+              </DraggablePanel>
+            </div>
+          );
+        }
         if (!visible) return null;
         return <OverlayPanel key={ov.id} ov={ov} onClose={close} />;
       })}
@@ -509,6 +592,7 @@ export default function App({ wsDown = false, wsUrl = "" }: { wsDown?: boolean; 
             onRestoreCameras={restoreCameras}
             onRestoreScanViews={restoreScanViews}
             onRestoreStripCharts={restoreStripCharts}
+            onRestorePanels={restorePanels}
             onSwitchDeployment={() => {
               clearActive();
               const url = new URL(window.location.href);

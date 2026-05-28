@@ -9,9 +9,15 @@ import { toDouble, pvCtx } from "../../../lib/epics";
 import { colors, fontSize } from "../../../lib/theme";
 import { ChanRbvBox, ChanSpBox, TweakValue, TweakButton } from "../../../widgets/EpicsWidgets";
 import type { TraceConfig } from "../../../widgets/StripChart";
-
 function showPanel(id: string) {
   window.dispatchEvent(new CustomEvent("show-panel", { detail: { id } }));
+}
+
+// Spawn a registered panel by its panelKey (see DeploymentConfig.
+// spawnablePanels). Using the key (not an inline Content reference)
+// means the spawned instance is saveable into layouts.
+function spawnPanelByKey(label: string, panelKey: string) {
+  window.dispatchEvent(new CustomEvent("open-panel", { detail: { label, panelKey } }));
 }
 
 const AHUTCH_STRIP_TOOL_PVS: TraceConfig[] = [
@@ -55,8 +61,8 @@ function MoreMenu() {
   }, [open]);
 
   const items: { label: string; action: () => void }[] = [
-    { label: "Mirrors",     action: () => { showPanel("29id-mirrors"); setOpen(false); } },
-    { label: "Slits",       action: () => { showPanel("29id-slits");   setOpen(false); } },
+    { label: "Mirrors",     action: () => { spawnPanelByKey("Mirrors", "mirrors"); setOpen(false); } },
+    { label: "Slits",       action: () => { spawnPanelByKey("Slits",   "slits");   setOpen(false); } },
     { label: "DiaGon",       action: () => { showPanel("29id-diagon");       setOpen(false); } },
     { label: "Diagnostics",  action: () => {
       window.dispatchEvent(new CustomEvent("open-ui", {

@@ -13,7 +13,7 @@ import { Diagon } from "./optics/Diagon";
 import { ScanRecords } from "./scan/ScanRecords";
 import { pvwsWriter } from "../../lib/pvwsWriter";
 import { spawnCameras } from "./cameras";
-import type { DeploymentConfig, DeploymentConfigData, PanelTemplate } from "../../lib/deployment";
+import type { DeploymentConfig, DeploymentConfigData, PanelTemplate, SpawnablePanelSpec } from "../../lib/deployment";
 import rawConfig from "./config.json";
 
 // Drop the build-time-only `paths` block; vite.config.ts reads it directly
@@ -30,9 +30,7 @@ const tabPanels: DeploymentConfig["tabPanels"] = {
   2: [{ id: "29idd-kappa", title: "29ID-D Kappa", Content: KappaContent, scale: "transform" }],
   3: [
     { id: "29id-beamline-layout", title: "Beamline Layout", Content: BeamlineLayout,  scale: "transform" },
-    { id: "29id-mirrors",         title: "Mirrors",         Content: Mirrors,         scale: "transform" },
     { id: "29id-energy-a",        title: "Beamline Energy", Content: BeamlineEnergyA, scale: "transform" },
-    { id: "29id-slits",           title: "Slits",           Content: Slits,           scale: "transform" },
     { id: "29id-diagon",          title: "DiaGon",          Content: Diagon,          scale: "transform" },
     { id: "29id-scan-records",    title: "Scan Records",    Content: ScanRecords, defaultSize: { w: 360, h: 320 }, scale: "transform" },
   ],
@@ -66,9 +64,37 @@ const templates: PanelTemplate[] = [
       defaultDetectors: [],
     }})),
   },
+  // Mirrors and Slits are spawn-on-demand so staff can open multiple
+  // copies side-by-side (e.g. compare M3R and M1 readbacks at once).
+  // Each click on the picker entry pushes a fresh independent instance.
+  // panelKey ties the spawn to spawnablePanels[<key>] below — that's
+  // also what saved layouts record so they restore correctly.
+  {
+    id: "tmpl-mirrors",
+    title: "Mirrors",
+    spawn: () => window.dispatchEvent(new CustomEvent("open-panel", { detail: {
+      label: "Mirrors", panelKey: "mirrors",
+    }})),
+  },
+  {
+    id: "tmpl-slits",
+    title: "Slits",
+    spawn: () => window.dispatchEvent(new CustomEvent("open-panel", { detail: {
+      label: "Slits", panelKey: "slits",
+    }})),
+  },
 ];
 
-export const config: DeploymentConfig = { ...deploymentFields, tabPanels, templates };
+// Stable map from panelKey -> React component for spawn-on-demand
+// panels. Keys must stay stable across releases; saved layouts
+// reference them. Add new entries here when you want a registered
+// panel to be both saveable AND spawn-multiple-able.
+const spawnablePanels: Record<string, SpawnablePanelSpec> = {
+  mirrors: { Content: Mirrors, scale: "transform" },
+  slits:   { Content: Slits,   scale: "transform" },
+};
+
+export const config: DeploymentConfig = { ...deploymentFields, tabPanels, templates, spawnablePanels };
 
 const ARPES_MOTORS = ["m1", "m2", "m3", "m4", "m5", "m6"];
 

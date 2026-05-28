@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useId } from "react";
 import { useConnection } from "@diamondlightsource/cs-web-lib";
 import { pvwsWriter } from "../../../lib/pvwsWriter";
 import { toDouble, toStr, pvCtx } from "../../../lib/epics";
@@ -52,13 +52,19 @@ const labelStyle: React.CSSProperties = {
 
 // ── AxisRow ───────────────────────────────────────────────────────────────────
 
-function AxisRow({ prefix, axisKey, label, unit }: {
+function AxisRow({ widgetId, prefix, axisKey, label, unit }: {
+  widgetId: string;
   prefix: string;
   axisKey: string;
   label: string;
   unit: string;
 }) {
-  const id = `${prefix}${axisKey}`;
+  // widgetId scopes each subscription to this Mirrors instance. Without it,
+  // two Mirrors panels viewing the same mirror share useConnection ids, and
+  // switching the mirror tab in one panel tears down subscriptions the other
+  // panel (and BeamlineEnergyA, which uses identical ${prefix}sys-sts ids)
+  // still depends on.
+  const id = `${widgetId}-${prefix}${axisKey}`;
   const [, conn,, monRaw] = useConnection(`${id}-mon`, `ca://${prefix}${axisKey}_MON`);
   const [,,,       spRaw] = useConnection(`${id}-sp`,  `ca://${prefix}${axisKey}_POS_SP`);
   const [,,,      twvRaw] = useConnection(`${id}-twv`, `ca://${prefix}${axisKey}_TWV_SP`);
@@ -102,9 +108,9 @@ function homColor(val: number | null): string {
 
 // ── MirrorFooter ──────────────────────────────────────────────────────────────
 
-function MirrorFooter({ prefix }: { prefix: string }) {
-  const [,,,  stsRaw] = useConnection(`${prefix}sys-sts`,    `ca://${prefix}SYSTEM_STS`);
-  const [,,, homRaw]  = useConnection(`${prefix}homing-sts`, `ca://${prefix}HOMING_STS`);
+function MirrorFooter({ widgetId, prefix }: { widgetId: string; prefix: string }) {
+  const [,,,  stsRaw] = useConnection(`${widgetId}-${prefix}sys-sts`,    `ca://${prefix}SYSTEM_STS`);
+  const [,,, homRaw]  = useConnection(`${widgetId}-${prefix}homing-sts`, `ca://${prefix}HOMING_STS`);
 
   const stsStr = toStr(stsRaw) ?? "—";
   const homStr = toStr(homRaw) ?? "—";
@@ -179,7 +185,7 @@ function MirrorFooter({ prefix }: { prefix: string }) {
 
 // ── MirrorPanel ───────────────────────────────────────────────────────────────
 
-function MirrorPanel({ prefix }: { prefix: string }) {
+function MirrorPanel({ widgetId, prefix }: { widgetId: string; prefix: string }) {
   return (
     <div style={{ paddingTop: 10, paddingBottom: 10, display: "flex", flexDirection: "column" }}>
       <div style={{ display: "flex", gap: 4, marginBottom: 6, paddingLeft: LW + 4 }}>
@@ -189,9 +195,9 @@ function MirrorPanel({ prefix }: { prefix: string }) {
         <span style={{ fontSize: fontSize.small, color: colors.dim, width: TWV_W, textAlign: "center", flexShrink: 0 }}>Tweak Step</span>
       </div>
       {AXES.map(ax => (
-        <AxisRow key={ax.key} prefix={prefix} axisKey={ax.key} label={ax.label} unit={ax.unit} />
+        <AxisRow key={ax.key} widgetId={widgetId} prefix={prefix} axisKey={ax.key} label={ax.label} unit={ax.unit} />
       ))}
-      <MirrorFooter prefix={prefix} />
+      <MirrorFooter widgetId={widgetId} prefix={prefix} />
     </div>
   );
 }
@@ -201,6 +207,9 @@ function MirrorPanel({ prefix }: { prefix: string }) {
 export function Mirrors() {
   const [active, setActive] = useState(0);
   const mirror = MIRRORS[active];
+  // Unique-per-instance id so each spawned Mirrors panel has its own
+  // useConnection subscription namespace (see AxisRow for rationale).
+  const widgetId = useId();
 
   return (
     <div style={{ display: "flex", flexDirection: "column", fontFamily: "sans-serif", minWidth: CONTENT_W }}>
@@ -225,7 +234,7 @@ export function Mirrors() {
           </button>
         ))}
       </div>
-      <MirrorPanel key={mirror.prefix} prefix={mirror.prefix} />
+      <MirrorPanel key={mirror.prefix} widgetId={widgetId} prefix={mirror.prefix} />
     </div>
   );
 }

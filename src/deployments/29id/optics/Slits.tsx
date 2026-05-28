@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useId } from "react";
 import { useConnection } from "@diamondlightsource/cs-web-lib";
 import { pvwsWriter } from "../../../lib/pvwsWriter";
 import { toDouble, pvCtx } from "../../../lib/epics";
@@ -23,15 +23,19 @@ const TABS = [
 // ── SlitGroup ─────────────────────────────────────────────────────────────────
 // One axis × one quantity (e.g. H Size or V Center)
 
-function SlitGroup({ rbvPv, spPv, tweakPfx, label }: {
+function SlitGroup({ widgetId, rbvPv, spPv, tweakPfx, label }: {
+  widgetId: string;
   rbvPv:    string;   // e.g. "29idb:Slit1Ht2.C"
   spPv:     string;   // e.g. "29idb:Slit1Hsize.VAL"
   tweakPfx: string;   // e.g. "29idb:Slit1Hsize"  (appended with _tweak.A/B, _tweakVal.VAL)
   label:    string;   // e.g. "1A-H Size"
 }) {
-  const [, conn,, rbv]  = useConnection(rbvPv,          `ca://${rbvPv}`);
-  const [,,, sp]         = useConnection(spPv,           `ca://${spPv}`);
-  const [,,, twvRaw]     = useConnection(`${tweakPfx}v`, `ca://${tweakPfx}_tweakVal.VAL`);
+  // Per-instance widgetId so two spawned Slits panels don't share
+  // useConnection ids (would tear down each other's subscriptions on
+  // unmount). Same fix as Mirrors and the chart widgets.
+  const [, conn,, rbv]  = useConnection(`${widgetId}-${rbvPv}`,          `ca://${rbvPv}`);
+  const [,,, sp]         = useConnection(`${widgetId}-${spPv}`,           `ca://${spPv}`);
+  const [,,, twvRaw]     = useConnection(`${widgetId}-${tweakPfx}v`,      `ca://${tweakPfx}_tweakVal.VAL`);
 
   return (
     <div style={{
@@ -62,7 +66,7 @@ function SlitGroup({ rbvPv, spPv, tweakPfx, label }: {
 
 // ── SlitPanel ─────────────────────────────────────────────────────────────────
 
-function SlitPanel({ sn, abbr }: { sn: string; abbr: string }) {
+function SlitPanel({ widgetId, sn, abbr }: { widgetId: string; sn: string; abbr: string }) {
   const hPfx = `29idb:Slit${sn}H`;
   const vPfx = `29idb:Slit${sn}V`;
 
@@ -84,14 +88,14 @@ function SlitPanel({ sn, abbr }: { sn: string; abbr: string }) {
 
       {/* ── Size row ── */}
       <div style={{ display: "flex", gap: COL_GAP }}>
-        <SlitGroup rbvPv={`${hPfx}t2.C`} spPv={`${hPfx}size.VAL`} tweakPfx={`${hPfx}size`} label={`${abbr}-H Size`} />
-        <SlitGroup rbvPv={`${vPfx}t2.C`} spPv={`${vPfx}size.VAL`} tweakPfx={`${vPfx}size`} label={`${abbr}-V Size`} />
+        <SlitGroup widgetId={widgetId} rbvPv={`${hPfx}t2.C`} spPv={`${hPfx}size.VAL`} tweakPfx={`${hPfx}size`} label={`${abbr}-H Size`} />
+        <SlitGroup widgetId={widgetId} rbvPv={`${vPfx}t2.C`} spPv={`${vPfx}size.VAL`} tweakPfx={`${vPfx}size`} label={`${abbr}-V Size`} />
       </div>
 
       {/* ── Center row ── */}
       <div style={{ display: "flex", gap: COL_GAP }}>
-        <SlitGroup rbvPv={`${hPfx}t2.D`} spPv={`${hPfx}center.VAL`} tweakPfx={`${hPfx}center`} label={`${abbr}-H Center`} />
-        <SlitGroup rbvPv={`${vPfx}t2.D`} spPv={`${vPfx}center.VAL`} tweakPfx={`${vPfx}center`} label={`${abbr}-V Center`} />
+        <SlitGroup widgetId={widgetId} rbvPv={`${hPfx}t2.D`} spPv={`${hPfx}center.VAL`} tweakPfx={`${hPfx}center`} label={`${abbr}-H Center`} />
+        <SlitGroup widgetId={widgetId} rbvPv={`${vPfx}t2.D`} spPv={`${vPfx}center.VAL`} tweakPfx={`${vPfx}center`} label={`${abbr}-V Center`} />
       </div>
 
       {/* ── Buttons ── */}
@@ -207,6 +211,8 @@ function Schematic() {
 export function Slits() {
   const [active, setActive] = useState(0);
   const tab = TABS[active];
+  // Per-instance namespace for useConnection ids (see SlitGroup).
+  const widgetId = useId();
 
   return (
     <div style={{ display: "flex", flexDirection: "column", fontFamily: "sans-serif" }}>
@@ -231,7 +237,7 @@ export function Slits() {
       </div>
 
       {active < 2
-        ? <SlitPanel key={tab.id} sn={tab.sn} abbr={tab.abbr} />
+        ? <SlitPanel key={tab.id} widgetId={widgetId} sn={tab.sn} abbr={tab.abbr} />
         : <Schematic />
       }
     </div>

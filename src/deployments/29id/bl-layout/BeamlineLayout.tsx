@@ -11,6 +11,13 @@ import { ChanRbvBox, ChanSpBox, TweakValue, TweakButton } from "../../../widgets
 import type { TraceConfig } from "../../../widgets/StripChart";
 import { spawnCameras } from "../cameras";
 
+// Spawn a registered panel by its panelKey (see DeploymentConfig.
+// spawnablePanels). Using the key (not an inline Content reference)
+// means the spawned instance is saveable into layouts.
+function spawnPanelByKey(label: string, panelKey: string) {
+  window.dispatchEvent(new CustomEvent("open-panel", { detail: { label, panelKey } }));
+}
+
 function showPanel(id: string) {
   window.dispatchEvent(new CustomEvent("show-panel", { detail: { id } }));
 }
@@ -58,8 +65,10 @@ function MoreMenu() {
   }, [open]);
 
   const items: { label: string; action: () => void }[] = [
-    { label: "Mirrors",     action: () => { showPanel("29id-mirrors"); setOpen(false); } },
-    { label: "Slits",       action: () => { showPanel("29id-slits");   setOpen(false); } },
+    // Mirrors and Slits spawn fresh independent copies on each click
+    // (staff want multiple side-by-side). DiaGon stays a singleton.
+    { label: "Mirrors",     action: () => { spawnPanelByKey("Mirrors", "mirrors"); setOpen(false); } },
+    { label: "Slits",       action: () => { spawnPanelByKey("Slits",   "slits");   setOpen(false); } },
     { label: "DiaGon",       action: () => { showPanel("29id-diagon");       setOpen(false); } },
     { label: "Diagnostics",  action: () => {
       window.dispatchEvent(new CustomEvent("open-ui", {

@@ -16,7 +16,7 @@ import { DetectorSpectrum } from "../../widgets/DetectorSpectrum";
 import { TempController } from "../../widgets/TempController";
 import { CameraViewer } from "../../widgets/CameraViewer";
 import { pvwsWriter } from "../../lib/pvwsWriter";
-import type { DeploymentConfig, DeploymentConfigData } from "../../lib/deployment";
+import type { DeploymentConfig, DeploymentConfigData, PanelTemplate, SpawnablePanelSpec } from "../../lib/deployment";
 import rawConfig from "./config.json";
 
 // Drop the build-time-only `paths` block; vite.config.ts reads it directly
@@ -45,9 +45,7 @@ const tabPanels: DeploymentConfig["tabPanels"] = {
   ],
   3: [
     { id: "29id-beamline-layout",  title: "Beamline Layout",    Content: BeamlineLayout },
-    { id: "29id-mirrors",          title: "Mirrors",            Content: Mirrors },
     { id: "29id-energy-a",         title: "Beamline Energy",    Content: BeamlineEnergyA },
-    { id: "29id-slits",            title: "Slits",              Content: Slits },
     { id: "29id-diagon",           title: "DiaGon",             Content: Diagon },
     { id: "29id-scan-records",     title: "Scan Records",       Content: ScanRecords },
     { id: "29id-bl-diag",          title: "Diagnostics",        Content: BlDiagContent },
@@ -73,7 +71,32 @@ const tabPanels: DeploymentConfig["tabPanels"] = {
   ],
 };
 
-export const config: DeploymentConfig = { ...deploymentFields, tabPanels };
+// Mirrors and Slits are spawn-on-demand so staff can open multiple
+// copies side-by-side. Each click pushes a fresh independent instance.
+// panelKey ties them to spawnablePanels below for saved-layout restore.
+const templates: PanelTemplate[] = [
+  {
+    id: "tmpl-mirrors",
+    title: "Mirrors",
+    spawn: () => window.dispatchEvent(new CustomEvent("open-panel", { detail: {
+      label: "Mirrors", panelKey: "mirrors",
+    }})),
+  },
+  {
+    id: "tmpl-slits",
+    title: "Slits",
+    spawn: () => window.dispatchEvent(new CustomEvent("open-panel", { detail: {
+      label: "Slits", panelKey: "slits",
+    }})),
+  },
+];
+
+const spawnablePanels: Record<string, SpawnablePanelSpec> = {
+  mirrors: { Content: Mirrors, scale: "transform" },
+  slits:   { Content: Slits,   scale: "transform" },
+};
+
+export const config: DeploymentConfig = { ...deploymentFields, tabPanels, templates, spawnablePanels };
 
 const ARPES_MOTORS = ["m1", "m2", "m3", "m4", "m5", "m6"];
 

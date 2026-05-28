@@ -82,6 +82,27 @@ export interface SavedStripChartOverlay {
   state?: Record<string, unknown>;
 }
 
+export interface SavedPanelOverlay {
+  /** Key into DeploymentConfig.spawnablePanels — the deployment maps it
+   * back to the React component at restore time. */
+  panelKey: string;
+  label: string;
+  pos: { x: number; y: number };
+  size?: { w: number; h: number };
+  tabId?: number;
+}
+
+/** Map of stable string keys to React panel components that can be
+ * spawned multiple times via the "open-panel" event. Saved layouts
+ * serialize panel-kind overlays by their key; restore looks the
+ * component back up here. Keys must stay stable across releases so
+ * older saved layouts still resolve. */
+export interface SpawnablePanelSpec {
+  Content: ComponentType;
+  scale?: "transform" | "fit" | "none";
+  defaultSize?: { w: number; h: number };
+}
+
 export interface SavedLayout {
   name: string;
   // w/h are optional for backwards-compat: layouts written before sizes were
@@ -100,6 +121,7 @@ export interface SavedLayout {
   cameras?: SavedCameraOverlay[];
   scanviews?: SavedScanViewOverlay[];
   stripcharts?: SavedStripChartOverlay[];
+  panels?: SavedPanelOverlay[];
 }
 
 /** A spawnable panel template surfaced in the "Open react…" picker.
@@ -136,6 +158,11 @@ export interface DeploymentConfig {
    * static panels. Each can take macro-style prompts (e.g. ScanView
    * asking for an IOC prefix). */
   templates?: PanelTemplate[];
+  /** Panels that can be spawned as independent floating instances via
+   * `open-panel` events. The map key is the stable id that saved
+   * layouts reference; the value carries the React component + render
+   * hints. */
+  spawnablePanels?: Record<string, SpawnablePanelSpec>;
 }
 
 // Shape of a deployment's config.json on disk. tabPanels lives in TSX (it
