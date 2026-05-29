@@ -155,6 +155,37 @@ These will be defined in `vite.config.ts`.
 - `vite.config.ts` — add the search-path middleware plugin
 - No changes to `src/` needed
 
+## How to encode a UI file URL in app code
+
+When writing a `/ui/<...>` URL in TSX (for `open-ui` events, `<UiRenderer file=...>`,
+`quickLinks`, etc.), prefer in this order:
+
+1. **Search-path basename** — `/ui/<filename>.ui`. Use when the file's directory is
+   reachable via the deployment's caQtDM startup script. The vite middleware tries each
+   directory in the union of `append_QDP*` entries; if a unique basename match exists,
+   it serves the file (and adl2ui-converts on the fly for `.adl` originals). Zero
+   config, zero maintenance. This is the default — most synApps / IOC screens land
+   here.
+
+2. **uiDirs prefix mapping** — `/ui/<key>/<file>.ui`. Requires adding an entry to
+   `paths.uiDirs` in the deployment's `config.json`. Use only when one of:
+   - the file's directory is **not** in the startup script (e.g. `ADVimba` at 29-ID
+     because there is no `append_QDP_module ADVIMBA` line);
+   - you need to **pin to a specific module version** different from what the script's
+     release file provides (e.g. `ADBase` pinned to synApps 6.2.1 while the script
+     uses 6.3);
+   - you need to **disambiguate a name collision** between two directories in the
+     search path.
+
+3. **Embedded absolute** — `/ui/x//<absolute-path>.ui`. Last resort escape hatch for a
+   one-off file where neither of the above fits and adding a uiDirs entry would be
+   overkill. The vite middleware strips everything up to `//` and serves the literal
+   absolute path (with `.adl` conversion if needed). Avoid in checked-in code.
+
+Resolution priority at runtime is `uiDirs → //abs → search paths` — the cheapest
+deterministic lookups first, fuzzy search last. That order is about runtime cost, **not**
+developer preference, which is the opposite (basename first, escape hatch last).
+
 ## Production considerations
 
 The Vite middleware only runs during development (`npm run dev`). In production, Vite

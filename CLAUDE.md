@@ -22,6 +22,7 @@ ca-web — a browser-based control panel for beamline instruments
 - Pre-commit runs format checks and the local quality-gate (tsc + ESLint) automatically. Override with `SKIP=quality-gate git commit ...` only when the user requests it.
 - When editing source under `src/lib/`, `src/widgets/`, or `src/deployments/`, update `CHANGELOG.md`, `docs/architecture.md`, or the relevant page under `docs/` if the change is architecturally visible. The doc-sync hook will warn if you forget.
 - Use procedural skills under `.claude/skills/` (e.g. `new-deployment`, `running-the-quality-gate`, `verifying-before-completion`) when extending the repo so conventions stay consistent.
+- `/ui/<...>` URLs in app code: prefer **search-path basename** (`/ui/<file>.ui`) → **uiDirs prefix** (`/ui/<key>/<file>.ui`, only when search path doesn't cover, version pinning, or name collision) → **embedded absolute** (`/ui/x//<abs>`, last resort). See [docs/display-path-resolution.md](docs/display-path-resolution.md#how-to-encode-a-ui-file-url-in-app-code).
 
 ## Stack
 
