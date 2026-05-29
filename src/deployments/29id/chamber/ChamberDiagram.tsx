@@ -3,7 +3,7 @@ import { useConnection } from "@diamondlightsource/cs-web-lib";
 import { pvwsWriter } from "../../../lib/pvwsWriter";
 import { toDouble, toStr, pvCtx } from "../../../lib/epics";
 import type { TraceConfig } from "../../../widgets/StripChart";
-import { spawnCameras } from "../cameras";
+import { spawnCameras, CAMERAS_29IDC } from "../cameras";
 
 // Spawn-on-demand preset PVs for chamber buttons. Each click dispatches a
 // custom event that App.tsx turns into a fresh StripChart / ScanViewChart
@@ -263,7 +263,7 @@ export function ChamberDiagram() {
               { label: "ScanView",  action: () => window.dispatchEvent(new CustomEvent("open-scanview", { detail: {
                 label: "ARPES ScanView", recordPv: "29idARPES:scan1", defaultDetectors: [14, 15, 16, 18],
               }})) },
-              { label: "Cameras",   action: spawnCameras },
+              { label: "Cameras",   action: () => spawnCameras(CAMERAS_29IDC) },
             ].map(item => (
               <button key={item.label}
                 onClick={() => { setMoreOpen(false); item.action(); }}

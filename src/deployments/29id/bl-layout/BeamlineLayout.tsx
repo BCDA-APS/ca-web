@@ -42,7 +42,7 @@ function spawnAhutchStripTool() {
   }}));
 }
 
-const openCamera = spawnCameras;
+const openCamera = () => spawnCameras();
 
 const shortcutBtn: React.CSSProperties = {
   background: colors.relatedBg, color: colors.relatedFg,

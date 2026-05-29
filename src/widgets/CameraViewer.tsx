@@ -303,21 +303,9 @@ function AcquireBtn({ pv }: { pv: string }) {
 }
 
 // Gear button that opens the camera's underlying AD settings .ui screen.
-// Uses the active camera entry's settingsFile/settingsMacros overrides
-// when provided; otherwise picks ADAravis / ADVimba / ADBase from the
-// prefix and passes `{P: prefix, R: "cam1:"}`.
-function SettingsButton({ prefix, settingsFile, settingsMacros }: {
-  prefix: string;
-  settingsFile?: string;
-  settingsMacros?: Record<string, string>;
-}) {
+// Picks the right ADAravis / ADVimba / ADBase file based on the prefix.
+function SettingsButton({ prefix }: { prefix: string }) {
   function open() {
-    if (settingsFile) {
-      window.dispatchEvent(new CustomEvent("open-ui", {
-        detail: { file: settingsFile, macros: settingsMacros ?? {}, label: `${prefix} settings` },
-      }));
-      return;
-    }
     let file: string;
     if (/_arv\d+:/.test(prefix)) {
       file = "/ui/29id/ADAravis.ui";
@@ -413,19 +401,14 @@ export function CameraViewer({
     if (onPrefixChange) onPrefixChange(p);
   };
 
-  // Derived PVs. Explicit props always win; otherwise compute from prefix
-  // using the active known-camera entry's plugin overrides if it has
-  // any, else the standard `cam1` / `image1` convention.
+  // Derived PVs. Explicit props always win; otherwise compute from prefix.
   const trimmedPrefix = prefix.trim();
-  const activeEntry = knownCameras?.find(c => c.prefix === trimmedPrefix);
-  const camPlug   = activeEntry?.cam   ?? "cam1";
-  const imagePlug = activeEntry?.image ?? "image1";
-  const adPrefix     = adPrefixProp     ?? (trimmedPrefix ? `${trimmedPrefix}${camPlug}:`                 : undefined);
-  const imagePv      = imagePvProp      ?? (trimmedPrefix ? `${trimmedPrefix}${imagePlug}:ArrayData`      : undefined);
-  const imageWPv     = imageWPvProp     ?? (trimmedPrefix ? `${trimmedPrefix}${imagePlug}:ArraySize0_RBV` : undefined);
-  const imageHPv     = imageHPvProp     ?? (trimmedPrefix ? `${trimmedPrefix}${imagePlug}:ArraySize1_RBV` : undefined);
-  const imageSize2Pv = imageSize2PvProp ?? (trimmedPrefix ? `${trimmedPrefix}${imagePlug}:ArraySize2_RBV` : undefined);
-  const colorModePv  = colorModePvProp  ?? (trimmedPrefix ? `${trimmedPrefix}${camPlug}:ColorMode_RBV`    : undefined);
+  const adPrefix     = adPrefixProp     ?? (trimmedPrefix ? `${trimmedPrefix}cam1:`               : undefined);
+  const imagePv      = imagePvProp      ?? (trimmedPrefix ? `${trimmedPrefix}image1:ArrayData`     : undefined);
+  const imageWPv     = imageWPvProp     ?? (trimmedPrefix ? `${trimmedPrefix}image1:ArraySize0_RBV` : undefined);
+  const imageHPv     = imageHPvProp     ?? (trimmedPrefix ? `${trimmedPrefix}image1:ArraySize1_RBV` : undefined);
+  const imageSize2Pv = imageSize2PvProp ?? (trimmedPrefix ? `${trimmedPrefix}image1:ArraySize2_RBV` : undefined);
+  const colorModePv  = colorModePvProp  ?? (trimmedPrefix ? `${trimmedPrefix}cam1:ColorMode_RBV`    : undefined);
   const [showXhair, setShowXhair] = useState(crosshair);
   // PV-driven dimensions and color mode: fall back when not connected.
   const [, , , wRaw]  = useConnection(`cam-w-${imageWPv  ?? title}`, imageWPv  ? `ca://${imageWPv}`  : undefined);
@@ -697,9 +680,7 @@ export function CameraViewer({
             // mode we have it directly. Otherwise derive from the explicit
             // adPrefix prop by stripping the trailing `cam1:` segment.
             const gearPrefix = trimmedPrefix || (adPrefix ? adPrefix.replace(/cam1:$/, "") : "");
-            return gearPrefix ? <SettingsButton prefix={gearPrefix}
-              settingsFile={activeEntry?.settingsFile}
-              settingsMacros={activeEntry?.settingsMacros} /> : null;
+            return gearPrefix ? <SettingsButton prefix={gearPrefix} /> : null;
           })()}
         </div>
       )}

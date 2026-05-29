@@ -116,8 +116,7 @@ Each deployment registers static React panels in `tabPanels`
 
 - **CameraViewer** — full-featured AreaDetector image with crosshair,
   contrast controls, settings gear, multiple instances. Cameras list
-  per deployment (e.g. `src/deployments/29id/cameras.ts`); supports
-  per-camera plugin overrides (e.g. Scienta's `image4`).
+  per deployment (e.g. `src/deployments/29id/cameras.ts`).
 - **StripChart** — multi-PV rolling time-series with sidebar, Y-mode
   toggle, log scale, manual range, hover crosshair, wrapping legend.
 - **ScanViewChart** — sscan-record analog of StripChart: plots

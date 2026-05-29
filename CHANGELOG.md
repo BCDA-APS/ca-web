@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+### Remove Scienta camera and per-entry plugin/settings overrides
+
+The Scienta manta camera no longer appears in the ca-web camera
+dropdown. Removed the entry from `src/deployments/29id/cameras.ts` and
+reverted the convention-breaking support that existed only for it:
+`CameraEntry` is back to `{ label, prefix }` only (no `image` / `cam` /
+`settingsFile` / `settingsMacros`), and `CameraViewer` derives PVs
+straight from `${prefix}cam1:` / `${prefix}image1:` again. The gear
+button is back to picking ADAravis / ADVimba / ADBase purely from the
+prefix regex.
+
+### Scope the ARPES Chamber Cameras button to Cam 1 + Cam 9
+
+`spawnCameras` now takes an optional `CameraEntry[]` (defaults to the
+full `CAMERAS_29ID`). The 29ID-C ARPES Chamber More-menu Cameras button
+passes the new `CAMERAS_29IDC` subset (Cam 1, Cam 9) so its dropdown
+only shows the cameras relevant to that endstation. The 29ID-A BL
+Layout button and the "Open react…" Cameras template still get the
+full Cam 1-9 list.
+
 ### Lock down ca-web (vite) to mite's loopback; pvws lockdown deferred
 
 Empirical testing confirmed mite is in a fully open APS network zone (every
