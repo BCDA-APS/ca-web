@@ -34,15 +34,6 @@ function spawnTempTrend() {
     label: "ARPES Temperature Trend", initialPvs: ARPES_TEMP_TREND_PVS, dedupe: true,
   }}));
 }
-function spawnDetectorScanView(det: number) {
-  window.dispatchEvent(new CustomEvent("open-scanview", { detail: {
-    label: `ARPES ScanView D${det}`,
-    recordPv: "29idARPES:scan1",
-    defaultDetectors: [det],
-    dedupe: true,
-  }}));
-}
-
 function fmtPressure(n: number | null): string {
   if (n === null) return "—";
   return n.toExponential(2);
@@ -89,6 +80,15 @@ export function ChamberDiagram() {
     window.addEventListener("mousedown", close);
     return () => window.removeEventListener("mousedown", close);
   }, [moreOpen]);
+
+  // Pressure gear popup menu state — Gauge / Pump screens.
+  const [pressureMenuOpen, setPressureMenuOpen] = useState(false);
+  useEffect(() => {
+    if (!pressureMenuOpen) return;
+    function close() { setPressureMenuOpen(false); }
+    window.addEventListener("mousedown", close);
+    return () => window.removeEventListener("mousedown", close);
+  }, [pressureMenuOpen]);
 
   // Pressure
   const [, c1, , v1] = useConnection("cd-vs11c",  "ca://29idc:VS11C.VAL");
@@ -295,7 +295,54 @@ export function ChamberDiagram() {
 
           {/* Pressure */}
           <div style={{ borderTop: "1px solid #b0b0b8", paddingTop: 6 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#7c6fa0", letterSpacing: "0.5px", marginBottom: 4 }}>Pressure</div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4, position: "relative" }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#7c6fa0", letterSpacing: "0.5px" }}>Pressure</span>
+              <button
+                onMouseDown={e => { e.stopPropagation(); setPressureMenuOpen(o => !o); }}
+                style={{ width: 20, height: 20, padding: 0, background: "rgb(210,220,240)", color: "rgb(0,53,132)", border: "1px solid rgb(160,180,220)", borderRadius: 3, fontSize: 12, cursor: "pointer" }}>
+                ⚙
+              </button>
+              {pressureMenuOpen && (
+                <div onMouseDown={e => e.stopPropagation()}
+                  style={{
+                    position: "absolute",
+                    top: 22, right: 0,
+                    zIndex: 100,
+                    minWidth: 80,
+                    background: "#ffffff",
+                    border: "1px solid rgb(160,180,220)",
+                    borderRadius: 3,
+                    boxShadow: "0 2px 6px rgba(0,0,0,0.25)",
+                    fontFamily: "sans-serif", fontSize: 11,
+                    overflow: "hidden",
+                  }}>
+                  {[
+                    { label: "Gauge", action: () => window.dispatchEvent(new CustomEvent("open-ui", { detail: {
+                      file: "/ui/VacSen.ui",
+                      macros: { P: "29idc:", GAUGE: "VS11C" },
+                      label: "VacSen",
+                    } })) },
+                    { label: "Pump", action: () => window.dispatchEvent(new CustomEvent("open-ui", { detail: {
+                      file: "/ui/vac/Pump.ui",
+                      macros: { P: "29idc:", PUMP: "IP11C1" },
+                      label: "Pump",
+                    } })) },
+                  ].map(item => (
+                    <button key={item.label}
+                      onClick={() => { setPressureMenuOpen(false); item.action(); }}
+                      style={{
+                        display: "block", width: "100%", textAlign: "left",
+                        padding: "5px 10px", background: "transparent",
+                        border: "none", color: "rgb(0,53,132)", cursor: "pointer",
+                        fontSize: 11,
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.background = "rgb(230,238,250)")}
+                      onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                    >{item.label}</button>
+                  ))}
+                </div>
+              )}
+            </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <button onClick={spawnPressureTrend}
@@ -419,11 +466,7 @@ export function ChamberDiagram() {
         <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
           {/* D15 Diode */}
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <button onClick={() => spawnDetectorScanView(15)}
-              style={{ padding: "1px 2px", background: "rgb(210,220,240)", color: "rgb(0,53,132)", border: "1px solid rgb(160,180,220)", borderRadius: 3, fontSize: 11, cursor: "pointer" }}>
-              [D15]
-            </button>
-            <span style={{ color: "#333333", width: 34, flexShrink: 0 }}>Diode</span>
+            <span style={{ color: "#333333", width: 75, flexShrink: 0 }}>Diode [D15]</span>
             <span style={{ fontFamily: "monospace", fontSize: 12, color: "rgb(10,37,159)", width: 80, textAlign: "right", cursor: "context-menu", flexShrink: 0, marginLeft: -4 }}
               onContextMenu={e => pvCtx("29idb:ca15:read", vD15, e)}>{d15}</span>
             <div style={{ flex: 1 }} />
@@ -438,11 +481,7 @@ export function ChamberDiagram() {
           </div>
           {/* D18 EA */}
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <button onClick={() => spawnDetectorScanView(18)}
-              style={{ padding: "1px 2px", background: "rgb(210,220,240)", color: "rgb(0,53,132)", border: "1px solid rgb(160,180,220)", borderRadius: 3, fontSize: 11, cursor: "pointer" }}>
-              [D18]
-            </button>
-            <span style={{ color: "#333333", width: 34, flexShrink: 0 }}>EA</span>
+            <span style={{ color: "#333333", width: 75, flexShrink: 0 }}>EA [D18]</span>
             <span style={{ fontFamily: "monospace", fontSize: 12, color: "rgb(10,37,159)", width: 80, textAlign: "right", cursor: "context-menu", flexShrink: 0, marginLeft: -4 }}
               onContextMenu={e => pvCtx("29idcScienta:Stats4:Total_RBV", vD18, e)}>{d18}</span>
             <div style={{ flex: 1 }} />
@@ -464,11 +503,7 @@ export function ChamberDiagram() {
         <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
           {/* D16 TFY */}
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <button onClick={() => spawnDetectorScanView(16)}
-              style={{ padding: "1px 2px", background: "rgb(210,220,240)", color: "rgb(0,53,132)", border: "1px solid rgb(160,180,220)", borderRadius: 3, fontSize: 11, cursor: "pointer" }}>
-              [D16]
-            </button>
-            <span style={{ color: "#333333" }}>TFY</span>
+            <span style={{ color: "#333333", width: 75, flexShrink: 0 }}>TFY [D16]</span>
             <span style={{ fontFamily: "monospace", fontSize: 12, color: "rgb(10,37,159)", width: 80, textAlign: "right", cursor: "context-menu", flexShrink: 0, marginLeft: -4 }}
               onContextMenu={e => pvCtx("29idc:ca2:read", vD16, e)}>{d16}</span>
             <select
@@ -485,11 +520,7 @@ export function ChamberDiagram() {
           </div>
           {/* D14 TEY */}
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <button onClick={() => spawnDetectorScanView(14)}
-              style={{ padding: "1px 2px", background: "rgb(210,220,240)", color: "rgb(0,53,132)", border: "1px solid rgb(160,180,220)", borderRadius: 3, fontSize: 11, cursor: "pointer" }}>
-              [D14]
-            </button>
-            <span style={{ color: "#333333" }}>TEY</span>
+            <span style={{ color: "#333333", width: 75, flexShrink: 0 }}>TEY [D14]</span>
             <span style={{ fontFamily: "monospace", fontSize: 12, color: "rgb(10,37,159)", width: 80, textAlign: "right", cursor: "context-menu", flexShrink: 0, marginLeft: -4 }}
               onContextMenu={e => pvCtx("29idc:ca1:read", vD14, e)}>{d14}</span>
             <select
