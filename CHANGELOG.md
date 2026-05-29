@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Coffee-cup hysteresis indicator: emoji on a dark chip
+
+The BeamlineEnergy ID-row coffee cup that signals "hysteresis cycling
+in progress" now renders as the ☕ emoji inside a 22×22 dark
+(`#1a1a1a`) rounded chip instead of a bare 20-px emoji. The bare
+emoji's cream color was hard to read on the panel's light grey
+background. A custom inline-SVG mug variant (mug + brown coffee
+surface + 3 steam wisps + 3D-perspective saucer) was evaluated and
+preserved as a commented-out spare next to the active version in
+both 29id and 29id_dev `EnergyShared.tsx` — drop in instead of the
+emoji chip if a future visual refresh wants it.
+
 ### Remove unused Widget Test screen and dead public/ui middleware branch
 
 Dropped the "Widget Test" tab from the `nefarian` and `example`

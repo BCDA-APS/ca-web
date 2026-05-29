@@ -372,8 +372,30 @@ export function IdSection() {
               {hystUp ? "↑" : "↓"}
             </span>
             {showCoffee && (
-              <span title="Hysteresis cycling in progress" style={{ fontSize: 20 }}>☕</span>
+              <span title="Hysteresis cycling in progress"
+                style={{
+                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                  width: 22, height: 22, borderRadius: 4, background: "#1a1a1a",
+                  fontSize: 16, lineHeight: 1,
+                }}>☕</span>
             )}
+            {/* Spare design preserved for possible future swap: custom SVG
+                mug with brown coffee surface, three steam wisps, and a 3D
+                saucer. Drop in instead of the span above if the emoji-in-chip
+                ever feels off.
+                <svg width="22" height="22" viewBox="0 0 24 24">
+                  <title>Hysteresis cycling in progress</title>
+                  <path d="M5.5 1.5c-1 1-1 2 0 3s1 2 0 3" fill="none" stroke="#aaa" strokeWidth="1" strokeLinecap="round" />
+                  <path d="M10 1c-1 1-1 2 0 3s1 2 0 3" fill="none" stroke="#888" strokeWidth="1" strokeLinecap="round" />
+                  <path d="M14.5 1.5c-1 1-1 2 0 3s1 2 0 3" fill="none" stroke="#aaa" strokeWidth="1" strokeLinecap="round" />
+                  <path d="M4 9.5h13v7.5a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V9.5z" fill="#1a1a1a" />
+                  <path d="M17 11.5h1.5a2.5 2.5 0 0 1 0 5H17" fill="none" stroke="#1a1a1a" strokeWidth="1.5" />
+                  <ellipse cx="10.5" cy="10" rx="6.5" ry="1.6" fill="#5d3a1a" />
+                  <ellipse cx="10.5" cy="9.7" rx="4" ry="0.6" fill="#8b5a2b" opacity="0.6" />
+                  <ellipse cx="10.5" cy="22" rx="10" ry="1.8" fill="#1a1a1a" />
+                  <ellipse cx="10.5" cy="21.4" rx="8" ry="0.9" fill="#3a3a3a" />
+                </svg>
+            */}
           </div>
         )}
       </Row>
