@@ -107,7 +107,33 @@ ca-web widgets misbehave without them.
   200) give faster updates at the cost of more bandwidth.
 
 `EPICS_CA_ADDR_LIST` and other EPICS settings are baked into the image at
-build time via `../pvws/docker/setenv.sh`, not passed at run time.
+build time via `../pvws/docker/setenv.sh`, not passed at run time. The
+script bind-mounts a no-op `scripts/pvws-setenv.sh` over the image's
+copy at container start to neutralize that hardcoded value (see the
+`-v` line near the top of `start-pvws.sh`).
+
+## Network lockdown (Tomcat loopback)
+
+The script also bind-mounts a customized Tomcat config
+(`scripts/pvws-server.xml`) over `/usr/local/tomcat/conf/server.xml`.
+The only edit is `address="127.0.0.1"` on the HTTP `<Connector>`, which
+pins Tomcat to the loopback interface so the pvws WebSocket is NOT
+reachable from off-host. The container itself still runs with
+`--network=host` because EPICS Channel Access UDP beacons need to
+traverse the host's network stack to discover IOCs across the
+beamline subnets — bridge networking breaks IOC discovery.
+
+If you ever need to regenerate `pvws-server.xml` from a newer Tomcat
+in a future pvws image:
+
+```bash
+podman cp <container>:/usr/local/tomcat/conf/server.xml \
+    ~/workspace/ca-web/scripts/pvws-server.xml
+# then re-apply: address="127.0.0.1" on the active <Connector port="8080" ...>
+```
+
+The XML comment in the file must NOT contain `--` anywhere (XML
+syntax rule) — Tomcat refuses to start if it does.
 
 ## Build or load the image
 

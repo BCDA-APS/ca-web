@@ -95,14 +95,12 @@ fi
 podman "${podman_args[@]}" stop "$name" >/dev/null 2>&1 || true
 podman "${podman_args[@]}" rm   "$name" >/dev/null 2>&1 || true
 
-# TODO: switch to `-p 127.0.0.1:${port}:${port}` + a bind-mounted
-# server.xml that pins Tomcat's <Connector> to address="127.0.0.1".
-# That gives us full network access (so CA beacons reach pvws and every
-# IOC is discoverable) AND loopback-only port exposure (no off-beamline
-# leak). See "Outstanding work" in the plan file
-# (~/.claude/plans/expressive-scribbling-otter.md).
-# For now: --network=host so all IOCs work; mite:8080 remains externally
-# reachable from off-beamline machines (policy violation we're aware of).
+# --network=host so CA UDP beacons reach pvws and every IOC is
+# discoverable. Combined with the pvws-server.xml bind-mount below
+# (which pins Tomcat's HTTP Connector to address="127.0.0.1"), this
+# gives us full host networking for CA while keeping port 8080
+# reachable only from the host itself — off-mite access requires
+# the SSH tunnel in scripts/ca-web-29id.
 run_args=(
     --network=host
     -d
@@ -111,6 +109,9 @@ run_args=(
     # hardcodes EPICS_CA_ADDR_LIST=164.54.112.168 which silently clobbers
     # any other configuration. Our replacement is a no-op (just comments).
     -v "${SCRIPT_DIR}/pvws-setenv.sh:/usr/local/tomcat/bin/setenv.sh:ro"
+    # Pin Tomcat's HTTP Connector to loopback only (see comment in the
+    # file). Required for the public-port lockdown to take effect.
+    -v "${SCRIPT_DIR}/pvws-server.xml:/usr/local/tomcat/conf/server.xml:ro"
     -e PV_WRITE_SUPPORT=true
     -e EPICS_CA_MAX_ARRAY_BYTES=64000000
     -e PV_ARRAY_THROTTLE_MS=1000

@@ -30,9 +30,19 @@ from every beamline host, so one clone covers all machines.
 ## APS security note
 
 EPICS PV traffic stays on the beamline subnet because pvws runs on a
-subnet host. The vite dev server binds to `127.0.0.1` only
-(`vite.config.ts:521`), so it's not reachable off-host without the
-SSH tunnel.
+subnet host. Both listeners are bound to loopback only:
+
+- The vite dev server binds to `127.0.0.1` (`vite.config.ts:521`).
+- The pvws Tomcat HTTP connector binds to `127.0.0.1` via a
+  bind-mounted `scripts/pvws-server.xml` (the pvws container still
+  uses host network mode, which it needs so EPICS CA UDP beacons
+  reach it, but Tomcat itself listens only on the loopback
+  interface). See [how-to-start-pvws.md](how-to-start-pvws.md) for
+  the bind-mount details.
+
+So neither port is reachable from off-mite, and access requires the
+SSH tunnel below (which in turn requires a valid beamline-account
+login).
 
 ## Configuration
 
