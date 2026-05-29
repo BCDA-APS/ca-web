@@ -11,7 +11,6 @@ import { StripChart } from "../../widgets/StripChart";
 import { UiRenderer } from "../../lib/UiRenderer";
 import type { DeploymentConfig, DeploymentConfigData } from "../../lib/deployment";
 import rawConfig from "./config.json";
-import testUiUrl from "../../ui/test.ui?url";
 
 // Drop the build-time-only `paths` block; vite.config.ts reads it directly
 // from config.json and it has no business in the runtime config bundle.
@@ -25,7 +24,6 @@ const tabPanels: DeploymentConfig["tabPanels"] = {
     { id: "area-detector", title: "Area Detector — myad:cam1",       Content: AreaDetectorContent },
   ],
   2: [
-    { id: "test",                 title: "Widget Test",        Content: TestContent },
     { id: "motor-card-test",      title: "Motor Cards",        Content: MotorCardTestContent },
     { id: "motor-card-row-test",  title: "Motor Cards (row)",  Content: MotorCardRowTestContent },
     { id: "motor-card-flat-test", title: "Motor Cards (flat)", Content: () => (
@@ -121,10 +119,6 @@ function AreaDetectorContent() {
       <UiRenderer file="/ui/29id/29id_cam.ui" macros={{ P: "myad:" }} />
     </div>
   );
-}
-
-function TestContent() {
-  return <UiRenderer file={testUiUrl} macros={{}} />;
 }
 
 function MotorCardTestContent() {

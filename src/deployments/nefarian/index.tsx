@@ -5,10 +5,8 @@ import { MotorCardFlat } from "../../widgets/MotorCardFlat";
 import { ReadbackRow } from "../../widgets/ReadbackRow";
 import { StripChart } from "../../widgets/StripChart";
 import { CameraViewer } from "../../widgets/CameraViewer";
-import { UiRenderer } from "../../lib/UiRenderer";
 import type { DeploymentConfig, DeploymentConfigData } from "../../lib/deployment";
 import rawConfig from "./config.json";
-import testUiUrl from "../../ui/test.ui?url";
 
 // Drop the build-time-only `paths` block; vite.config.ts reads it directly
 // from config.json and it has no business in the runtime config bundle.
@@ -22,7 +20,6 @@ const tabPanels: DeploymentConfig["tabPanels"] = {
     { id: "area-detector", title: "Area Detector — myad:cam1",       Content: AreaDetectorContent, defaultSize: { w: 560, h: 640 }, scale: "fit", aspectLock: true },
   ],
   2: [
-    { id: "test",                 title: "Widget Test",        Content: TestContent },
     { id: "motor-card-test",      title: "Motor Cards",        Content: MotorCardTestContent },
     { id: "motor-card-row-test",  title: "Motor Cards (row)",  Content: MotorCardRowTestContent },
     { id: "motor-card-flat-test", title: "Motor Cards (flat)", Content: () => (
@@ -115,10 +112,6 @@ function AreaDetectorContent() {
       height={480}
     />
   );
-}
-
-function TestContent() {
-  return <UiRenderer file={testUiUrl} macros={{}} />;
 }
 
 function MotorCardTestContent() {

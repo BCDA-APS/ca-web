@@ -2,6 +2,35 @@
 
 ## Unreleased
 
+### Remove unused Widget Test screen and dead public/ui middleware branch
+
+Dropped the "Widget Test" tab from the `nefarian` and `example`
+deployments along with `src/ui/test.ui` and the test-only imports.
+The screen had no remaining users. The `"test"` entry was also removed
+from both deployments' `panelDefaults`. (Any stale `panel:test` keys
+in users' untracked `layouts/current.json` are orphaned position
+state; nothing tries to render that panel id anymore.)
+
+The vite middleware's `public/ui/<filename>` resolution branch (and
+the matching scan in `buildFileList`) is removed: ca-web has no
+`public/` directory, so the check never fired. Remaining resolution
+order is now uiDirs prefix mapping → embedded absolute (`//path`) →
+caQtDM search paths.
+
+### Trim unused uiDirs entries from 29id deployments
+
+Removed `ADCore`, `motors`, and the recently-added `vac` entries from
+the `paths.uiDirs` blocks in `29id/config.json` and `29id_dev/config.json`.
+None of them were referenced by 29id source code, and the directories
+they pointed at are also reachable via the caQtDM startup-script search
+paths. (Any stale `overlay:/ui/{vac,motors,ADCore}/*` keys in users'
+untracked `layouts/current.json` are dead position state; they only
+404 if the URL is re-opened, which no remaining code does.) ChamberDiagram's Pressure-menu Pump entry now uses `/ui/Pump.ui`
+(search-path resolves) instead of `/ui/vac/Pump.ui`. Remaining uiDirs:
+`29id`, `ADBase`, `ADVimba` (29id); `29id` (29id_dev). ADBase stays as
+a version pin to synApps 6.2.1; ADVimba stays because the startup
+script has no `ADVIMBA` module so the search path doesn't cover it.
+
 ### Remove Scienta camera and per-entry plugin/settings overrides
 
 The Scienta manta camera no longer appears in the ca-web camera

@@ -315,7 +315,7 @@ export function ChamberDiagram() {
                       label: "VacSen",
                     } })) },
                     { label: "Pump", action: () => window.dispatchEvent(new CustomEvent("open-ui", { detail: {
-                      file: "/ui/vac/Pump.ui",
+                      file: "/ui/Pump.ui",
                       macros: { P: "29idc:", PUMP: "IP11C1" },
                       label: "Pump",
                     } })) },

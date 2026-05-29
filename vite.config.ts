@@ -220,20 +220,11 @@ function buildSearchPaths(scripts: string[]): string[] {
   return existing;
 }
 
-// Builds a list of all available .ui files from public/ui/, declared uiDirs,
-// and NFS search paths. .adl files are included as .ui (served-side converted).
+// Builds a list of all available .ui files from declared uiDirs and the
+// caQtDM search paths. .adl files are included as .ui (served-side converted).
 function buildFileList(uiDirs: Record<string, UiDirEntry>, searchPaths: string[]): { name: string; dir: string }[] {
   const files: { name: string; dir: string }[] = [];
 
-  // public/ui/ first
-  const publicUiDir = path.join(process.cwd(), "public", "ui");
-  try {
-    for (const f of fs.readdirSync(publicUiDir)) {
-      if (f.endsWith(".ui")) files.push({ name: f, dir: "app" });
-    }
-  } catch {}
-
-  // Declared uiDirs (replaces what the old public/ui/<key> symlinks listed).
   for (const [key, entry] of Object.entries(uiDirs)) {
     try {
       for (const f of fs.readdirSync(entry.target)) {
@@ -257,10 +248,9 @@ function buildFileList(uiDirs: Record<string, UiDirEntry>, searchPaths: string[]
 }
 
 // Vite plugin: intercepts GET /ui/<filename> and resolves via (in order):
-//   1. public/ui/<filename> — let Vite handle it normally
-//   2. /ui/<key>/<rest>     — uiDirs[key].target/<rest> (prefix mapping)
-//   3. embedded absolute (//path) — serve directly
-//   4. NFS search paths     — caQtDM-style fallback (full path then basename)
+//   1. /ui/<key>/<rest>     — uiDirs[key].target/<rest> (prefix mapping)
+//   2. embedded absolute (//path) — serve directly
+//   3. NFS search paths     — caQtDM-style fallback (full path then basename)
 // Content-Type picker for the /ui/* middleware. .ui files are XML; .adl
 // is rewritten to .ui before serving so it falls under the same case.
 // Common image extensions are also served so panels can <img src="/ui/...">
@@ -301,11 +291,7 @@ function uiSearchPathPlugin(paths: LoadedPaths) {
         const filename = url.slice(4).split("?")[0];
         if (!filename) return next();
 
-        // 1. public/ui/<filename>
-        const publicPath = path.join(process.cwd(), "public", "ui", filename);
-        if (fs.existsSync(publicPath)) return next();
-
-        // 2. Prefix mapping: /ui/<key>/<rest> -> uiDirs[key].target/<rest>
+        // 1. Prefix mapping: /ui/<key>/<rest> -> uiDirs[key].target/<rest>
         const slash = filename.indexOf("/");
         if (slash > 0) {
           const key = filename.slice(0, slash);
@@ -331,7 +317,7 @@ function uiSearchPathPlugin(paths: LoadedPaths) {
           }
         }
 
-        // 3. Embedded absolute path (//... in filename)
+        // 2. Embedded absolute path (//... in filename)
         const doubleSlash = filename.indexOf("//");
         if (doubleSlash !== -1) {
           const absPath = "/" + filename.slice(doubleSlash + 2);
@@ -352,7 +338,7 @@ function uiSearchPathPlugin(paths: LoadedPaths) {
           }
         }
 
-        // 4. Search paths from caQtDM startup scripts
+        // 3. Search paths from caQtDM startup scripts
         const basename = path.basename(filename);
         const candidates = filename === basename ? [basename] : [filename, basename];
 
