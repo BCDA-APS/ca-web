@@ -22,6 +22,7 @@ case "$1" in
       ssh -fN -L 4200:localhost:4200 -L 8080:localhost:8080 29iduser@nerdy || exit 1
     fi
     firefox http://localhost:4200/ &
+    echo "ca-web is available at http://localhost:4200/"
     ;;
   stop)
     if pkill -f "ssh.*-L 4200:localhost:4200"; then
@@ -32,7 +33,7 @@ case "$1" in
     ;;
   status)
     if nc -z localhost 4200 2>/dev/null; then
-      echo "connection is up"
+      echo "connection is up: ca-web is available at http://localhost:4200/"
     else
       echo "connection is down"
     fi
