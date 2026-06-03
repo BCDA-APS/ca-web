@@ -8,7 +8,7 @@ container specifics see [how-to-start-pvws.md](how-to-start-pvws.md).
 ## Architecture overview
 
 ```
-  workstation (e.g. nefarian)        beamline server (e.g. mite)
+  workstation (e.g. nefarian)        beamline server (e.g. nerdy)
   ───────────────────────────        ────────────────────────────
                             ssh -L
        ca-web-29id  ───────────────►  npm run dev    (vite, :4200)
@@ -40,7 +40,7 @@ subnet host. Both listeners are bound to loopback only:
   interface). See [how-to-start-pvws.md](how-to-start-pvws.md) for
   the bind-mount details.
 
-So neither port is reachable from off-mite, and access requires the
+So neither port is reachable from off-nerdy, and access requires the
 SSH tunnel below (which in turn requires a valid beamline-account
 login).
 
@@ -69,7 +69,7 @@ across different machines or use different ports.
 
 - Podman (to run the pvws container)
 - Node.js (`conda activate nodejs` on hosts where Node is provided by
-  conda, e.g. mite)
+  conda, e.g. nerdy)
 
 ### One-time pvws start
 
@@ -114,11 +114,11 @@ ca-web-29id stop     # tears down the tunnel
 The launcher (installed from `scripts/ca-web-29id`) opens:
 
 ```
-ssh -fN -L 4200:localhost:4200 -L 8080:localhost:8080 29iduser@mite
+ssh -fN -L 4200:localhost:4200 -L 8080:localhost:8080 29iduser@nerdy
 ```
 
 …which is what makes `localhost:4200` on the workstation actually
-reach mite's vite server, and `localhost:8080` reach mite's pvws.
+reach nerdy's vite server, and `localhost:8080` reach nerdy's pvws.
 
 ### Day-to-day
 
@@ -131,7 +131,7 @@ across staff sessions), the only thing staff do per session is
 Two cases — see `scripts/ca-web-29id` as the template.
 
 **Different beamline server, accessed individually**: copy the script
-to `scripts/ca-web-28id`, change `mite` → the 28ID server hostname,
+to `scripts/ca-web-28id`, change `nerdy` → the 28ID server hostname,
 and add a 28ID deployment under `src/deployments/28id/`. Staff run
 either `ca-web-29id start` or `ca-web-28id start` (only one at a
 time; same local ports 4200 + 8080).
@@ -146,9 +146,9 @@ side-by-side in different browser tabs.
 | Scenario | npm run dev on | pvws on | Access |
 |---|---|---|---|
 | Local dev (simulated IOC) | workstation | workstation | `localhost:4200` direct |
-| 29ID screens | mite | mite | SSH tunnel via `ca-web-29id start` |
+| 29ID screens | nerdy | nerdy | SSH tunnel via `ca-web-29id start` |
 
-When editing on the workstation while vite runs on mite (NFS-shared
+When editing on the workstation while vite runs on nerdy (NFS-shared
 source), remember `VITE_POLL=1 npm run dev` so HMR fires.
 
 ## Known pitfalls
@@ -161,7 +161,7 @@ overlay storage, `--no-hosts`, naming) see
 
 Solved by `VITE_POLL=1 npm run dev` (vite uses polling instead of
 inotify). Without it, file edits on the workstation are invisible to
-vite running on mite and you have to restart the dev server.
+vite running on nerdy and you have to restart the dev server.
 
 ### Two pvws instances on the same host
 

@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+### Move 29ID ca-web host from mite to nerdy
+
+The 29ID ca-web servers (vite + pvws) now run on **nerdy** instead of
+**mite**. Driven by: mite is a small machine with a 1 Gbps NIC, and a
+running caQtDM session on the same host had been saturating that link
+at ~98% link utilization while pulling camera array data from the
+IOCs (per a network-IT report). nerdy is a fuller-spec beamline host
+with an active 10 Gbps NIC (`ens3f0`), substantially reducing the
+saturation risk under similar camera-heavy CA client workloads.
+Actual headroom under load not yet re-measured on nerdy.
+
+Updated `scripts/ca-web-29id` (the staff launcher) to SSH to nerdy.
+Updated `scripts/start-pvws.sh` usage examples, `scripts/pvws-server.xml`
+header comment, `docs/deployment.md`, `docs/how-to-start-pvws.md`,
+and `README.md` to refer to nerdy as the host. No source code
+changes; ca-web itself is host-agnostic.
+
 ### Mirrors "HOME & STAY" button: trigger PROC after mode write (speculative)
 
 The HOME & STAY button used to write only `${prefix}HOME_MODE_SP = 0`,

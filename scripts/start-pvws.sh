@@ -39,9 +39,9 @@ Examples:
   Workstation / nefarian:
     ./scripts/start-pvws.sh
 
-  mite / 29ID beamline:
+  nerdy / 29ID beamline:
     ./scripts/start-pvws.sh --name pvws-29id --no-hosts
-  (add --rootless-nfs only if \$HOME is on NFS — mite's isn't.)
+  (add --rootless-nfs only if \$HOME is on NFS — nerdy's isn't.)
 EOF
 }
 
@@ -99,7 +99,7 @@ podman "${podman_args[@]}" rm   "$name" >/dev/null 2>&1 || true
 # discoverable. Combined with the pvws-server.xml bind-mount below
 # (which pins Tomcat's HTTP Connector to address="127.0.0.1"), this
 # gives us full host networking for CA while keeping port 8080
-# reachable only from the host itself — off-mite access requires
+# reachable only from the host itself — off-host access requires
 # the SSH tunnel in scripts/ca-web-29id.
 run_args=(
     --network=host

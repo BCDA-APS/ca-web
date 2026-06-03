@@ -105,8 +105,8 @@ heading: Adding your beamline
 
 | id | Title | pvws |
 |---|---|---|
-| `29id` | 29ID Beamline | `mite:8080` |
-| `29id_dev` | 29ID (dev) | `mite:8080` |
+| `29id` | 29ID Beamline | `localhost:8080` |
+| `29id_dev` | 29ID (dev) | `localhost:8080` |
 | `example` | Template | `localhost:8080` |
 | `nefarian` | Simulated IOC | `localhost:8080` |
 

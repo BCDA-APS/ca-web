@@ -63,7 +63,7 @@ mid-session drops, which fall through to cs-web-lib's reconnect.
 
    Verify `socket` matches the host:port where pvws is actually
    listening. Common mistakes: `localhost:8080` when pvws runs on a
-   different machine; `mite:8080` when DNS doesn't resolve `mite`
+   different machine; `nerdy:8080` when DNS doesn't resolve `nerdy`
    from this host; the wrong port.
 
 3. **Probe the WebSocket from your shell.**
