@@ -11,6 +11,9 @@ import { Mirrors } from "./optics/Mirrors";
 import { Slits } from "./optics/Slits";
 import { Diagon } from "./optics/Diagon";
 import { ScanRecords } from "./scan/ScanRecords";
+import { StripChart } from "../../widgets/StripChart";
+import { ScanViewChart } from "../../widgets/ScanViewChart";
+import { AHUTCH_STRIP_TOOL_PVS } from "./bl-layout/BeamlineLayout";
 import { pvwsWriter } from "../../lib/pvwsWriter";
 import { spawnCameras } from "./cameras";
 import type { DeploymentConfig, DeploymentConfigData, PanelTemplate, SpawnablePanelSpec } from "../../lib/deployment";
@@ -32,9 +35,21 @@ const tabPanels: DeploymentConfig["tabPanels"] = {
     { id: "29id-beamline-layout", title: "Beamline Layout", Content: BeamlineLayout,  scale: "transform" },
     { id: "29id-energy-a",        title: "Beamline Energy", Content: BeamlineEnergyA, scale: "transform" },
     { id: "29id-diagon",          title: "DiaGon",          Content: Diagon,          scale: "transform" },
-    { id: "29id-scan-records",    title: "Scan Records",    Content: ScanRecords, defaultSize: { w: 360, h: 320 }, scale: "transform" },
+  ],
+  4: [
+    { id: "29id-scan-records",      title: "Scan Records",            Content: ScanRecords,        defaultSize: { w: 360, h: 320 }, scale: "transform" },
+    { id: "29id-ahutch-stripchart", title: "A-Hutch StripTool",       Content: AhutchStripContent, defaultSize: { w: 840, h: 470 } },
+    { id: "29id-test-scanview",     title: "A-Hutch ScanView",        Content: TestScanviewContent, defaultSize: { w: 840, h: 470 } },
   ],
 };
+
+function AhutchStripContent() {
+  return <StripChart id="29id-ahutch-stripchart" initialPvs={AHUTCH_STRIP_TOOL_PVS} />;
+}
+
+function TestScanviewContent() {
+  return <ScanViewChart id="29id-test-scanview" recordPv="29idTest:scan1" defaultDetectors={[6, 7, 8, 9, 10]} />;
+}
 
 // Templates surfaced in the "Open react…" picker. Cameras + StripTool
 // spawn with no parameters; ScanView prompts for an IOC prefix (P) so a

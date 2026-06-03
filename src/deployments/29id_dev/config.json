@@ -10,7 +10,8 @@
     { "id": 1, "icon": "⚛",  "label": "29ID-C", "color": "rgb(170,170,255)" },
     { "id": 2, "icon": "💠", "label": "29ID-D" },
     { "id": 4, "icon": "🌀", "label": "29ID-E", "color": "rgb(196,224,196)" },
-    { "id": 5, "icon": "🛡", "label": "29ID-BLEPS", "color": "rgb(230,210,180)" }
+    { "id": 5, "icon": "🛡", "label": "29ID-BLEPS", "color": "rgb(230,210,180)" },
+    { "id": 6, "icon": "📉", "label": "SCAN" }
   ],
   "panelDefaults": {
     "29idc-chamber":     { "x": 100, "y":  55 },
@@ -32,7 +33,9 @@
     "29id-energy-a":        { "x":  85, "y":  55 },
     "29id-beamline-layout": { "x":  85, "y": 530 },
     "29id-diagon":          { "x": 100, "y": 200 },
-    "29id-scan-records":    { "x": 700, "y":  55 },
+    "29id-scan-records":      { "x": 100, "y":  55 },
+    "29id-ahutch-stripchart": { "x": 700, "y":  55, "w": 840, "h": 470 },
+    "29id-test-scanview":     { "x": 700, "y": 540, "w": 840, "h": 470 },
     "29id-bl-diag":          { "x": 100, "y": 900 },
     "29id-apertures":        { "x": 600, "y": 600 },
     "29id-scan-progress":    { "x": 600, "y": 900 },
@@ -54,7 +57,6 @@
   },
   "defaultHiddenPanels": [
     "29id-diagon",
-    "29id-scan-records",
     "29id-bl-diag",
     "29id-apertures",
     "29id-scan-progress",

@@ -22,7 +22,7 @@ function showPanel(id: string) {
   window.dispatchEvent(new CustomEvent("show-panel", { detail: { id } }));
 }
 
-const AHUTCH_STRIP_TOOL_PVS: TraceConfig[] = [
+export const AHUTCH_STRIP_TOOL_PVS: TraceConfig[] = [
   { pv: "29idb:ca1:read",  label: "CA1"  },
   { pv: "29idb:ca2:read",  label: "CA2"  },
   { pv: "29idb:ca3:read",  label: "CA3"  },

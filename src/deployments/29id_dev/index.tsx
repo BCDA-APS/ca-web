@@ -11,6 +11,9 @@ import { Mirrors } from "./optics/Mirrors";
 import { Slits } from "./optics/Slits";
 import { Diagon } from "./optics/Diagon";
 import { ScanRecords } from "./scan/ScanRecords";
+import { StripChart } from "../../widgets/StripChart";
+import { ScanViewChart } from "../../widgets/ScanViewChart";
+import { AHUTCH_STRIP_TOOL_PVS } from "./bl-layout/BeamlineLayout";
 import { BlepsSector, type BlepsValveSpec, type BlepsInterlockSpec } from "../../widgets/BlepsSector";
 import { DetectorSpectrum } from "../../widgets/DetectorSpectrum";
 import { TempController } from "../../widgets/TempController";
@@ -47,7 +50,6 @@ const tabPanels: DeploymentConfig["tabPanels"] = {
     { id: "29id-beamline-layout",  title: "Beamline Layout",    Content: BeamlineLayout },
     { id: "29id-energy-a",         title: "Beamline Energy",    Content: BeamlineEnergyA },
     { id: "29id-diagon",           title: "DiaGon",             Content: Diagon },
-    { id: "29id-scan-records",     title: "Scan Records",       Content: ScanRecords },
     { id: "29id-bl-diag",          title: "Diagnostics",        Content: BlDiagContent },
     { id: "29id-apertures",        title: "Apertures",          Content: AperturesContent },
     { id: "29id-scan-progress",    title: "Scan Progress",      Content: ScanProgressContent },
@@ -69,7 +71,20 @@ const tabPanels: DeploymentConfig["tabPanels"] = {
     { id: "bleps-sector-e",        title: "Sector E — Coherent",  Content: BlepsSectorE },
     { id: "bleps-faults",          title: "Faults & Alarms",      Content: BlepsFaultsContent },
   ],
+  6: [
+    { id: "29id-scan-records",      title: "Scan Records",            Content: ScanRecords,        defaultSize: { w: 360, h: 320 } },
+    { id: "29id-ahutch-stripchart", title: "A-Hutch StripTool",       Content: AhutchStripContent, defaultSize: { w: 840, h: 470 } },
+    { id: "29id-test-scanview",     title: "A-Hutch ScanView",        Content: TestScanviewContent, defaultSize: { w: 840, h: 470 } },
+  ],
 };
+
+function AhutchStripContent() {
+  return <StripChart id="29id-ahutch-stripchart" initialPvs={AHUTCH_STRIP_TOOL_PVS} />;
+}
+
+function TestScanviewContent() {
+  return <ScanViewChart id="29id-test-scanview" recordPv="29idTest:scan1" defaultDetectors={[6, 7, 8, 9, 10]} />;
+}
 
 // Mirrors and Slits are spawn-on-demand so staff can open multiple
 // copies side-by-side. Each click pushes a fresh independent instance.

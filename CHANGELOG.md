@@ -2,6 +2,35 @@
 
 ## Unreleased
 
+### New SCAN tab (29id + 29id_dev)
+
+Added a new permanent `📉 SCAN` tab at the end of the sidebar in both
+deployments. It registers three panels by default: Scan Records
+(moved here from 29ID-A), A-Hutch StripTool (the same PV list as
+29ID-A's StripTool shortcut, now exported from `BeamlineLayout.tsx`
+as `AHUTCH_STRIP_TOOL_PVS` for shared use), and A-Hutch ScanView
+(`recordPv=29idTest:scan1`, detectors D06–D10).
+
+`29id-scan-records` is no longer registered as a home-tab panel on
+29ID-A — its home moved to SCAN. The BeamlineLayout More-menu
+shortcut on 29ID-A still opens it via the `show-panel` event, which
+now borrows it onto 29ID-A (instead of unhiding it on its home tab),
+so the user-visible behavior of that shortcut is the same. Saved
+layouts that had it borrowed onto other tabs continue to work
+because the panel id is unchanged. Removed from `defaultHiddenPanels`
+in both deployments so it shows up by default on its new home tab.
+
+### ARPES chamber: chart-icon trend buttons; passive row labels
+
+In the chamber's Pressure and Temperature sections:
+- Each section header now has a small monochrome line-chart icon
+  button (inline SVG) to the left of the existing gear, replacing
+  the per-row Gauge/Pump/Sample/Cold-fngr buttons as the trigger
+  for the P / T trend StripChart.
+- Those four entries are now plain text labels, not clickable
+  buttons. The PV values, context-menu wiring, and unit suffixes
+  (T / K) on each row are unchanged.
+
 ### Coffee-cup hysteresis indicator: emoji on a dark chip
 
 The BeamlineEnergy ID-row coffee cup that signals "hysteresis cycling

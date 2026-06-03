@@ -61,6 +61,16 @@ function fmtCount(n: number | null): string {
 
 const SCAN_OPTS = ["passive","event","i/o intr","10 second","5 second","2 second","1 second",".5 second",".2 second",".1 second"];
 
+// Small monochrome line-chart icon for the trend-spawn buttons.
+function ChartIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="rgb(0,53,132)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 2 L2 12 L12 12" />
+      <polyline points="3,9 6,6 9,8 12,4" />
+    </svg>
+  );
+}
+
 function heaterColor(s: string | null): string {
   if (!s) return "#7a9ab8";
   const lo = s.toLowerCase();
@@ -297,11 +307,19 @@ export function ChamberDiagram() {
           <div style={{ borderTop: "1px solid #b0b0b8", paddingTop: 6 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4, position: "relative" }}>
               <span style={{ fontSize: 12, fontWeight: 700, color: "#7c6fa0", letterSpacing: "0.5px" }}>Pressure</span>
-              <button
-                onMouseDown={e => { e.stopPropagation(); setPressureMenuOpen(o => !o); }}
-                style={{ width: 20, height: 20, padding: 0, background: "rgb(210,220,240)", color: "rgb(0,53,132)", border: "1px solid rgb(160,180,220)", borderRadius: 3, fontSize: 12, cursor: "pointer" }}>
-                ⚙
-              </button>
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <button
+                  onClick={spawnPressureTrend}
+                  title="Pressure trend"
+                  style={{ width: 20, height: 20, padding: 0, background: "rgb(210,220,240)", color: "rgb(0,53,132)", border: "1px solid rgb(160,180,220)", borderRadius: 3, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <ChartIcon />
+                </button>
+                <button
+                  onMouseDown={e => { e.stopPropagation(); setPressureMenuOpen(o => !o); }}
+                  style={{ width: 20, height: 20, padding: 0, background: "rgb(210,220,240)", color: "rgb(0,53,132)", border: "1px solid rgb(160,180,220)", borderRadius: 3, fontSize: 12, cursor: "pointer" }}>
+                  ⚙
+                </button>
+              </div>
               {pressureMenuOpen && (
                 <div onMouseDown={e => e.stopPropagation()}
                   style={{
@@ -345,19 +363,13 @@ export function ChamberDiagram() {
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <button onClick={spawnPressureTrend}
-                  style={{ width: 58, padding: "2px 4px", background: "rgb(210,220,240)", color: "rgb(0,53,132)", border: "1px solid rgb(160,180,220)", borderRadius: 3, fontSize: 11, cursor: "pointer" }}>
-                  Gauge
-                </button>
+                <span style={{ width: 58, color: "#333333", flexShrink: 0 }}>Gauge</span>
                 <span style={{ fontFamily: "monospace", fontSize: 12, color: "#4caf50", cursor: "context-menu", flex: 1, textAlign: "right" }}
                   onContextMenu={e => pvCtx("29idc:VS11C.VAL", v1, e)}>{p1}</span>
                 <span style={{ color: "#444444", fontSize: 10 }}>T</span>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <button onClick={spawnPressureTrend}
-                  style={{ width: 58, padding: "2px 4px", background: "rgb(210,220,240)", color: "rgb(0,53,132)", border: "1px solid rgb(160,180,220)", borderRadius: 3, fontSize: 11, cursor: "pointer" }}>
-                  Pump
-                </button>
+                <span style={{ width: 58, color: "#333333", flexShrink: 0 }}>Pump</span>
                 <span style={{ fontFamily: "monospace", fontSize: 12, color: "#4caf50", cursor: "context-menu", flex: 1, textAlign: "right" }}
                   onContextMenu={e => pvCtx("29idc:IP11C1.VAL", v2, e)}>{p2}</span>
                 <span style={{ color: "#444444", fontSize: 10 }}>T</span>
@@ -369,31 +381,31 @@ export function ChamberDiagram() {
           <div style={{ borderTop: "1px solid #b0b0b8", paddingTop: 6 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
               <span style={{ fontSize: 12, fontWeight: 700, color: "#7c6fa0", letterSpacing: "0.5px" }}>Temperature</span>
-              <button
-                onClick={() => window.dispatchEvent(new CustomEvent("open-ui", { detail: { file: "/ui/LakeShore335_more.ui", macros: { P: "29idARPES:", Q: "TC1" }, label: "Lakeshore" } }))}
-                style={{ width: 20, height: 20, padding: 0, background: "rgb(210,220,240)", color: "rgb(0,53,132)", border: "1px solid rgb(160,180,220)", borderRadius: 3, fontSize: 12, cursor: "pointer" }}>
-                ⚙
-              </button>
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <button
+                  onClick={spawnTempTrend}
+                  title="Temperature trend"
+                  style={{ width: 20, height: 20, padding: 0, background: "rgb(210,220,240)", color: "rgb(0,53,132)", border: "1px solid rgb(160,180,220)", borderRadius: 3, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <ChartIcon />
+                </button>
+                <button
+                  onClick={() => window.dispatchEvent(new CustomEvent("open-ui", { detail: { file: "/ui/LakeShore335_more.ui", macros: { P: "29idARPES:", Q: "TC1" }, label: "Lakeshore" } }))}
+                  style={{ width: 20, height: 20, padding: 0, background: "rgb(210,220,240)", color: "rgb(0,53,132)", border: "1px solid rgb(160,180,220)", borderRadius: 3, fontSize: 12, cursor: "pointer" }}>
+                  ⚙
+                </button>
+              </div>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
               {/* Sample */}
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <button
-                  onClick={spawnTempTrend}
-                  style={{ width: 58, padding: "2px 4px", background: "rgb(210,220,240)", color: "rgb(0,53,132)", border: "1px solid rgb(160,180,220)", borderRadius: 3, fontSize: 11, cursor: "pointer", whiteSpace: "nowrap" }}>
-                  Sample
-                </button>
+                <span style={{ width: 58, color: "#333333", flexShrink: 0 }}>Sample</span>
                 <span style={{ fontFamily: "monospace", fontSize: 12, color: "rgb(10,37,159)", cursor: "context-menu", flex: 1, textAlign: "right" }}
                   onContextMenu={e => pvCtx("29idARPES:LS335:TC1:INA", vINA, e)}>{tempA}</span>
                 <span style={{ color: "#444444", fontSize: 10 }}>K</span>
               </div>
               {/* Cold finger */}
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <button
-                  onClick={spawnTempTrend}
-                  style={{ width: 58, padding: "2px 4px", background: "rgb(210,220,240)", color: "rgb(0,53,132)", border: "1px solid rgb(160,180,220)", borderRadius: 3, fontSize: 11, cursor: "pointer", whiteSpace: "nowrap" }}>
-                  Cold fngr
-                </button>
+                <span style={{ width: 58, color: "#333333", flexShrink: 0 }}>Cold fngr</span>
                 <span style={{ fontFamily: "monospace", fontSize: 12, color: "rgb(10,37,159)", cursor: "context-menu", flex: 1, textAlign: "right" }}
                   onContextMenu={e => pvCtx("29idARPES:LS335:TC1:INB", vINB, e)}>{tempB}</span>
                 <span style={{ color: "#444444", fontSize: 10 }}>K</span>
