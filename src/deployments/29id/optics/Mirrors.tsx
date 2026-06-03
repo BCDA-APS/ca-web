@@ -188,6 +188,11 @@ function MirrorFooter({ widgetId, prefix, label }: { widgetId: string; prefix: s
           onClick={() => {
             if (window.confirm(`Are you sure you want to home ${label}?`)) {
               pvwsWriter.write(`${prefix}HOME_MODE_SP`, 0);
+              // Delay PROC so the mode-write's downstream FLNK chain has time
+              // to arm the homing sequence. Back-to-back writes consistently
+              // failed to start motion; caQtDM works because the user clicks
+              // mode then Home Now hundreds of ms apart.
+              setTimeout(() => pvwsWriter.write(`${prefix}HOME_CMD.PROC`, 1), 200);
             }
           }}
           style={{ ...actionBtn, marginLeft: "auto", width: HOME_W, background: "rgb(120,180,130)", color: "#fff" }}

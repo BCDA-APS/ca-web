@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+### Mirrors "HOME & STAY" button: trigger PROC after mode write (speculative)
+
+The HOME & STAY button used to write only `${prefix}HOME_MODE_SP = 0`,
+which set the homing mode but never kicked the motion. It now also
+writes `${prefix}HOME_CMD.PROC = 1` to actually start the homing.
+
+Live testing of the back-to-back write showed inconsistent behavior:
+mode was always set correctly, but motion frequently never started.
+Suspect a downstream FLNK chain on the mode record that needs time
+to arm the homing sequence — caQtDM works because the user picks
+mode then clicks Home Now hundreds of ms apart. As a workaround we
+delay the PROC by 200ms with `setTimeout`. Not yet retested live
+(beam in use); if the delay turns out to be insufficient we can
+either bump it or switch to waiting for `${prefix}HOME_MODE_RBV`.
+
 ### New SCAN tab (29id + 29id_dev)
 
 Added a new permanent `📉 SCAN` tab at the end of the sidebar in both
