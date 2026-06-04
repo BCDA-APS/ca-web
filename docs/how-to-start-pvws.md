@@ -51,7 +51,7 @@ The script accepts flags for the variations between hosts.
 Defaults are correct: container name `pvws`, no special storage, `/etc/hosts`
 is writable.
 
-### nerdy / 29ID beamline
+### 29ID beamline host
 
 ```bash
 ./scripts/start-pvws.sh --name pvws-29id --no-hosts

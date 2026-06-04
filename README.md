@@ -54,7 +54,7 @@ deployment. Folder name **must** match the `id` in its `config.json`.
 |---|---|---|---|
 | `example` | Example Deployment | `localhost:8080` | Template; copy this when adding a new deployment. |
 | `nefarian` | Nefarian | `localhost:8080` | Simulated IOC for local dev. |
-| `29id` | 29ID Beamline | `localhost:8080` | Production. Run on nerdy; reach from a workstation via SSH tunnel (see below). |
+| `29id` | 29ID Beamline | `localhost:8080` | Production. Run on the beamline host; reach from a workstation via SSH tunnel (see below). |
 | `29id_dev` | 29ID dev | `localhost:8080` | Sandbox copy of 29id for caqtdm-porting work. |
 
 To add a new deployment, copy `src/deployments/example/`, rename the
@@ -64,8 +64,8 @@ auto-discovers — no registration step. Full walkthrough:
 
 ### Production access (SSH)
 
-ca-web on `nerdy` (and pvws on the same host) binds only to
-`127.0.0.1`. Staff reach it through an SSH rather than a
+ca-web (vite + pvws on the same beamline host) binds only to
+`127.0.0.1`. Staff reach it through an SSH tunnel rather than a
 direct subnet connection. A launcher script handles that:
 
 ```bash
@@ -92,7 +92,7 @@ pvws runs as a podman container on the same host as the dev server:
 
 ```bash
 ./scripts/start-pvws.sh                                # workstation / nefarian
-./scripts/start-pvws.sh --name pvws-29id --no-hosts    # nerdy / 29ID beamline
+./scripts/start-pvws.sh --name pvws-29id --no-hosts    # 29ID beamline host
 ```
 
 See [docs/how-to-start-pvws.md](docs/how-to-start-pvws.md) for env

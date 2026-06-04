@@ -11,6 +11,9 @@
   onto nerdy (10 Gbps NIC). Tested end-to-end.
 - Bumped pvws throttle rates on nerdy (scalars 10 Hz, arrays 5 Hz),
   verified safe via `sar` on the 10 G link.
+- Generalised hostname references in the docs so only the launcher
+  script's SSH target line is host-specific; future host migrations
+  no longer churn the documentation.
 
 ## Unreleased
 

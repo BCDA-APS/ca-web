@@ -40,9 +40,9 @@ Examples:
   Workstation / nefarian:
     ./scripts/start-pvws.sh
 
-  nerdy / 29ID beamline:
+  29ID beamline host:
     ./scripts/start-pvws.sh --name pvws-29id --no-hosts
-  (add --rootless-nfs only if \$HOME is on NFS — nerdy's isn't.)
+  (add --rootless-nfs only if \$HOME is on NFS.)
 EOF
 }
 
