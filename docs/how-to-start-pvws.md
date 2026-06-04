@@ -88,7 +88,7 @@ mkdir -p $XDG_RUNTIME_DIR
 
 ## Environment variables
 
-The script always sets these three on the container. They are not optional —
+The script always sets these on the container. They are not optional —
 ca-web widgets misbehave without them.
 
 - **`PV_WRITE_SUPPORT=true`** — enables PV write support (required for
@@ -101,10 +101,17 @@ ca-web widgets misbehave without them.
   count × bytes-per-element exceeds 64 MB (check with `cainfo` —
   remember the underlying record is sized for the worst-case bit depth,
   not whatever DataType_RBV currently reports).
-- **`PV_ARRAY_THROTTLE_MS=1000`** — maximum update rate for waveform/array
+- **`PV_THROTTLE_MS=100`** — maximum update rate for scalar PVs (default
+  is 1000 ms = 1 Hz, which makes motor RBVs feel sluggish during sample
+  alignment). 100 ms = 10 Hz; tiny per-message size so bandwidth cost is
+  negligible.
+- **`PV_ARRAY_THROTTLE_MS=200`** — maximum update rate for waveform/array
   PVs (default is 10000 ms = 10 s, which makes strip charts and line
-  profiles sluggish). Set to 1000 ms for ~1 Hz updates; lower values (e.g.
-  200) give faster updates at the cost of more bandwidth.
+  profiles sluggish). 200 ms = 5 Hz; suitable for live camera alignment.
+  Note: this throttles pvws's **outgoing** WebSocket to clients only —
+  the camera IOC still publishes at its native rate over CA, so this
+  doesn't affect the eno1 RX side. Bump higher (back toward 1000 ms) if
+  client bandwidth becomes a concern.
 
 `EPICS_CA_ADDR_LIST` and other EPICS settings are baked into the image at
 build time via `../pvws/docker/setenv.sh`, not passed at run time. The

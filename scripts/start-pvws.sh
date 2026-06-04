@@ -20,7 +20,8 @@ Usage: scripts/start-pvws.sh [--name NAME] [--port PORT] [--image IMAGE]
 Starts pvws as a detached podman container with the env vars ca-web expects:
   PV_WRITE_SUPPORT=true
   EPICS_CA_MAX_ARRAY_BYTES=64000000   # 64 MB — needed for camera images
-  PV_ARRAY_THROTTLE_MS=1000
+  PV_THROTTLE_MS=100                  # scalars: 10 Hz to clients (RBVs etc.)
+  PV_ARRAY_THROTTLE_MS=200            # arrays: 5 Hz to clients (cameras)
 
 Options:
   --name NAME       Container name (default: pvws). Use pvws-29id on shared
@@ -114,7 +115,8 @@ run_args=(
     -v "${SCRIPT_DIR}/pvws-server.xml:/usr/local/tomcat/conf/server.xml:ro"
     -e PV_WRITE_SUPPORT=true
     -e EPICS_CA_MAX_ARRAY_BYTES=64000000
-    -e PV_ARRAY_THROTTLE_MS=1000
+    -e PV_THROTTLE_MS=100
+    -e PV_ARRAY_THROTTLE_MS=200
 )
 if [[ "$no_hosts" -eq 1 ]]; then
     run_args+=(--no-hosts)

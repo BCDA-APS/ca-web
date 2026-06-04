@@ -1,6 +1,38 @@
 # Changelog
 
+## Session log
+
+### 2026-06-04
+
+- Diagnosed mite's IT-reported link saturation: traced to a local
+  caQtDM session, not ca-web. Closing it dropped RX from ~120 MB/s
+  to ~5 kB/s.
+- Migrated ca-web (vite + pvws) off mite (1 Gbps NIC, saturating)
+  onto nerdy (10 Gbps NIC). Tested end-to-end.
+- Bumped pvws throttle rates on nerdy (scalars 10 Hz, arrays 5 Hz),
+  verified safe via `sar` on the 10 G link.
+
 ## Unreleased
+
+### Bump pvws update rates: scalars 10 Hz, arrays 5 Hz
+
+Default pvws scalar throttle is 1 Hz, which makes motor RBVs feel
+sluggish during sample alignment. Default array throttle (we already
+overrode it from 10 s to 1 Hz) is still slow for live camera-based
+alignment. Now setting:
+
+- `PV_THROTTLE_MS=100` (scalars at 10 Hz — snappy motor RBVs, gauges,
+  energies)
+- `PV_ARRAY_THROTTLE_MS=200` (arrays at 5 Hz — usable camera alignment)
+
+Both throttle pvws's **outgoing** WebSocket traffic to clients only,
+not the IOC→pvws CA stream, so they don't affect the host's link
+RX-side load. Now safe to bump because (a) ca-web moved off mite's
+1 Gbps NIC to nerdy's 10 Gbps NIC, and (b) outgoing traffic was tiny
+to begin with (~1 Mbps per client).
+
+Restart pvws to pick up the new env vars:
+`./scripts/start-pvws.sh --name pvws-29id --no-hosts`
 
 ### Move 29ID ca-web host from mite to nerdy
 
