@@ -27,7 +27,7 @@ because the code looks right; tell them because you ran the proof.
 | "Pre-commit passes" | `pre-commit run --all-files` exits 0 |
 | "App renders" | `npm run dev`, navigate to `http://localhost:4200`, pick a deployment, confirm at least one panel renders without console errors |
 | "Hooks fire from Claude Code" | edit a `.ts` file via Edit/Write, confirm Prettier reformatted it on disk and (if under `src/lib`/`src/widgets`/`src/deployments`) the doc-sync hook warned to stderr |
-| "29ID build resolves" | `npx tsc --noEmit` — **not** `npm run build`; the build copies `public/ui/29id` which is an NFS-only symlink and fails on non-beamline hosts |
+| "29ID build resolves" | `npm run build` (tsc + vite). It succeeds on any host: the `public/ui` symlinks were deleted and site paths now live in each deployment's `config.json`, with unreachable targets tolerated (ADR 005). Use `npx tsc --noEmit` alone when you only need the type check |
 | "Deployment loads" | `npm run dev`, open `http://localhost:4200/?deployment=<id>`, verify the title/tabs match the `DeploymentConfig` |
 | "PV widget right-clicks correctly" | open a panel, right-click any `ChanRbvBox`/`ChanSpBox`, confirm the PV info popup appears |
 

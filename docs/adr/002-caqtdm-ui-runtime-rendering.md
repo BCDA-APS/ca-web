@@ -35,7 +35,7 @@ renderer.
   caQtDM as before.
 - Widget coverage is the gating factor: every `ca*` widget we want to
   render must have a dispatcher entry. New widgets land in
-  `UiRenderer.tsx` as needed (see `README.md` "Implemented Widgets").
+  `UiRenderer.tsx` as needed (see `README.md` "Implemented caQtDM widgets").
 - `UiRenderer.tsx` is large (~2.5k lines) and growing. Splitting it
   into dispatch / layout / macros / path resolution modules is queued
   future work.

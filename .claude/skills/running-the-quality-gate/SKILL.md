@@ -47,9 +47,10 @@ files, so running it on a small change is fast.
 4. **Targeted re-runs:**
    - `pre-commit run quality-gate` — local tsc + eslint only
    - `npx tsc --noEmit` — TypeScript directly (bypasses pre-commit)
-   - `npx eslint --max-warnings 0 .` — ESLint directly (requires
-     ESLint to be installed in `node_modules/`; ca-web does not pin it
-     by default).
+   - `npm run lint` — ESLint directly (`eslint src`). ESLint is
+     pinned in `package.json`, so this works after `npm install`.
+     Note the flat config enables one rule,
+     `react-hooks/rules-of-hooks`; a clean run is a weak signal.
 
 5. **Documented escape hatch** — if pre-commit is failing on a parallel
    agent's files (e.g. you only authored 3 of 13 modified files):
@@ -58,13 +59,15 @@ files, so running it on a small change is fast.
    ```
    This is acceptable per CLAUDE.md; do not skip hooks otherwise.
 
-6. **Conventional commits.** `.commitlintrc.json` is committed but
-   not wired to a hook. The config is informational — commit messages
-   must follow `feat:` / `fix:` / `docs:` / `chore:` / `refactor:` /
-   `style:` / `perf:` / `test:` / `build:` / `ci:` / `revert:` types,
-   subject lowercase, max 100 chars. To enforce it later, install
-   `@commitlint/{cli,config-conventional}` and add a `commit-msg`
-   pre-commit hook.
+6. **Conventional commits.** Nothing validates commit messages — there
+   is no commitlint package and no `commit-msg` hook. Follow the style
+   the history actually uses: a `feat:` / `fix:` / `docs:` / `refactor:`
+   / `chore:` / `perf:` / `ui:` type, optional `(scope)`, subject under
+   100 chars. See AGENTS.md. To start enforcing it, install
+   `@commitlint/{cli,config-conventional}`, add a `commit-msg` hook, and
+   note that the existing history would not pass a stock
+   `config-conventional` (it contains `ui:` and some capitalised
+   subjects).
 
 ## Verification
 

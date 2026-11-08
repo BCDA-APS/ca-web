@@ -5,7 +5,7 @@ description: Add a new draggable panel to an existing ca-web deployment
   already-built deployment with a new view — "add a panel to <deployment>",
   "new tab content", "extend <deployment> with X", "surface <thing> in
   <deployment>", "add motors/chamber/scan/etc. to <deployment>". Read this
-  BEFORE editing config.json or index.tsx: panel id slugs are localStorage
+  BEFORE editing config.json or index.tsx: panel id slugs are saved-layout
   keys with no rename migration, and a single typo between config.json and
   index.tsx silently breaks position persistence for every user. Do not
   use for scaffolding a new deployment (use new-deployment for that).
@@ -23,12 +23,14 @@ instead. For *building a new reusable widget*, use
 
 ## The trap to know about first
 
-Panel `id` slugs are **localStorage keys**. `src/lib/layoutStorage.ts`
-namespaces every stored position as
-`ca-web.<deploymentId>.panel:<panelId>` (and the same for hidden
-panels, overlays, strip-chart per-instance state). The migration in
-`migrateOldKeys` (lines 29-48) only moves *legacy unprefixed* keys
-forward; it does not handle renames of existing panel ids.
+Panel `id` slugs are **persistence keys**. `src/lib/layoutStorage.ts`
+stores every position under `panel:<panelId>` inside the deployment's
+`layouts/current.json`, served by the `layouts-api` Vite plugin (and
+the same for hidden panels, overlays, strip-chart per-instance state).
+See [ADR 006](../../../docs/adr/006-layout-persistence-in-deployment-folders.md).
+There is no rename migration: `drainLegacyLocalStorage` runs once when
+no `current.json` exists, and only pulls forward pre-folder
+`localStorage` entries.
 
 Practical effect:
 
@@ -155,7 +157,8 @@ camera-overlay model.
 
    If the panel uses PV-backed widgets, follow the rules in
    [adding-a-widget](../adding-a-widget/SKILL.md): use `ChanRbvBox`
-   / `ChanSpBox`, wire `onContextMenu={e => pvCtx("ca://PV", raw, e)}`,
+   / `ChanSpBox`, wire `onContextMenu={e => pvCtx("PV:NAME", raw, e)}`
+   with the bare PV name (no `ca://`),
    keep alignment explicit.
 
    ### `defaultSize` and `scale` — set both for every new panel
@@ -197,7 +200,9 @@ camera-overlay model.
 If the new panel needs a brand-new tab:
 
 1. Add the tab to `config.json` `tabs` with a fresh integer `id`,
-   single-character `icon` (no emojis per `CLAUDE.md`), `label`, and
+   single-character `icon` — note the committed configs use emoji
+   here despite the repo-wide no-emoji rule, which applies to code,
+   docs and commit messages rather than to tab glyphs — `label`, and
    optional `color`.
 2. Use that `id` as the key in `tabPanels` in `index.tsx`.
 3. Tab ids are stable too — they appear in URLs and could be wired

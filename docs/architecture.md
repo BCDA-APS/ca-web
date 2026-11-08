@@ -10,7 +10,9 @@ a `pvws` WebSocket.
 
 React 18, TypeScript 5, Vite 7, npm. Key dependency:
 `@diamondlightsource/cs-web-lib` (npm registry) for EPICS / Channel Access.
-MUI for UI components, Redux Toolkit (re-exported by `cs-web-lib`) for state.
+MUI for UI components. State lives in the Redux store that `cs-web-lib`
+constructs and re-exports (`store()`); ca-web declares no Redux dependency of
+its own beyond `react-redux` and adds no slices.
 
 ## Layout
 
@@ -20,21 +22,29 @@ src/
 ├── main.tsx                 # async boot: resolve deployment, lazy-load it, render
 ├── DeploymentPicker.tsx     # full-screen selector shown when no deployment is chosen
 ├── index.css                # global styles
+├── vite-env.d.ts            # Vite client types + virtual-module declarations
+├── assets/                  # static images imported by app code (aps-logo.png)
 ├── shell/                   # App-shell components (chrome around the content)
 │   ├── DraggablePanel.tsx
 │   ├── OverlayPanel.tsx
 │   ├── Sidebar.tsx
 │   ├── SettingsPanel.tsx
 │   ├── FilePickerDialog.tsx
+│   ├── PanelPickerDialog.tsx
 │   ├── PvContextMenu.tsx
 │   ├── PvInfoDialog.tsx
-│   └── ErrorBoundary.tsx
+│   ├── ErrorBoundary.tsx
+│   └── zStack.ts            # z-index promotion shared by panels and overlays
 ├── hooks/                   # connector hooks: data only, no JSX
 │   └── useMotor.ts          # motor PV subscriptions + derived state + write actions
 ├── lib/
 │   ├── deployment.ts        # DeploymentConfig types + lazy LOADERS + loadDeployment + context
 │   ├── epics.ts             # PV value extractors (toDouble/toStr/fmt/toBool) + pvCtx menu
+│   ├── layoutStorage.ts     # layout persistence client (see ADR 006)
+│   ├── pvwsProbe.ts         # one-shot WebSocket probe run at boot
 │   ├── pvwsWriter.ts        # pvws WebSocket write client
+│   ├── wsStub.ts            # stand-in socket used when the probe fails
+│   ├── camera.ts            # CameraEntry type + AD prefix conventions
 │   ├── theme.ts             # colors, font sizes
 │   ├── uiParser.ts          # caQtDM .ui (XML) → JSON
 │   └── UiRenderer.tsx       # parsed-UI → React widget tree (monolith)
@@ -47,6 +57,7 @@ src/
 │   ├── MotorRow.tsx         # PV-based motor row
 │   ├── ReadbackRow.tsx      # simple readback row
 │   ├── StripChart.tsx       # multi-PV rolling time-series chart
+│   ├── ScanViewChart.tsx    # sscan-record analog of StripChart
 │   ├── BlepsSector.tsx      # vacuum sector: valves, gauges, interlocks, summary
 │   ├── DetectorSpectrum.tsx # MCA/DXP/Vortex spectrum + ROIs + stats + acquire
 │   ├── TempController.tsx   # LakeShore 331/340 / Si9700 PID controller card
@@ -55,32 +66,43 @@ src/
     ├── example/             # copy-paste template
     │   ├── config.json      # all serializable config (id, title, pvws, tabs, panelDefaults, ...)
     │   └── index.tsx        # React components + tabPanels + DeploymentConfig export
-    ├── nefarian/            # default simulated-IOC deployment
+    ├── nefarian/            # early local-dev deployment (expects fr:/myad: sim IOCs)
     │   ├── config.json
     │   └── index.tsx
-    └── 29id/                # 29ID beamline panels (grouped by domain)
-        ├── config.json      # includes nested `paths` block: external uiDirs/startupScript/adl2ui
-        ├── index.tsx
-        ├── chamber/
-        ├── energy/
-        ├── layout/
-        ├── optics/
-        └── scan/
+    ├── 29id/                # 29ID beamline panels (grouped by domain)
+    │   ├── config.json      # includes nested `paths` block: external uiDirs/startupScript/adl2ui
+    │   ├── index.tsx
+    │   ├── cameras.ts       # CAMERAS_29ID list fed to the camera spawner
+    │   ├── bl-layout/
+    │   ├── chamber/
+    │   ├── energy/
+    │   ├── optics/
+    │   └── scan/
+    └── 29id_dev/            # staging clone of 29id, same domain subfolders
 ```
+
+Every deployment folder also grows a `layouts/` directory at runtime holding
+persisted layout JSON. These are gitignored — see
+[adr/006](adr/006-layout-persistence-in-deployment-folders.md).
 
 ## Render vs connector convention
 
-Two layers, kept separate:
+The intended split is two layers:
 
 - **`src/hooks/`** — connector hooks. Each takes a PV prefix or PV name(s),
   calls `useConnection()` internally, and returns typed already-formatted
   state. Never returns JSX. Owns its private formatting helpers.
 - **`src/widgets/`** — render-only. Components receive plain props or call a
-  hook from `src/hooks/`. No `useConnection` inside the render code path.
+  hook from `src/hooks/`, with no `useConnection` in the render code path.
 
-Smart-leaf exception: a widget that takes a `pv: string` and is reused
-site-wide (the `MotorCard` family) can call its connector hook directly. This
-keeps the call sites concise. The data layer still lives in `src/hooks/`.
+**In practice most widgets subscribe directly.** Only `useMotor` was ever
+extracted into `src/hooks/`, so the `MotorCard` family follows the rule while
+`BlepsSector`, `CameraViewer`, `DetectorSpectrum`, `TempController`,
+`StripChart`, `ScanViewChart`, `ReadbackRow` and `MotorRow` all call
+`useConnection` themselves. Treat the split as the direction of travel for new
+code rather than a description of the current tree: prefer a hook when a
+widget's data layer is reusable, and expect to find subscriptions inline when
+reading existing widgets.
 
 `ChanRbvBox` / `ChanSpBox` are already render-only — they take a `raw` prop
 and don't subscribe themselves. The caller (typically a panel) does the
@@ -91,7 +113,7 @@ and don't subscribe themselves. The caller (typically a panel) does the
 caQtDM `.ui` XML → `lib/uiParser.ts` parses into a JSON tree →
 `lib/UiRenderer.tsx` walks the tree, dispatches to the matching React
 component for each `ca*` widget (`caLabel`, `caLineEdit`, `caGraphics`,
-`caInclude`, `caFrame`, etc.), substitutes macros, and resolves nested
+`caInclude`, `caFrame`, etc.) and resolves nested
 `.ui` paths against `baseDir`. The renderer is currently a single ~2.5k-line
 file — splitting it into dispatch / layout / macros / path resolution
 modules is future work.
@@ -124,9 +146,12 @@ modules is future work.
   one file at `src/deployments/<id>/layouts/<name>.json` shaped as a
   `SavedLayout` (positions, hidden panels, overlays). Clicking one
   restores it onto the live state; the × button deletes the file.
-  *Shared (deployment)* layouts declared in `config.layouts` still render
-  here for backward compat but are no longer the recommended path — just
-  commit a draft file to git.
+  Saved drafts are personal: `src/deployments/*/layouts/` is gitignored, so
+  a draft file cannot be shared by committing it. To publish a layout to
+  everyone on a deployment, paste the contents of its `layouts/<name>.json`
+  into the `layouts` array in that deployment's `config.json`, which ships
+  in the bundle. There is no UI for this — the gear menu lists and restores
+  layouts but has no export action, so it is a manual copy.
 
 Persistence is wired in `src/lib/layoutStorage.ts`: `hydrateLayouts()`
 fetches `current.json` once at boot into an in-memory cache; `layoutGet`
@@ -203,8 +228,32 @@ capped at 1 MB, and reject any name that doesn't match
 `[a-z0-9-]{1,64}`. `current` cannot be deleted. The plugin only resolves
 deployment IDs that exist as folders, so the URL space is closed and
 path traversal can't escape the deployments root. Since the app always
-runs from inside the repo (dev or `vite preview`), the same persistence
+runs from inside the repo (dev or `vite preview`), the same layout persistence
 works for both — there is no production-static deploy path.
+
+## pvws boot gate
+
+`main.tsx` probes the gateway before rendering, so a dead pvws is visible
+rather than silent:
+
+1. `probeWebSocket(wsUrl, 3000)` (`lib/pvwsProbe.ts`) opens one WebSocket to
+   `ws[s]://<config.pvws.socket>/pvws/pv` and resolves true on `open`, false
+   on `error`, `close`, or a 3 s timeout.
+2. On success, `pvwsWriter.connect()` runs and the app starts normally.
+3. On failure, the URL is logged with the `[main] pvws gateway unreachable:`
+   prefix and `installPvwsWebSocketStub(wsUrl)` (`lib/wsStub.ts`) pins that
+   one URL to a stub socket that stays in `CONNECTING` forever. `cs-web-lib`
+   guards every send on `readyState === OPEN`, so messages are dropped
+   instead of throwing and its hardcoded 500 ms reconnect loop — which has
+   no max-retries option — never fires.
+4. Either way `App` renders, with `wsDown` and `wsUrl` passed in so the UI
+   shows a banner naming the unreachable gateway.
+
+The point of the stub is that PVs sit in their ordinary disconnected state
+with one clear explanation on screen, rather than the app appearing to work
+while a reconnect loop churns in the background. For the diagnostic recipe
+when this fires, see
+`.claude/skills/debugging-pvws-connectivity/SKILL.md`.
 
 ## Error boundary
 
@@ -232,7 +281,9 @@ isolation.
 - `npm run lint`: ESLint with `eslint.config.js` (flat config). Currently
   only `react-hooks/rules-of-hooks` is enforced.
 - Vendor chunks are split via `build.rollupOptions.output.manualChunks`
-  into `react` (~50 kB gz), `cs-web` (~746 kB gz, includes Redux + MUI),
+  into `react` (~50 kB gz), `cs-web` (~740 kB gz, which also absorbs
+  Redux and MUI — the `mui` bucket defined in `manualChunks` does not
+  currently emit a separate chunk),
   and per-deployment chunks.
 
 ## Open questions

@@ -10,7 +10,8 @@ ca-web is a browser-based control panel for beamline instruments.
 
 React 18, TypeScript 5, Vite 7, npm. Key dependency:
 `@diamondlightsource/cs-web-lib` for EPICS / Channel Access. MUI for UI,
-Redux Toolkit for state.
+state lives in the Redux store
+`cs-web-lib` re-exports; ca-web adds no slices.
 
 ## Commands
 
@@ -35,7 +36,7 @@ directly when its triggers match.
 - **`adding-a-panel`** — add a draggable panel to an *existing*
   deployment. Triggers: "add a panel to <deployment>", "new tab
   content", "extend <deployment>". Encodes the stable-id-slug rule
-  (panel ids are localStorage keys) and the config.json / index.tsx
+  (panel ids key the saved-layout JSON) and the config.json / index.tsx
   sync.
 - **`adding-a-widget`** — add a reusable PV widget under
   `src/widgets/`. Triggers: "add a widget", "create a PV widget",
@@ -44,7 +45,7 @@ directly when its triggers match.
 - **`debugging-pvws-connectivity`** — diagnose blank dashboards / red
   wsDown banners. Triggers: "PVs aren't connecting", "red banner",
   "No connections for ca://", "pvws is broken". Walks the boot probe
-  / stub flow and a four-step diagnostic recipe.
+  / stub flow and a five-step diagnostic recipe.
 - **`running-the-quality-gate`** — run `pre-commit` and interpret its
   output. Triggers: before any commit; "run the quality gate"; commit
   blocked by the gate.
@@ -55,8 +56,9 @@ directly when its triggers match.
 ## Project rules
 
 - **No emojis** in any code, doc, or commit message.
-- **WCAG 2.1 AA**: semantic HTML, alt text on images, labels on form
-  fields, full keyboard navigation. Non-negotiable.
+- **WCAG 2.1 AA** is the standard to write to: semantic HTML, alt text on
+  images, labels on form fields, full keyboard navigation. Held by
+  convention and review; no automated a11y check runs in lint or at commit.
 - **PV widgets need context menus.** Every `ChanRbvBox` / `ChanSpBox`
   must include `onContextMenu={e => pvCtx("PV:NAME", raw, e)}` (import
   `pvCtx` from `../../lib/epics`). No exceptions.
@@ -72,11 +74,16 @@ directly when its triggers match.
 - **Trunk-based on `main`.** Branch only for risky / multi-day / PR-review
   work.
 - **Pre-commit gate** runs `tsc --noEmit` plus ESLint on staged TS/TSX
-  files. Override with `SKIP=quality-gate git commit ...` only when the
-  user requests it (parallel-agent contention, etc.).
+  files. It is not active in a fresh clone — run `pre-commit install` once
+  per checkout. Override with `SKIP=quality-gate git commit ...` only when
+  the user requests it (parallel-agent contention, etc.).
+- **Commit messages** use a Conventional-Commits-style prefix with an
+  optional scope and a subject under 100 characters. The types the history
+  actually uses are `feat`, `fix`, `docs`, `refactor`, `chore`, `perf` and
+  `ui`. Nothing validates this: there is no commitlint and no `commit-msg`
+  hook, and the existing log is not uniformly lower-case.
 - **No silent degradation.** Every external dependency must surface its
   state via events or logs.
-- **Never hardcode model names.** Use a settings or env value.
 
 ## Pointers
 

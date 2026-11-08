@@ -23,23 +23,21 @@ inside a deployment's `index.tsx`; for that, just inline the widget.
 
 ## Why the conventions matter
 
-`docs/architecture.md:67-83` codifies the split: data
-lives in `src/hooks/`, render lives in `src/widgets/`. Two reasons:
+The "Render vs connector convention" section of
+`docs/architecture.md` sets out the intended split: data in
+`src/hooks/`, render in `src/widgets/`. The reason is the pvCtx
+right-click menu — it needs the caller to know the PV string, so a
+render-only widget takes `raw` as a prop and lets the caller wire
+`onContextMenu`, keeping the PV name in the panel rather than buried
+in a widget.
 
-1. PV subscriptions are stateful and ordered. If a widget calls
-   `useConnection` itself, two copies in the same tree subscribe
-   twice, double-count cs-web-lib's reconnect work, and bloat the
-   Redux store.
-2. The pvCtx right-click menu requires the caller to know the PV
-   string. Render-only widgets accept `raw` as a prop and let the
-   caller wire `onContextMenu`, so the PV name stays in the panel,
-   not buried in a widget.
-
-The exception is a **smart leaf** — a widget that takes `pv: string`
-and is reused so widely that asking every caller to wire
-`useConnection` would be churn (the `MotorCard*` family qualifies).
-Those call their connector hook directly. Default to render-only;
-choose smart-leaf only when the call-site burden justifies it.
+Be aware the current tree does not follow this. Only `useMotor` was
+ever extracted, so the `MotorCard*` family is the sole user of
+`src/hooks/`, while `BlepsSector`, `CameraViewer`, `DetectorSpectrum`,
+`TempController`, `StripChart`, `ScanViewChart`, `ReadbackRow` and
+`MotorRow` all call `useConnection` directly. Prefer render-only for
+new widgets, but do not expect neighbouring code to match, and do not
+"fix" it as a side effect of adding something.
 
 ## Steps
 
@@ -57,7 +55,7 @@ choose smart-leaf only when the call-site burden justifies it.
 
    ```tsx
    // Render-only widget — no useConnection here.
-   import { fmt, pvCtx } from "../lib/epics";
+   import { fmt, toDouble, pvCtx } from "../lib/epics";
    import { colors, fontSize } from "../lib/theme";
 
    // Smart-leaf widget only:
@@ -75,21 +73,24 @@ choose smart-leaf only when the call-site burden justifies it.
    computed values that have no PV behind them.** Don't reach for
    `RbvBox` just because it's shorter.
 
-5. **Wire the pvCtx context menu.** Hard rule from `CLAUDE.md:45`,
+5. **Wire the pvCtx context menu.** Hard rule from `CLAUDE.md:44`,
    no lint enforces it:
 
    ```tsx
    <ChanRbvBox
      raw={raw}
-     onContextMenu={e => pvCtx("ca://PV:NAME", raw, e)}
+     onContextMenu={e => pvCtx("PV:NAME", raw, e)}
    />
    ```
 
-   The PV string must include the `ca://` prefix; `pvCtx` opens the
-   info dialog with that exact name. If the widget can't know its
-   own PV (purely computed), use `RbvBox` and skip `onContextMenu`.
+   Pass the bare PV name, with no `ca://` prefix — `pvCtx` shows that
+   exact string in the info dialog, and every call site in `src/`
+   uses the bare form. (`useConnection` does need the
+   `ca://` form, and `pvwsWriter.write` adds the prefix itself.) If the widget
+   can't know its own PV (purely computed), use `RbvBox` and skip
+   `onContextMenu`.
 
-6. **Respect alignment.** Per `CLAUDE.md:46`:
+6. **Respect alignment.** Per `CLAUDE.md:45`:
    - Every cell is explicitly left/right/center-aligned. No relying
      on default browser flow.
    - Box and button heights match within a row.
@@ -125,7 +126,7 @@ A minimal starting shape — copy, rename, fill in the gaps:
 
 ```tsx
 // src/widgets/MyValueBox.tsx
-import { fmt, pvCtx } from "../lib/epics";
+import { fmt, toDouble, pvCtx } from "../lib/epics";
 import { colors, fontSize } from "../lib/theme";
 
 interface MyValueBoxProps {
@@ -136,7 +137,7 @@ interface MyValueBoxProps {
 }
 
 export function MyValueBox({ pv, raw, connected, width }: MyValueBoxProps) {
-  const text = connected ? (fmt(raw) ?? "—") : "—";
+  const text = connected ? fmt(toDouble(raw)) : "—";
   return (
     <div
       onContextMenu={e => pvCtx(pv, raw, e)}
@@ -165,7 +166,7 @@ The caller (a panel) wires the subscription:
 
 ```tsx
 const [, connected, , raw] = useConnection("my-value", "ca://my:pv");
-return <MyValueBox pv="ca://my:pv" raw={raw} connected={connected} />;
+return <MyValueBox pv="my:pv" raw={raw} connected={connected} />;
 ```
 
 ## Verification
@@ -183,11 +184,12 @@ for the broader evidence rule.
 
 ## See also
 
-- `docs/architecture.md` — connector/render convention
-  in depth (lines 67-93).
+- `docs/architecture.md` — connector/render convention in depth
+  ("Render vs connector convention").
 - `src/widgets/EpicsWidgets.tsx` — `RbvBox`, `SpBox`, `ChanRbvBox`,
   `ChanSpBox` reference.
-- `src/widgets/MotorRow.tsx` — render-only PV row, end-to-end.
+- `src/widgets/MotorRow.tsx` — compact PV row; note it subscribes
+  with `useConnection` itself rather than taking `raw` as a prop.
 - `src/hooks/useMotor.ts` — example of a connector hook the
   `MotorCard*` smart-leaf family consumes.
 - `src/lib/epics.ts` — `fmt`, `toDouble`, `toStr`, `pvCtx`.

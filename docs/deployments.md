@@ -10,7 +10,7 @@ Existing deployments (`src/deployments/`):
 
 - `example/` — minimal template; copy this when adding a new one.
 - `nefarian/` — simulated IOC for local development.
-- `29id/` — 29ID production: 3 tabs, ARPES chamber, beamline layout,
+- `29id/` — 29ID production: 4 tabs, ARPES chamber, beamline layout,
   scan records, cameras.
 - `29id_dev/` — 29ID staging sandbox for caqtdm-porting work.
 
@@ -26,7 +26,7 @@ At runtime, not build time:
 
 The picker auto-discovers any folder under `src/deployments/` that
 exposes an `index.tsx` with `export const config` (see
-`src/lib/deployment.ts:94-106` for the glob loader).
+`src/lib/deployment.ts:177-199` for the glob loader).
 
 ## Anatomy of a deployment
 
@@ -103,6 +103,7 @@ Defined in `src/lib/deployment.ts`:
 | `layouts?: SavedLayout[]` | no | shared/curated layouts that ship in-bundle |
 | `tabPanels: Record<number, PanelConfig[]>` | yes | static panels per tab |
 | `templates?: PanelTemplate[]` | no | spawn-on-demand entries in the picker |
+| `spawnablePanels?: Record<string, SpawnablePanelSpec>` | no | panels openable as repeatable floating instances via `open-panel`; the map key is the stable id saved layouts reference, so keys must not change across releases |
 
 `PanelConfig`: `{ id, title, Content, defaultSize?, scale?, aspectLock? }`.
 
@@ -111,7 +112,9 @@ declares caqtdm-style macro inputs collected by the picker before
 `spawn()` runs.
 
 Static panels are singletons (one instance per id, persisted under
-`panel:<id>` in localStorage). Spawn-on-demand widgets — cameras,
+`panel:<id>` in the deployment's `layouts/current.json` — see
+[adr/006](adr/006-layout-persistence-in-deployment-folders.md)).
+Spawn-on-demand widgets — cameras,
 StripChart, ScanViewChart — are NOT registered in `tabPanels`; they're
 created at runtime via `open-camera` / `open-stripchart` /
 `open-scanview` events and tracked in App-level overlay state. Saved

@@ -19,7 +19,8 @@ through pvws via `cs-web-lib`.
 
 ## Development
 
-Requires Node.js (18+; tested with 24.x):
+Requires Node.js — Vite 7 declares `^20.19.0 || >=22.12.0`, so 18.x will not
+work. Built and run here on 25.8.2:
 
 - **System / nvm:** `node` and `npm` already on `PATH`.
 - **conda** (typical on APS beamline hosts): `conda activate nodejs`.
@@ -52,10 +53,20 @@ deployment. Folder name **must** match the `id` in its `config.json`.
 
 | id | Title | pvws | Notes |
 |---|---|---|---|
-| `example` | Example Deployment | `localhost:8080` | Template; copy this when adding a new deployment. |
-| `nefarian` | Nefarian | `localhost:8080` | Simulated IOC for local dev. |
-| `29id` | 29ID Beamline | `localhost:8080` | Production. Run on the beamline host; reach from a workstation via SSH tunnel (see below). |
-| `29id_dev` | 29ID dev | `localhost:8080` | Sandbox copy of 29id for caqtdm-porting work. |
+| `example` | Example Deployment | `localhost:8080` | Template; copy this when adding a new deployment. Not maintained as a running deployment. |
+| `nefarian` | Nefarian | `localhost:8080` | Early local-dev deployment, no longer actively used. Still runnable (see below). |
+| `29id` | 29ID Beamline | `localhost:8080` | The live deployment. Runs on the beamline host; reach from a workstation via SSH tunnel (see below). |
+| `29id_dev` | 29ID Beamline (dev) | `localhost:8080` | Sandbox copy of 29id for caqtdm-porting work. |
+
+`29id` and `29id_dev` are where the real work happens; both need beamline
+access.
+
+`nefarian` and `example` expect simulated IOCs serving the `fr:` and `myad:`
+prefixes — start your own, or edit the prefixes in the deployment's
+`index.tsx`, which hardcodes `fr:m1`–`fr:m8`, `fr:userCalc1` and
+`myad:cam1:*`. Without them every widget shows dashes. The originals are
+`/home/beams/RODOLAKIS/epics/ioc/fr` (the `fr:` motors) and
+`/home/beams/RODOLAKIS/epics/ioc/simDetectorIOC` (the `myad:` area detector).
 
 To add a new deployment, copy `src/deployments/example/`, rename the
 folder, edit `config.json` and `index.tsx`. The picker
@@ -69,13 +80,13 @@ ca-web (vite + pvws on the same beamline host) binds only to
 direct subnet connection. A launcher script handles that:
 
 ```bash
-ca-web-29id start     # opens SSH + Firefox at http://localhost:4200
-ca-web-29id status
-ca-web-29id stop
+ca-web start     # opens SSH + Firefox at http://localhost:4200
+ca-web status
+ca-web stop
 ```
 
-Install it once per beamline host (NFS-shared, so one install covers
-all four):
+Install it once as `29iduser`. `/home/beams/29IDUSER` is NFS-shared
+across the beamline machines, so a single install covers all of them:
 
 ```bash
 cp scripts/ca-web-29id ~29iduser/bin/ca-web
@@ -168,6 +179,8 @@ under `layouts/`.
 | `caStripPlot` | Rolling time-series chart; SVG with grid, axes, ticks, legend; `period` × `units` (Second/Minute/Hour) sets time window; per-slot colors from `color_N` props; legend shows last two colon-separated PV name segments |
 | `caCalc` | Computed readback: evaluates an EPICS CALC expression (`calc` prop) using up to 4 PV inputs (A–D via `channel`/`channelB`/`channelC`/`channelD`); displays numeric result formatted like `caLineEdit` |
 | `caWaveTable` | Read-only waveform array grid; `numberOfRows` × `numberOfColumns` cells each showing one array element formatted with `precision` decimal places |
+| `caShellCommand` | Labelled button; a dropdown when `files` lists several commands. Clicking shows the command and its args in a dialog instead of running it — the browser cannot execute host commands |
+| `QGroupBox` | Plain Qt grouping container; renders as a `fieldset` with the `title` as its legend, children positioned relative to the box |
 
 ### caCartesianPlot
 

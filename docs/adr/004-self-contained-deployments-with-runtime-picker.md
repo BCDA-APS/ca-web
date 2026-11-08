@@ -70,5 +70,12 @@ An `example/` deployment is committed as a copy-paste template.
 
 ## Notes
 
-- `../deployments.md` predates this change and still references
-  `VITE_DEPLOYMENT` / `--mode`. Flagged for a refresh.
+- `../deployments.md` has since been refreshed and no longer references
+  `VITE_DEPLOYMENT` / `--mode`.
+- The eager glob described above was later made lazy, exactly as the
+  consequence note anticipated. `src/lib/deployment.ts` now calls
+  `import.meta.glob()` with no options (Vite's default is lazy — there is
+  no literal `eager: false` in the source to grep for), exposes `LOADERS`
+  rather than a prebuilt `REGISTRY`, and `main.tsx` awaits
+  `loadDeployment(id)` before rendering. Each deployment is its own Rollup
+  chunk. The runtime-selection contract is unchanged.

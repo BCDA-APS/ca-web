@@ -117,7 +117,8 @@ ca-web widgets misbehave without them.
 build time via `../pvws/docker/setenv.sh`, not passed at run time. The
 script bind-mounts a no-op `scripts/pvws-setenv.sh` over the image's
 copy at container start to neutralize that hardcoded value (see the
-`-v` line near the top of `start-pvws.sh`).
+`-v` lines in the `podman run` invocation near the end of
+`start-pvws.sh`).
 
 ## Network lockdown (Tomcat loopback)
 

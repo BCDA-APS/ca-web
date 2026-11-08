@@ -27,8 +27,8 @@ plain code task. This skill is for the *initial* scaffold.
 
 `docs/deployments.md` documents the copy-and-customize path. Doing it by
 hand is error-prone: `config.json` must match `DeploymentConfig` exactly,
-the folder name must equal `config.id` (`src/lib/deployment.ts:90`), panel
-`id` slugs are localStorage keys that must not be renamed casually, and
+the folder name must equal `config.id` (`src/lib/deployment.ts:204`), panel
+`id` slugs key the saved-layout JSON and must not be renamed casually, and
 `index.tsx` has a particular shape (strip the build-time `paths`, build
 `tabPanels`, spread back into the export). An interactive walk-through
 keeps every new deployment in shape.
@@ -54,9 +54,10 @@ keeps every new deployment in shape.
 
 3. **Interview — core fields.** Use one `AskUserQuestion` batch:
 
-   - `id` — lowercase slug, hyphens allowed. Must match the folder
+   - `id` — lowercase slug; hyphens and underscores both work (the
+     existing `29id_dev` uses one). Must match the folder
      name (enforced at runtime by `loadDeployment` in
-     `src/lib/deployment.ts:90`). Once the user picks an id, recheck
+     `src/lib/deployment.ts:204`). Once the user picks an id, recheck
      step 1's overwrite-protection against the chosen slug before
      proceeding.
    - `title` — human-readable name shown in the picker and header.
@@ -66,7 +67,7 @@ keeps every new deployment in shape.
 
 4. **Interview — tabs.** First ask: how many tabs? (1–3 is typical.)
    Then, for each tab, ask `id` (integer, starting from 1), `icon`
-   (single character or emoji-free glyph), `label`, and optional
+   (single character; the committed configs use emoji here), `label`, and optional
    `color`. Reuse the template's defaults so the user can accept them
    in one shot.
 
@@ -74,9 +75,10 @@ keeps every new deployment in shape.
 
    For each panel, ask in one batch:
 
-   - `id` — kebab-case slug. **These are localStorage keys** —
+   - `id` — kebab-case slug. **These are persistence keys** —
      `src/lib/layoutStorage.ts` stores panel positions under
-     `ca-web.<deploymentId>.panel:<panelId>`, with no rename migration.
+     `panel:<panelId>` in the deployment's `layouts/current.json`,
+     with no rename migration.
      Pick once, keep stable across releases. See
      [adding-a-panel](../adding-a-panel/SKILL.md) for the trap in depth.
    - `title` — display name on the panel header.
@@ -183,8 +185,8 @@ If a custom panel uses `ChanRbvBox` or `ChanSpBox`, it **must** include
 - **No emojis** in any generated content. Repo rule (`CLAUDE.md`).
 - **No dev server.** Do not run `npm run dev` after writing. Print the
   verification commands and let the user run them.
-- **Panel id slugs are stable.** They're localStorage keys. If the
-  user wants to rename a panel later, that's a separate task with
+- **Panel id slugs are stable.** They key the saved layout JSON. If
+  the user wants to rename a panel later, that's a separate task with
   migration.
 
 ## Verification

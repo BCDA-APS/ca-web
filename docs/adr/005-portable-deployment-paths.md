@@ -74,10 +74,11 @@ follow-up flagged in ADR 004).
   declared paths reachable; behavior identical to before). Off-network,
   it loads but its `/ui/*` requests 404 cleanly.
 - "Add a beamline that needs NFS targets" becomes "copy `example/`, edit
-  `index.tsx`, drop a `paths.json`." No vite-config edits.
-- `paths.json` is intentionally JSON (no schema-typed `paths.ts`) to keep
-  `vite.config.ts` dependency-free. A small `validatePaths()` rejects
-  unknown top-level keys.
+  `index.tsx`, add a `paths` block to `config.json`." No vite-config edits.
+- The paths block is intentionally JSON (no schema-typed `paths.ts`) to
+  keep `vite.config.ts` dependency-free. Unknown top-level keys are
+  rejected inline against a `VALID_KEYS` set rather than by a separate
+  `validatePaths()` helper.
 - The virtual module couples picker UX to Vite. A non-Vite test runner
   won't resolve it; acceptable today (no test runner). If that changes,
   fall back to a generated `src/.deployment-path-status.ts` file.
@@ -86,5 +87,5 @@ follow-up flagged in ADR 004).
 
 ## Notes
 
-- `../deployments.md` was last touched before ADR 004 and is now doubly
-  out of date. Flagged for a refresh.
+- `../deployments.md` has since been refreshed and documents the current
+  `paths` block.

@@ -4,9 +4,12 @@
 
 Open real `.ui` files and see what fails to render. Remaining candidates:
 
-- `caWaveTable` — editable waveform table
+- `caWaveTable` — **editing**. The read-only grid is implemented; writing
+  array elements back to the PV is not.
 - `caDoubleTabWidget` — specialised tab container
-- `caScriptButton` — button that runs a script
+- `caScriptButton` — button that runs a script. Note `caShellCommand` is
+  implemented but can only display the command, not run it; anything of
+  this kind needs a server-side executor to be more than a readout.
 
 ## 2. Macro inheritance in related displays
 
@@ -31,9 +34,10 @@ forwarded). Not yet observed in practice at 29-ID.
 
 - **sizePolicy support** — widgets with `MinimumExpanding` should stretch
   to fill available space (currently only caCamera does this via `right:0`)
-- **Visibility conditions** — `caQtDM` supports showing/hiding widgets
-  based on PV values; `visibilityCalc` is partially parsed but not fully
-  wired up for all widget types
+- **Visibility conditions** — `visibility` / `visibilityCalc` are wired up
+  for `caGraphics`, `caLabel`, `caPolyLine`, `caImage`, `caFrame` and
+  `caInclude`. Every other widget class ignores them; extending coverage is
+  the remaining work
 - **Font scaling** — verify that font sizes match caQtDM across all widget
   types at different scales
 
@@ -43,8 +47,8 @@ forwarded). Not yet observed in practice at 29-ID.
 
 ## 8. ~~Distributed access across the beamline subnet~~ ✓ Done
 
-See `DEPLOYMENT.md` for the full setup including known pitfalls
-(NFS overlay storage, `--no-hosts`, etc.).
+See [deployment.md](deployment.md) for the full setup including known
+pitfalls (NFS overlay storage, `--no-hosts`, etc.).
 
 ## 9. Line profile on images
 
@@ -66,6 +70,8 @@ diagnostics.
 
 ## 12. ~~Per-deployment App configuration~~ ✓ Done
 
-`App.tsx` is now a generic shell. Deployment-specific tabs and panels live in
-`src/deployments/nefarian.tsx` and `src/deployments/29id.tsx`. Select with
-`npm run dev -- --mode <name>`. See README for details.
+`App.tsx` is now a generic shell. Each deployment is a self-contained folder
+at `src/deployments/<id>/` holding a `config.json` and an `index.tsx`, and is
+selected at runtime by the in-app picker or `?deployment=<id>` — no rebuild,
+no `--mode` flag. See [adr/004](adr/004-self-contained-deployments-with-runtime-picker.md)
+and [deployments.md](deployments.md).

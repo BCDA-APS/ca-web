@@ -2,7 +2,24 @@
 
 ## Session log
 
-### 2026-06-04
+### 2026-11-08
+
+- Handoff readiness pass ahead of transferring ca-web to a new maintainer.
+  Audited every doc against the code rather than for internal consistency,
+  and corrected what did not match.
+- Removed claims of mechanisms that do not exist: the pre-commit gate was
+  never installed in this clone (`pre-commit install` now run, and both
+  CLAUDE.md and AGENTS.md say a fresh clone needs it), "WCAG 2.1 AA
+  enforced" downgraded to a convention held by review, and the commit
+  convention restated to match what `git log` actually contains.
+- Recorded the layout-persistence decision that had never been written up
+  as [ADR 006](docs/adr/006-layout-persistence-in-deployment-folders.md),
+  and marked ADR 001 superseded. Documented the pvws boot gate in
+  `architecture.md`. Rewrote `display-path-resolution.md` from a proposal
+  into an as-built description.
+- Deleted dead artifacts: `.commitlintrc.json` (configured an uninstalled
+  tool), the empty `bot_vault/` skeleton, and the Slidev deck under
+  `docs/presentation/`, which advertised features the code does not have.
 
 - Diagnosed mite's IT-reported link saturation: traced to a local
   caQtDM session, not ca-web. Closing it dropped RX from ~120 MB/s

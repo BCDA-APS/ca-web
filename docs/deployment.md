@@ -11,7 +11,7 @@ container specifics see [how-to-start-pvws.md](how-to-start-pvws.md).
   workstation (e.g. nefarian)        beamline server
   ───────────────────────────        ────────────────────────────
                             ssh -L
-       ca-web-29id  ───────────────►  npm run dev    (vite, :4200)
+       ca-web       ───────────────►  npm run dev    (vite, :4200)
        (firefox)                      podman pvws    (:8080)
                                           │
                                           ▼
@@ -32,7 +32,7 @@ from every beamline host, so one clone covers all machines.
 EPICS PV traffic stays on the beamline subnet because pvws runs on a
 subnet host. Both listeners are bound to loopback only:
 
-- The vite dev server binds to `127.0.0.1` (`vite.config.ts:521`).
+- The vite dev server binds to `127.0.0.1` (`vite.config.ts:525`).
 - The pvws Tomcat HTTP connector binds to `127.0.0.1` via a
   bind-mounted `scripts/pvws-server.xml` (the pvws container still
   uses host network mode, which it needs so EPICS CA UDP beacons
@@ -101,14 +101,16 @@ clients, so HMR needs polling instead.
 
 The server binds to `127.0.0.1:4200` only.
 
-### Access from a workstation
+### Access from another machine
 
-On the staff workstation, run the launcher script:
+Run the launcher as `29iduser` from whichever beamline machine you are
+sitting at (it is installed in that account's NFS-shared `bin/`, so it is
+on `PATH` everywhere):
 
 ```bash
-ca-web-29id start    # opens SSH tunnel + Firefox at http://localhost:4200
-ca-web-29id status   # is the tunnel up?
-ca-web-29id stop     # tears down the tunnel
+ca-web start    # opens SSH tunnel + Firefox at http://localhost:4200
+ca-web status   # is the tunnel up?
+ca-web stop     # tears down the tunnel
 ```
 
 The launcher (installed from `scripts/ca-web-29id`) opens:
@@ -117,16 +119,22 @@ The launcher (installed from `scripts/ca-web-29id`) opens:
 ssh -fN -L 4200:localhost:4200 -L 8080:localhost:8080 29iduser@<host>
 ```
 
-…which is what makes `localhost:4200` on the workstation actually
+…which is what makes `localhost:4200` on the local machine actually
 reach the host's vite server, and `localhost:8080` reach the host's
 pvws. The specific `<host>` lives in `scripts/ca-web-29id` and is
 the only place where the hostname is hardcoded.
+
+`start` opens the tunnel only if nothing is already listening on
+local port 4200 (`nc -z`), then launches Firefox either way. So
+running it twice is harmless, but if some other process holds 4200
+the launcher will skip the tunnel and open a browser onto whatever
+that process is serving.
 
 ### Day-to-day
 
 Once pvws and vite are running on the beamline server (they persist
 across staff sessions), the only thing staff do per session is
-`ca-web-29id start`.
+`ca-web start`.
 
 ## Adding a second beamline
 
@@ -135,7 +143,7 @@ Two cases — see `scripts/ca-web-29id` as the template.
 **Different beamline server, accessed individually**: copy the script
 to `scripts/ca-web-28id`, change the SSH target to the 28ID server
 hostname, and add a 28ID deployment under `src/deployments/28id/`.
-Staff run either `ca-web-29id start` or `ca-web-28id start` (only
+Staff run whichever launcher is installed for that beamline (only
 one at a time; same local ports 4200 + 8080).
 
 **Both at once**: use different local ports per beamline (e.g.
@@ -148,7 +156,7 @@ side-by-side in different browser tabs.
 | Scenario | npm run dev on | pvws on | Access |
 |---|---|---|---|
 | Local dev (simulated IOC) | workstation | workstation | `localhost:4200` direct |
-| 29ID screens | beamline host | beamline host | SSH tunnel via `ca-web-29id start` |
+| 29ID screens | beamline host | beamline host | SSH tunnel via `ca-web start` |
 
 When editing on the workstation while vite runs on the beamline host
 (NFS-shared source), remember `VITE_POLL=1 npm run dev` so HMR fires.
@@ -178,4 +186,3 @@ Camera arrays can be tens of MB. `start-pvws.sh` sets
 `EPICS_CA_MAX_ARRAY_BYTES=64000000` (64 MB) so pvws can pass them
 through. If you see truncated or missing camera frames after adding a
 new high-resolution camera, raise that limit.
-

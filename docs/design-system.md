@@ -1,7 +1,7 @@
 # EPICS UI Design System
 
 Conventions for building consistent panels in caqtdm-web.
-The app uses a **light theme** — background `rgb(222,222,227)`, with blue readbacks and dark-blue setpoints.
+The app uses a **light theme** — background `rgb(222,222,227)`, with dark-blue readback text on light grey, and dark-blue setpoint text on light blue.
 
 ---
 
@@ -52,14 +52,14 @@ import { colors, fontSize } from "../../lib/theme";
 | `colors.rbvText` | `rgb(10,37,159)` | RBV readback text (dark blue) |
 | `colors.rbvBg` | `rgb(236,236,236)` | RBV background (light gray) |
 | `colors.rbvBorder` | `rgb(160,168,215)` | RBV border |
-| `colors.spText` | `rgb(228,228,228)` | Setpoint text (light) |
-| `colors.spBg` | `rgb(0,53,132)` | Setpoint background (dark blue) |
-| `colors.spBorder` | `rgb(0,35,90)` | Setpoint border |
-| `colors.inputBg` | `rgb(0,53,132)` | Active text input background |
-| `colors.inputBorder` | `rgb(0,35,90)` | Active text input border |
-| `colors.tweakBg` | `#2060a0` | Tweak ‹ › button background |
-| `colors.tweakFg` | `#cce0ff` | Tweak ‹ › button text |
-| `colors.tweakBorder` | `#1a4a7a` | Tweak ‹ › button border |
+| `colors.spText` | `rgb(10,37,159)` | Setpoint text (dark blue) |
+| `colors.spBg` | `rgb(162,186,221)` | Setpoint background (light blue) |
+| `colors.spBorder` | `rgb(120,150,190)` | Setpoint border |
+| `colors.inputBg` | `rgb(162,186,221)` | Active text input background |
+| `colors.inputBorder` | `rgb(120,150,190)` | Active text input border |
+| `colors.tweakBg` | `rgb(162,186,221)` | Tweak ‹ › button background |
+| `colors.tweakFg` | `rgb(10,37,159)` | Tweak ‹ › button text |
+| `colors.tweakBorder` | `rgb(120,150,190)` | Tweak ‹ › button border |
 | `colors.relatedBg` | `rgb(210,220,240)` | Related display button background |
 | `colors.relatedBorder` | `rgb(160,180,220)` | Related display button border |
 | `colors.relatedFg` | `rgb(0,53,132)` | Related display button text |
@@ -67,13 +67,14 @@ import { colors, fontSize } from "../../lib/theme";
 | `colors.label` | `#333333` | Row labels, motor names |
 | `colors.dim` | `#666666` | Dimmed / secondary text |
 | `colors.sectionHdr` | `#7c6fa0` | Section header text |
+| `colors.sectionHdrBorder` | `#b0b0b8` | Section header rule |
 | `colors.cardBg` | `rgb(200,200,205)` | Motor card background |
 | `colors.cardBgDisabled` | `rgb(185,185,190)` | Disabled motor card background |
 | `colors.cardBarBg` | `rgb(175,175,180)` | Motor position bar track |
 | `colors.cardBarThumb` | `rgb(0,53,132)` | Motor position bar thumb |
 | `colors.statusOk` | `#4caf50` | OK / done / green |
 | `colors.statusWarn` | `#f9a825` | Warning / busy / amber |
-| `colors.statusError` | `#e53935` | Error / hard limit / red |
+| `colors.statusError` | `#cc0000` | Error / hard limit / red |
 
 ### Font sizes
 
@@ -134,7 +135,7 @@ import { RbvBox, SpBox, TweakValue, TweakButton, UnitLabel, RelatedDisplay, Row 
 <TweakValue value={twv} onCommit={n => pvwsWriter.write("pv:TWV", n)} style={{ width: 54 }} onContextMenu={e => pvCtx("pv:TWV", raw, e)} />
 ```
 
-Click to edit. `↑` multiplies by 10, `↓` divides by 10. Styled to match `SpBox` (dark blue background, light text).
+Click to edit. `↑` multiplies by 10, `↓` divides by 10. Styled to match `SpBox` (light blue background, dark blue text).
 
 ### `TweakButton` — ‹ / › tweak button
 
@@ -215,6 +216,6 @@ function MySection() {
 ## Notes
 
 - **ChamberDiagram** is SVG-based so it cannot use the HTML widget components, but it does import `toDouble`, `toStr`, and `pvCtx` from `epics.ts`. Use `colors.*` tokens for SVG `fill` and `stroke` attributes.
-- **Import paths** depend on where your panel lives. Panels directly under `src/deployments/29id/` (e.g. `index.tsx`) use `../../lib/...` and `../../widgets/...`; panels inside the domain subfolders (`layout/`, `energy/`, `chamber/`, `optics/`, `scan/`) use `../../../lib/...` and `../../../widgets/...`.
+- **Import paths** depend on where your panel lives. Panels directly under `src/deployments/29id/` (e.g. `index.tsx`) use `../../lib/...` and `../../widgets/...`; panels inside the domain subfolders (`bl-layout/`, `energy/`, `chamber/`, `optics/`, `scan/`) use `../../../lib/...` and `../../../widgets/...`.
 - **Right-click PV info** is handled globally by `App.tsx`. Any element that dispatches a `"pv-context"` custom event (via `pvCtx`) will show the PV info dialog automatically.
 - **TweakValue and SpBox share the same colors** (`spBg/spText/spBorder`) to signal they are both editable inputs. If you ever need to differentiate them, add dedicated tokens to `theme.ts`.

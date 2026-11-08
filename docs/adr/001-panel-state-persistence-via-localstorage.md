@@ -1,7 +1,7 @@
 # ADR 001 -- Panel state persistence via localStorage
 
 Date: 2026-05-13
-Status: Accepted
+Status: Superseded by ADR 006
 
 ## Context
 

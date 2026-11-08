@@ -6,9 +6,10 @@ description: Diagnose why ca-web PV widgets are not connecting. Use
   "No connections for ca://" in the console, "pvws is broken", "EPICS
   gateway is down", "I deployed to <new host> and nothing works", "widgets
   are disconnected after a reboot", "Cannot write unknown PV". Explains the
-  boot probe / WebSocket stub / red banner design (it is intentionally
-  silent on dead gateways — read this before debugging the silence) and
-  walks a four-step diagnostic recipe. Do not use for *individual* PVs that
+  boot probe / WebSocket stub / red banner design (a dead gateway is
+  reported — a console error plus an on-screen banner — while PVs sit in
+  their disconnected default) and
+  walks a five-step diagnostic recipe. Do not use for *individual* PVs that
   are stale while others connect — that's an IOC problem, not pvws.
 ---
 
@@ -24,7 +25,7 @@ widget itself is broken, see [adding-a-widget](../adding-a-widget/SKILL.md).
 
 ## How ca-web treats a dead gateway
 
-At boot, `src/main.tsx:32` runs `probeWebSocket(wsUrl, 3000)` from
+At boot, `src/main.tsx:34` runs `probeWebSocket(wsUrl, 3000)` from
 `src/lib/pvwsProbe.ts:3-19`. The probe opens a single WebSocket
 against `ws[s]://<config.pvws.socket>/pvws/pv` with a 3-second
 timeout and resolves true/false.
@@ -34,12 +35,13 @@ If the probe fails, `installPvwsWebSocketStub(wsUrl)` from
 returns a stub *only for that exact URL*. The stub stays in
 `readyState = CONNECTING` forever and never fires open/close/error.
 cs-web-lib's library guards every `send()` with
-`readyState === OPEN`, so queued writes silently no-op, the
-hardcoded 500ms reconnect loop fires harmlessly, and PVs render in
-their default disconnected state instead of cascading errors.
+`readyState === OPEN`, so its queued sends silently no-op, its
+hardcoded 500ms reconnect loop never fires (the stub emits no
+`close` or `error` to trigger it), and PVs render in their default
+disconnected state instead of cascading errors.
 
 `App` then renders with `wsDown={!wsAlive}` and `wsUrl={wsUrl}`
-(`src/main.tsx:46`). The red banner with the Retry button comes from
+(`src/main.tsx:48`). The red banner with the Retry button comes from
 those props. **The stub is boot-only** — it does not cover
 mid-session drops, which fall through to cs-web-lib's reconnect.
 
@@ -91,14 +93,15 @@ mid-session drops, which fall through to cs-web-lib's reconnect.
 
    The probe alive + widgets disconnected means pvws is running but
    its EPICS_CA_ADDR_LIST doesn't include the IOC subnet. Per
-   `docs/how-to-start-pvws.md:14-22`, that list is **baked into the
+   the "Prerequisites" section of `docs/how-to-start-pvws.md`, that list is **baked into the
    container at build time** via `../pvws/docker/setenv.sh`, not
    passed at run time. Rebuild the image with the correct list
    (typically `164.54.112.168` at APS) and reload.
 
-   Also confirm `EPICS_CA_MAX_ARRAY_BYTES=8000000` is set on the
+   Also confirm `EPICS_CA_MAX_ARRAY_BYTES=64000000` is set on the
    container — without it, area-detector waveform PVs connect but
-   return zero elements (`docs/how-to-start-pvws.md:84-87`).
+   return zero elements (see "Environment variables" in
+   `docs/how-to-start-pvws.md`).
 
 5. **If everything checks out, retry the boot probe.**
 
@@ -113,9 +116,16 @@ mid-session drops, which fall through to cs-web-lib's reconnect.
   the stub, a dead gateway would flood the console with reconnect
   attempts and the Redux store with churn.
 - **`Cannot write unknown PV`**: pvws requires a subscription on the
-  same socket before a write is accepted
-  (`docs/how-to-start-pvws.md:185-188`). The stub no-ops writes so
-  panels with motor controls don't throw on user clicks.
+  same socket before a write is accepted (see "pvws write protocol
+  notes" in `docs/how-to-start-pvws.md`).
+
+**Writes are not covered by the stub.** `pvwsWriter` owns its own
+socket, separate from cs-web-lib's. When the probe fails, `main.tsx`
+never calls `pvwsWriter.connect(socket, ssl)`, so its `url` stays
+null; the first `write()` falls through to `connect()`, which throws
+`pvwsWriter.connect: socket not configured` (`src/lib/pvwsWriter.ts:13`).
+So with a dead gateway, clicking a setpoint or a tweak button throws.
+Reads degrade quietly; writes do not.
 
 ## What the stub does NOT cover
 

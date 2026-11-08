@@ -94,4 +94,4 @@ Widgets used by parsed `.ui` files (`caLineEdit`, `caGraphics`,
 `caStripPlot`, etc.) are dispatched from `src/lib/UiRenderer.tsx`, not
 from `src/widgets/`. See [ui-rendering.md](ui-rendering.md). The full
 list of supported `ca*` widgets is documented in the project
-[README](../README.md#implemented-widgets).
+[README](../README.md#implemented-caqtdm-widgets).

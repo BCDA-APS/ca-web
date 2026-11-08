@@ -8,9 +8,9 @@ Implementation lives in `src/lib/uiParser.ts` and `src/lib/UiRenderer.tsx`.
 ```
 .ui (Qt Designer XML)
   └─ uiParser.ts  → ParsedUi { nativeWidth, nativeHeight, widgets[] }
+       (applies macro substitution $(VAR) to every property value)
        └─ UiRenderer.tsx → React tree
             ├─ widget dispatch (caLabel, caLineEdit, …)
-            ├─ macro substitution ($(VAR))
             ├─ baseDir resolution for caInclude / caRelatedDisplay
             ├─ visibility evaluation (channel / visibility / visibilityCalc)
             └─ tab and frame layout
@@ -47,14 +47,15 @@ fit the host container while preserving aspect ratio.
   substitution).
 - **Widget dispatch** — a switch on `widget.class` that picks the React
   component for each `ca*` widget. The widget catalog is in the project
-  [README](../README.md#implemented-widgets).
+  [README](../README.md#implemented-caqtdm-widgets).
 - **Layout** — positions children with absolute coordinates derived
   from parsed geometry, with special handling for `caFrame` (renders
   children relative to the frame so visibility can clip the group) and
   `QTabWidget` (children positioned relative to the tab page).
-- **Macro substitution** — `applyMacros` is exported from `uiParser.ts`
-  and used by the renderer when substituting prop values, channel
-  names, and include filenames.
+- **Macro substitution** — happens at parse time. `uiParser.ts` keeps
+  `applyMacros` private and applies it to every property value as it
+  builds the tree, so the renderer receives prop values, channel names
+  and include filenames with `$(VAR)` already substituted.
 - **Path resolution** — `caInclude` and `caRelatedDisplay` reference
   other `.ui` files by relative or absolute path; resolution is
   anchored on `BaseDirContext`. `.adl` files are converted on the fly
