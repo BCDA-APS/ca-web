@@ -183,7 +183,19 @@ storage (`~/.local/share/containers` by default), so you just need to
 restart it. If you ever used `--rootless-nfs` and `/var/tmp` got wiped,
 re-load the image first.
 
-To restart pvws without rebuilding:
+If the container still exists and is merely stopped, the quickest route
+is to start it again as-is — it keeps the env vars and bind mounts it
+was created with:
+
+```bash
+podman start pvws-29id     # or `pvws` on a workstation
+podman ps | grep pvws
+```
+
+Re-run the script instead when the container is gone, when the image had
+to be reloaded, or when any of the env vars in the script have changed
+(the throttle rates, for example, are baked in at `podman run` time and a
+plain `podman start` will keep the old ones):
 
 ```bash
 podman load -i ~/workspace/pvws/pvws-image.tar
@@ -231,6 +243,19 @@ path you can point graphRoot at — it stashes everything under
 
 `ignore_chown_errors` suppresses chown failures that rootless podman hits
 because it cannot chown files it doesn't own on NFS.
+
+### "systemd slice received as cgroup parent when using cgroupfs"
+
+Seen after a reboot on some hosts. Podman and systemd disagree about which
+cgroup manager owns the container. Put this in
+`~/.config/containers/containers.conf`:
+
+```
+[engine]
+cgroup_manager = "systemd"
+```
+
+Then retry. The container itself is fine; only the start fails.
 
 ### `--network=host` fails without `--no-hosts` on beamline machines
 
