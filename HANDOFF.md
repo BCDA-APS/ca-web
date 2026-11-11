@@ -14,7 +14,7 @@
    This is the mechanism the whole prototype rests on; the first section tells
    you which URL form to write in app code.
 
-`docs/adr/` holds six decision records. ADR 002 (render `.ui` at runtime rather
+`docs/adr/` holds seven decision records. ADR 002 (render `.ui` at runtime rather
 than porting screens) and ADR 004 (self-contained deployments) are the two that
 explain why the codebase looks the way it does. Nothing is published online.
 
@@ -50,9 +50,10 @@ is no production build path at all; see the open question below.
 
 **2. A green quality gate says very little.** ESLint's flat config enables one
 rule, `react-hooks/rules-of-hooks`. There are no tests and no CI. The pre-commit
-gate is `tsc --noEmit` plus that one rule, and it only runs after you have run
-`pre-commit install` in your own clone — it had never been installed in mine, so
-every commit before November 2026 went in ungated.
+gate is `tsc --noEmit` plus that one rule, and because `.git/hooks` is per-clone
+it only runs after you have run `pre-commit install` yourself. It had never been
+run in the clone this project was developed in, so the gate first fired in
+November 2026.
 
 **3. Reads degrade quietly when pvws is down; writes throw.** A boot probe
 replaces cs-web-lib's socket with a stub, so PVs sit in their disconnected state
@@ -77,9 +78,9 @@ you a UI with no displays and no persistence, failing to console only.
 - **As a prototype, reactively, for 29-ID.** The finding it exists to
   demonstrate is that existing caQtDM `.ui` screens render as-is in a browser
   rather than needing a rewrite. It is not a production replacement for caQtDM.
-- **The code is largely AI-assisted.** 184 commits since April 2026, almost all
-  direct to `main` — one merge commit, no PR process. A stale `rafa-dev` branch
-  exists on the remote.
+- **The code is largely AI-assisted.** Development started in April 2026 and
+  has run almost entirely as direct commits to `main` — one merge commit in the
+  whole history, no PR process. A stale `rafa-dev` branch sits on the remote.
 - **There is no release process.** No tags, no versioning; `package.json` has
   said `0.1.0` throughout. `CHANGELOG.md` is hand-maintained and is the real
   project history — it carries the reasoning behind changes, not just the list.
@@ -100,9 +101,11 @@ you a UI with no displays and no persistence, failing to console only.
 - The three `MotorCard` variants share `useMotor` and differ only in render.
   Folding them into one component with a `layout` prop is deferred because the
   call sites live in deployments.
-- `docs/roadmap.md` lists the remaining widget and rendering work. Items 4, 5, 9
-  and 10 (camera polish, sizePolicy, line profiles, click-to-move) are real
-  requests from beamline use, not speculation.
+- `docs/roadmap.md` lists the remaining widget and rendering work. The entries
+  closest to beamline use are 4 (caCamera polish), 5 (general rendering:
+  sizePolicy, wider `visibilityCalc` coverage, font scaling), 9 (line profile on
+  images) and 10 (click-to-move on scans and images). The file does not record
+  who asked for what, so treat the ordering as unranked.
 
 ## One open question
 
