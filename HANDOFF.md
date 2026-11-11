@@ -25,7 +25,7 @@ git clone git@github.com:BCDA-APS/ca-web.git
 cd ca-web
 conda activate nodejs      # Node.js comes from conda at the APS
 npm install
-pre-commit install         # not active in a fresh clone; see bite #2
+pre-commit install         # the gate is not active in a fresh clone
 
 ./scripts/start-pvws.sh    # EPICS gateway, needs podman
 npm run dev                # http://localhost:4200
@@ -40,7 +40,7 @@ widget shows dashes, which looks like a connection fault and isn't.
 Add `VITE_POLL=1` when editing source over NFS; Vite's inotify watcher doesn't
 fire on NFS clients and HMR will silently never trigger.
 
-## Five things that will bite you
+## Four things that will bite you
 
 **1. `npm run preview` is not a working mode.** The `ui-search-path` plugin is
 registered with `configureServer` only, so under `preview` the app loads, panels
@@ -48,28 +48,21 @@ render, and every `.ui` file plus the whole file picker fails. Same shape as the
 Kestrel proxy problem, and it looks the same way — like a bug in the app. There
 is no production build path at all; see the open question below.
 
-**2. A green quality gate says very little.** ESLint's flat config enables one
-rule, `react-hooks/rules-of-hooks`. There are no tests and no CI. The pre-commit
-gate is `tsc --noEmit` plus that one rule, and because `.git/hooks` is per-clone
-it only runs after you have run `pre-commit install` yourself. It had never been
-run in the clone this project was developed in, so the gate first fired in
-November 2026.
-
-**3. Reads degrade quietly when pvws is down; writes throw.** A boot probe
+**2. Reads degrade quietly when pvws is down; writes throw.** A boot probe
 replaces cs-web-lib's socket with a stub, so PVs sit in their disconnected state
 behind a red banner. But `pvwsWriter` owns a *separate* socket that never gets
 connected in that path, so the first setpoint commit or tweak-button click
 raises `pvwsWriter.connect: socket not configured`. The UI looks calmly broken
 and then throws on interaction.
 
-**4. Saved layouts are files on the server, not browser state.** They live in
+**3. Saved layouts are files on the server, not browser state.** They live in
 `src/deployments/<id>/layouts/`, written through a Vite plugin
 (`/api/layouts/...`). That directory is gitignored, and there is no export
 action in the gear menu, so publishing a layout to everyone means pasting its
 JSON into the `layouts` array of that deployment's `config.json` by hand. ADR
 006 covers this.
 
-**5. The app must run from inside the repo.** Both the `.ui` search path and
+**4. The app must run from inside the repo.** Both the `.ui` search path and
 layout persistence are Vite plugins. Serving a built `dist/` from nginx gives
 you a UI with no displays and no persistence, failing to console only.
 
